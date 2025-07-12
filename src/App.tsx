@@ -14,6 +14,17 @@ import GestaoTreinamentos from "./pages/admin/GestaoTreinamentos";
 import Usuarios from "./pages/admin/Usuarios";
 import NotFound from "./pages/NotFound";
 
+const EMAIL_HASH = "8b0d8e8c917a528bf82b6ccc700491eefba6b85a7b32ae6039b866410910b84b"
+const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
+
+async function hashString(str: string): Promise<string> {
+  const buffer = new TextEncoder().encode(str)
+  const digest = await crypto.subtle.digest("SHA-256", buffer)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 const queryClient = new QueryClient();
 
 interface User {
@@ -36,25 +47,28 @@ const App = () => {
     }
   }, []);
 
-  const handleLogin = (email: string, password: string) => {
+  const handleLogin = async (email: string, password: string) => {
     // Simulação de login - em produção conectaria com Supabase
-    if (email === "hebersohas@gmail.com" && password === "Guga430512") {
+    const emailHash = await hashString(email)
+    const passwordHash = await hashString(password)
+
+    if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
       const userData = {
         email,
         name: "Heber Sohas",
         role: "Master"
-      };
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      
+      }
+
+      setUser(userData)
+      setIsAuthenticated(true)
+
       // Salvar sessão
       localStorage.setItem('training-portal-auth', JSON.stringify({
         user: userData,
         timestamp: Date.now()
-      }));
+      }))
     }
-  };
+  }
 
   const handleLogout = () => {
     setIsAuthenticated(false);
