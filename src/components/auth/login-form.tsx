@@ -7,8 +7,19 @@ import { Eye, EyeOff, LogIn, Mail, Lock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import logoImage from "@/assets/logo.png"
 
+const EMAIL_HASH = "8b0d8e8c917a528bf82b6ccc700491eefba6b85a7b32ae6039b866410910b84b"
+const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
+
+async function hashString(str: string): Promise<string> {
+  const buffer = new TextEncoder().encode(str)
+  const digest = await crypto.subtle.digest("SHA-256", buffer)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => void
+  onLogin: (email: string, password: string) => Promise<void>
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -31,11 +42,13 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     }
 
     setIsLoading(true)
-    
-    // Simular verificação de login
-    setTimeout(() => {
-      if (email === "hebersohas@gmail.com" && password === "Guga430512") {
-        onLogin(email, password)
+
+    const emailHash = await hashString(email)
+    const passwordHash = await hashString(password)
+
+    setTimeout(async () => {
+      if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
+        await onLogin(email, password)
         toast({
           title: "Login realizado com sucesso!",
           description: "Bem-vindo ao Portal de Treinamentos."
@@ -61,7 +74,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 src={logoImage} 
                 alt="Logo Portal de Treinamentos" 
                 className="h-16 w-16 object-contain"
-              />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">Portal de Treinamentos</CardTitle>
@@ -133,14 +145,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               </Button>
             </form>
             
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Usuário de teste: <span className="font-medium">hebersohas@gmail.com</span>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Senha: <span className="font-medium">Guga430512</span>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
