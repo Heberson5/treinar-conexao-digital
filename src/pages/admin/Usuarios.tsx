@@ -20,6 +20,7 @@ import {
   User
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
 interface Usuario {
   id: number
@@ -33,6 +34,16 @@ interface Usuario {
   ultimoAcesso: string
   treinamentosConcluidos: number
 }
+
+// Dados mocados para Cargos e Departamentos
+const cargosDisponiveis = [
+  "Administrador Master", "Analista de RH", "Vendedor", "Gerente de Vendas", 
+  "Analista Financeiro", "Coordenador de TI", "Assistente Administrativo"
+]
+
+const departamentosDisponiveis = [
+  "TI", "RH", "Vendas", "Financeiro", "Marketing", "Operações", "Qualidade"
+]
 
 export default function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([
@@ -77,14 +88,22 @@ export default function Usuarios() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const { toast } = useToast()
+  const { canCreateMaster, canCreateAdmin, canCreateUser, user } = useAuth()
 
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    nome: string
+    email: string
+    empresa: string
+    departamento: string
+    cargo: string
+    papel: "master" | "admin" | "usuario"
+  }>({
     nome: "",
     email: "",
     empresa: "",
     departamento: "",
     cargo: "",
-    papel: "usuario" as const
+    papel: "usuario"
   })
 
   const resetForm = () => {
@@ -103,6 +122,34 @@ export default function Usuarios() {
       toast({
         title: "Campos obrigatórios",
         description: "Nome e email são obrigatórios",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Verificar permissões para criar o tipo de usuário
+    if (newUser.papel === "master" && !canCreateMaster()) {
+      toast({
+        title: "Permissão negada",
+        description: "Apenas Masters podem criar outros Masters",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (newUser.papel === "admin" && !canCreateAdmin()) {
+      toast({
+        title: "Permissão negada", 
+        description: "Apenas Masters e Administradores podem criar Administradores",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!canCreateUser()) {
+      toast({
+        title: "Permissão negada",
+        description: "Você não tem permissão para criar usuários",
         variant: "destructive"
       })
       return
@@ -127,6 +174,18 @@ export default function Usuarios() {
   }
 
   const handleDelete = (id: number) => {
+    const usuario = usuarios.find(u => u.id === id)
+    
+    // Não permitir deletar o próprio usuário
+    if (usuario?.email === user?.email) {
+      toast({
+        title: "Ação não permitida",
+        description: "Você não pode excluir seu próprio usuário",
+        variant: "destructive"
+      })
+      return
+    }
+
     setUsuarios(usuarios.filter(u => u.id !== id))
     toast({
       title: "Usuário excluído",
@@ -232,24 +291,32 @@ export default function Usuarios() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="departamento">Departamento</Label>
-                  <Input
-                    id="departamento"
-                    value={newUser.departamento}
-                    onChange={(e) => setNewUser({...newUser, departamento: e.target.value})}
-                    placeholder="Departamento"
-                  />
+                  <Select value={newUser.departamento} onValueChange={(value) => setNewUser({...newUser, departamento: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o departamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departamentosDisponiveis.map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cargo">Cargo</Label>
-                  <Input
-                    id="cargo"
-                    value={newUser.cargo}
-                    onChange={(e) => setNewUser({...newUser, cargo: e.target.value})}
-                    placeholder="Cargo/Função"
-                  />
+                  <Select value={newUser.cargo} onValueChange={(value) => setNewUser({...newUser, cargo: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cargosDisponiveis.map((cargo) => (
+                        <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="papel">Papel no Sistema</Label>
@@ -259,8 +326,8 @@ export default function Usuarios() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="usuario">Usuário</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="master">Master</SelectItem>
+                      {canCreateAdmin() && <SelectItem value="admin">Administrador</SelectItem>}
+                      {canCreateMaster() && <SelectItem value="master">Master</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
@@ -405,7 +472,7 @@ export default function Usuarios() {
                     <Button variant="outline" size="sm">
                       <Edit3 className="h-4 w-4" />
                     </Button>
-                    {user.papel !== "master" && (
+                    {user.papel !== "master" && user.id !== 1 && (
                       <Button 
                         variant="outline" 
                         size="sm"

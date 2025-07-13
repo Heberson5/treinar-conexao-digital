@@ -22,8 +22,10 @@ import {
   GraduationCap,
   FileText,
   Calendar,
+  Briefcase,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
+import { useAuth } from "@/contexts/auth-context"
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -36,6 +38,8 @@ const mainMenuItems = [
 const adminMenuItems = [
   { title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: BookOpen },
   { title: "Usuários", url: "/admin/usuarios", icon: Users },
+  { title: "Cargos", url: "/admin/cargos", icon: Briefcase },
+  { title: "Departamentos", url: "/admin/departamentos", icon: Building2 },
   { title: "Empresas", url: "/admin/empresas", icon: Building2 },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Permissões", url: "/admin/permissoes", icon: Shield },
@@ -46,9 +50,8 @@ export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
+  const { canAccessAdmin } = useAuth()
   
-  // Simulando usuário Master - em produção viria do contexto de auth
-  const isAdmin = true
   const isMainExpanded = mainMenuItems.some((item) => currentPath === item.url)
   const isAdminExpanded = adminMenuItems.some((item) => currentPath === item.url)
 
@@ -95,7 +98,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Menu Administrativo */}
-        {isAdmin && (
+        {canAccessAdmin() && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
             <SidebarGroupContent>

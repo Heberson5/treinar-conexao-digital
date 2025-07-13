@@ -7,19 +7,9 @@ import { Eye, EyeOff, LogIn, Mail, Lock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import logoImage from "@/assets/logo.png"
 
-const EMAIL_HASH = "8b0d8e8c917a528bf82b6ccc700491eefba6b85a7b32ae6039b866410910b84b"
-const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
-
-async function hashString(str: string): Promise<string> {
-  const buffer = new TextEncoder().encode(str)
-  const digest = await crypto.subtle.digest("SHA-256", buffer)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-}
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => Promise<void>
+  onLogin: (email: string, password: string) => Promise<boolean>
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -35,33 +25,38 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     if (!email || !password) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha email e senha.",
-        variant: "destructive"
+        description: "Por favor, preencha todos os campos.",
+        variant: "destructive",
       })
       return
     }
 
     setIsLoading(true)
 
-    const emailHash = await hashString(email)
-    const passwordHash = await hashString(password)
-
-    setTimeout(async () => {
-      if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
-        await onLogin(email, password)
+    try {
+      const success = await onLogin(email, password)
+      
+      if (success) {
         toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao Portal de Treinamentos."
+          title: "Login realizado!",
+          description: "Bem-vindo ao Portal de Treinamentos.",
         })
       } else {
         toast({
           title: "Credenciais inválidas",
           description: "Email ou senha incorretos.",
-          variant: "destructive"
+          variant: "destructive",
         })
       }
+    } catch (error) {
+      toast({
+        title: "Erro no login",
+        description: "Ocorreu um erro durante o login. Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
