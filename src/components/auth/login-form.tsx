@@ -74,6 +74,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 src={logoImage} 
                 alt="Logo Portal de Treinamentos" 
                 className="h-16 w-16 object-contain"
+              />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">Portal de Treinamentos</CardTitle>
