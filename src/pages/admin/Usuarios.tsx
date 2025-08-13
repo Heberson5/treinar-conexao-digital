@@ -50,7 +50,7 @@ export default function Usuarios() {
     {
       id: 1,
       nome: "Heber Sohas",
-      email: "hebersohas@gmail.com",
+      email: "hebersohas@hotmail.com",
       empresa: "Portal Treinamentos",
       departamento: "TI",
       cargo: "Administrador Master",
@@ -93,6 +93,7 @@ export default function Usuarios() {
   const [newUser, setNewUser] = useState<{
     nome: string
     email: string
+    senha: string
     empresa: string
     departamento: string
     cargo: string
@@ -100,6 +101,7 @@ export default function Usuarios() {
   }>({
     nome: "",
     email: "",
+    senha: "",
     empresa: "",
     departamento: "",
     cargo: "",
@@ -110,6 +112,7 @@ export default function Usuarios() {
     setNewUser({
       nome: "",
       email: "",
+      senha: "",
       empresa: "",
       departamento: "",
       cargo: "",
@@ -117,11 +120,31 @@ export default function Usuarios() {
     })
   }
 
+  const validatePassword = (password: string): boolean => {
+    // Mínimo 8 caracteres, pelo menos 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial
+    const minLength = password.length >= 8
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumbers = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    
+    return minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
+  }
+
   const handleCreate = () => {
-    if (!newUser.nome || !newUser.email) {
+    if (!newUser.nome || !newUser.email || !newUser.senha) {
       toast({
         title: "Campos obrigatórios",
-        description: "Nome e email são obrigatórios",
+        description: "Nome, email e senha são obrigatórios",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!validatePassword(newUser.senha)) {
+      toast({
+        title: "Senha inválida",
+        description: "A senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial",
         variant: "destructive"
       })
       return
@@ -267,17 +290,31 @@ export default function Usuarios() {
                     placeholder="Nome do usuário"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                    placeholder="email@empresa.com"
-                  />
-                </div>
-              </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="email">Email *</Label>
+                   <Input
+                     id="email"
+                     type="email"
+                     value={newUser.email}
+                     onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                     placeholder="email@empresa.com"
+                   />
+                 </div>
+               </div>
+               
+               <div className="space-y-2">
+                 <Label htmlFor="senha">Senha *</Label>
+                 <Input
+                   id="senha"
+                   type="password"
+                   value={newUser.senha}
+                   onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
+                   placeholder="Mínimo 8 caracteres"
+                 />
+                 <p className="text-xs text-muted-foreground">
+                   A senha deve conter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial
+                 </p>
+               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

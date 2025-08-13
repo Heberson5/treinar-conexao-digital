@@ -20,8 +20,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hash hardcoded para o usuário master inicial
-const EMAIL_HASH = "8b0d8e8c917a528bf82b6ccc700491eefba6b85a7b32ae6039b866410910b84b"
+// Hash hardcoded para o usuário master inicial (hebersohas@hotmail.com)
+const EMAIL_HASH = "2e5da44f8f0e24ca3a91e3b68ae2d1b8c7c8068ae4eff13c4845b4b9adcb7013"
 const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
 
 async function hashString(str: string): Promise<string> {
