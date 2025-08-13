@@ -21,7 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Hash hardcoded para o usuário master inicial (hebersohas@hotmail.com)
-const EMAIL_HASH = "2e5da44f8f0e24ca3a91e3b68ae2d1b8c7c8068ae4eff13c4845b4b9adcb7013"
+const EMAIL_HASH = "806b8e9e96c8b8c38b5476e2a5f17fc52b3e47fc71eed98d3bd0a726b50c6067"
 const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
 
 async function hashString(str: string): Promise<string> {
@@ -49,6 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     const emailHash = await hashString(email)
     const passwordHash = await hashString(password)
+    
+    console.log("Login attempt - email:", email);
+    console.log("Login attempt - emailHash:", emailHash);
+    console.log("Login attempt - passwordHash:", passwordHash);
+    console.log("Expected EMAIL_HASH:", EMAIL_HASH);
+    console.log("Expected PASSWORD_HASH:", PASSWORD_HASH);
 
     if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
       const userData: User = {
@@ -80,10 +86,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Funções de autorização
-  const canCreateMaster = () => user?.role === "master";
-  const canCreateAdmin = () => user?.role === "master" || user?.role === "admin";
-  const canCreateUser = () => user?.role === "master" || user?.role === "admin";
-  const canAccessAdmin = () => user?.role === "master" || user?.role === "admin";
+  const canCreateMaster = () => {
+    console.log("canCreateMaster - user:", user);
+    return user?.role === "master";
+  };
+  const canCreateAdmin = () => {
+    console.log("canCreateAdmin - user:", user);
+    return user?.role === "master" || user?.role === "admin";
+  };
+  const canCreateUser = () => {
+    console.log("canCreateUser - user:", user);
+    return user?.role === "master" || user?.role === "admin";
+  };
+  const canAccessAdmin = () => {
+    console.log("canAccessAdmin - user:", user);
+    return user?.role === "master" || user?.role === "admin";
+  };
 
   return (
     <AuthContext.Provider value={{
