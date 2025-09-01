@@ -21,17 +21,25 @@ import {
   Upload,
   Video,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  History
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useTraining } from "@/contexts/training-context"
+import { useTraining, Training } from "@/contexts/training-context"
+import { TrainingViewer } from "@/components/training/training-viewer"
+import { TrainingEditor } from "@/components/training/training-editor"
+import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 
 export default function GestaoTreinamentos() {
-  const { trainings: treinamentos, createTraining, deleteTraining: removeTraining } = useTraining()
+  const { trainings: treinamentos, createTraining, updateTraining, deleteTraining: removeTraining } = useTraining()
+  const { formatDate } = useBrazilianDate()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingTraining, setEditingTraining] = useState<any | null>(null)
+  const [editingTraining, setEditingTraining] = useState<Training | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [viewingTraining, setViewingTraining] = useState<Training | null>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -449,31 +457,69 @@ export default function GestaoTreinamentos() {
                 <span className="text-muted-foreground">
                   {training.participantes} participantes
                 </span>
-                <span className="text-muted-foreground">
-                  {training.criadoEm}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Eye className="mr-2 h-4 w-4" />
-                  Visualizar
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Edit3 className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDelete(training.id)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+                 <span className="text-muted-foreground">
+                   {formatDate(training.criadoEm)}
+                 </span>
+               </div>
+               <div className="flex gap-2">
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   className="flex-1"
+                   onClick={() => {
+                     setViewingTraining(training)
+                     setIsViewOpen(true)
+                   }}
+                 >
+                   <Eye className="mr-2 h-4 w-4" />
+                   Visualizar
+                 </Button>
+                 <Button 
+                   variant="outline" 
+                   size="sm"
+                   onClick={() => {
+                     setEditingTraining(training)
+                     setIsEditOpen(true)
+                   }}
+                 >
+                   <Edit3 className="h-4 w-4" />
+                 </Button>
+                 <Button 
+                   variant="outline" 
+                   size="sm"
+                   onClick={() => handleDelete(training.id)}
+                   className="text-destructive hover:text-destructive"
+                 >
+                   <Trash2 className="h-4 w-4" />
+                 </Button>
+               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
+         ))}
+       </div>
+
+       {/* Training Viewer Modal */}
+       <TrainingViewer
+         training={viewingTraining}
+         open={isViewOpen}
+         onOpenChange={setIsViewOpen}
+       />
+
+       {/* Training Editor Modal */}
+       <TrainingEditor
+         training={editingTraining}
+         open={isEditOpen}
+         onOpenChange={setIsEditOpen}
+         onSave={(data) => {
+           if (editingTraining) {
+             updateTraining(editingTraining.id, data)
+             toast({
+               title: "Treinamento atualizado!",
+               description: "As alterações foram salvas com sucesso."
+             })
+           }
+         }}
+       />
+     </div>
+   )
+ }

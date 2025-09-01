@@ -17,13 +17,19 @@ import {
   Star,
   Award,
   Calendar,
-  RotateCcw
+  RotateCcw,
+  Eye
 } from "lucide-react"
+import { TrainingViewer } from "@/components/training/training-viewer"
+import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 
 export default function MeusTreinamentos() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("todos")
-  const { getActiveTrainings } = useTraining()
+  const [viewingTraining, setViewingTraining] = useState<any>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
+  const { getActiveTrainings, startTraining, accessTraining } = useTraining()
+  const { formatDateOnly } = useBrazilianDate()
   
   // Buscar apenas treinamentos ativos (publicados)
   const trainings = getActiveTrainings().map(training => ({
@@ -36,10 +42,11 @@ export default function MeusTreinamentos() {
     status: training.progress === 100 ? "concluido" : training.progress && training.progress > 0 ? "em-progresso" : "nao-iniciado",
     rating: training.rating || 4.5,
     instructor: training.instrutor,
-    deadline: training.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    deadline: training.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     lastAccessed: training.lastAccessed || "Nunca acessado",
     completed: training.completed || false,
-    thumbnail: training.capa || "/api/placeholder/300/200"
+    thumbnail: training.capa || "/api/placeholder/300/200",
+    originalTraining: training
   }))
 
   const getStatusColor = (status: string) => {
@@ -225,25 +232,44 @@ export default function MeusTreinamentos() {
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Prazo: {training.deadline}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {training.lastAccessed}
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button className="flex-1">
-                      {training.progress === 0 ? "Iniciar" : training.completed ? "Revisar" : "Continuar"}
-                    </Button>
-                    {training.completed && (
-                      <Button variant="outline" size="icon">
-                        <Award className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                   <div className="flex items-center justify-between text-sm">
+                     <span className="text-muted-foreground">
+                       Prazo: {formatDateOnly(training.deadline)}
+                     </span>
+                     <span className="text-muted-foreground">
+                       {training.lastAccessed}
+                     </span>
+                   </div>
+                   
+                   <div className="flex gap-2">
+                     <Button 
+                       className="flex-1"
+                       onClick={() => {
+                         if (training.progress === 0) {
+                           startTraining(training.originalTraining.id)
+                         } else {
+                           accessTraining(training.originalTraining.id)
+                         }
+                       }}
+                     >
+                       {training.progress === 0 ? "Iniciar" : training.completed ? "Revisar" : "Continuar"}
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       size="icon"
+                       onClick={() => {
+                         setViewingTraining(training.originalTraining)
+                         setIsViewOpen(true)
+                       }}
+                     >
+                       <Eye className="h-4 w-4" />
+                     </Button>
+                     {training.completed && (
+                       <Button variant="outline" size="icon">
+                         <Award className="h-4 w-4" />
+                       </Button>
+                     )}
+                   </div>
                 </CardContent>
               </Card>
             ))}
@@ -278,9 +304,26 @@ export default function MeusTreinamentos() {
                       <span>{training.progress}%</span>
                     </div>
                     <Progress value={training.progress} />
-                  </div>
-                  <Button className="w-full">Continuar</Button>
-                </CardContent>
+                   </div>
+                   <div className="flex gap-2">
+                     <Button 
+                       className="flex-1"
+                       onClick={() => accessTraining(training.originalTraining.id)}
+                     >
+                       Continuar
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       size="icon"
+                       onClick={() => {
+                         setViewingTraining(training.originalTraining)
+                         setIsViewOpen(true)
+                       }}
+                     >
+                       <Eye className="h-4 w-4" />
+                     </Button>
+                   </div>
+                 </CardContent>
               </Card>
             ))}
           </div>
@@ -307,17 +350,31 @@ export default function MeusTreinamentos() {
                     {training.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between">
-                    <Button variant="outline" className="flex-1">
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Revisar
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      <Award className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
+                 <CardContent className="space-y-4">
+                   <div className="flex gap-2">
+                     <Button 
+                       variant="outline" 
+                       className="flex-1"
+                       onClick={() => accessTraining(training.originalTraining.id)}
+                     >
+                       <RotateCcw className="mr-2 h-4 w-4" />
+                       Revisar
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       size="icon"
+                       onClick={() => {
+                         setViewingTraining(training.originalTraining)
+                         setIsViewOpen(true)
+                       }}
+                     >
+                       <Eye className="h-4 w-4" />
+                     </Button>
+                     <Button variant="outline" size="icon">
+                       <Award className="h-4 w-4" />
+                     </Button>
+                   </div>
+                 </CardContent>
               </Card>
             ))}
           </div>
@@ -344,17 +401,47 @@ export default function MeusTreinamentos() {
                     {training.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button className="w-full">
-                    <PlayCircle className="mr-2 h-4 w-4" />
-                    Iniciar Treinamento
-                  </Button>
-                </CardContent>
+                 <CardContent>
+                   <div className="flex gap-2">
+                     <Button 
+                       className="flex-1"
+                       onClick={() => startTraining(training.originalTraining.id)}
+                     >
+                       <PlayCircle className="mr-2 h-4 w-4" />
+                       Iniciar Treinamento
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       size="icon"
+                       onClick={() => {
+                         setViewingTraining(training.originalTraining)
+                         setIsViewOpen(true)
+                       }}
+                     >
+                       <Eye className="h-4 w-4" />
+                     </Button>
+                   </div>
+                 </CardContent>
               </Card>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
+         </TabsContent>
+       </Tabs>
+
+       {/* Training Viewer Modal */}
+       <TrainingViewer
+         training={viewingTraining}
+         open={isViewOpen}
+         onOpenChange={setIsViewOpen}
+         onStartTraining={(id) => {
+           startTraining(id)
+           setIsViewOpen(false)
+         }}
+         onContinueTraining={(id) => {
+           accessTraining(id)
+           setIsViewOpen(false)
+         }}
+       />
+     </div>
+   )
+ }
