@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,61 +24,16 @@ import {
   Image as ImageIcon
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface Training {
-  id: number
-  titulo: string
-  subtitulo?: string
-  descricao: string
-  texto?: string
-  videoUrl?: string
-  categoria: string
-  duracao: string
-  status: "ativo" | "inativo" | "rascunho"
-  participantes: number
-  criadoEm: string
-  instrutor: string
-  fotos: string[]
-  arquivos: string[]
-}
+import { useTraining } from "@/contexts/training-context"
 
 export default function GestaoTreinamentos() {
-  const [treinamentos, setTreinamentos] = useState<Training[]>([
-    {
-      id: 1,
-      titulo: "Segurança no Trabalho - Módulo Básico",
-      subtitulo: "Fundamentos da Segurança Ocupacional",
-      descricao: "Aprenda os fundamentos da segurança ocupacional e prevenção de acidentes no ambiente de trabalho",
-      texto: "Este treinamento aborda conceitos fundamentais...",
-      videoUrl: "https://youtube.com/watch?v=exemplo",
-      categoria: "Segurança",
-      duracao: "2h 30min",
-      status: "ativo",
-      participantes: 45,
-      criadoEm: "2024-01-15",
-      instrutor: "Maria Silva",
-      fotos: [],
-      arquivos: []
-    },
-    {
-      id: 2,
-      titulo: "Atendimento ao Cliente Excelente",
-      descricao: "Técnicas avançadas para proporcionar uma experiência excepcional ao cliente",
-      categoria: "Vendas",
-      duracao: "1h 45min",
-      status: "ativo",
-      participantes: 32,
-      criadoEm: "2024-01-10",
-      instrutor: "João Santos",
-      fotos: [],
-      arquivos: []
-    }
-  ])
+  const { trainings: treinamentos, createTraining, deleteTraining: removeTraining } = useTraining()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingTraining, setEditingTraining] = useState<Training | null>(null)
+  const [editingTraining, setEditingTraining] = useState<any | null>(null)
   const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [newTraining, setNewTraining] = useState<{
     titulo: string
@@ -90,6 +45,7 @@ export default function GestaoTreinamentos() {
     duracao: string
     status: "ativo" | "inativo" | "rascunho"
     instrutor: string
+    capa?: string
   }>({
     titulo: "",
     subtitulo: "",
@@ -99,7 +55,8 @@ export default function GestaoTreinamentos() {
     categoria: "",
     duracao: "",
     status: "rascunho",
-    instrutor: ""
+    instrutor: "",
+    capa: undefined
   })
 
   const resetForm = () => {
@@ -112,8 +69,21 @@ export default function GestaoTreinamentos() {
       categoria: "",
       duracao: "",
       status: "rascunho",
-      instrutor: ""
+      instrutor: "",
+      capa: undefined
     })
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const imageData = e.target?.result as string
+        setNewTraining(prev => ({ ...prev, capa: imageData }))
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   const handleCreate = () => {
@@ -126,16 +96,7 @@ export default function GestaoTreinamentos() {
       return
     }
 
-    const training: Training = {
-      id: Date.now(),
-      ...newTraining,
-      participantes: 0,
-      criadoEm: new Date().toISOString().split('T')[0],
-      fotos: [],
-      arquivos: []
-    }
-
-    setTreinamentos([...treinamentos, training])
+    createTraining(newTraining)
     setIsCreateOpen(false)
     resetForm()
     
@@ -146,7 +107,7 @@ export default function GestaoTreinamentos() {
   }
 
   const handleDelete = (id: number) => {
-    setTreinamentos(treinamentos.filter(t => t.id !== id))
+    removeTraining(id)
     toast({
       title: "Treinamento excluído",
       description: "O treinamento foi removido com sucesso."
@@ -306,18 +267,46 @@ export default function GestaoTreinamentos() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Fotos do Treinamento</Label>
+                  <Label>Capa do Treinamento</Label>
                   <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                    <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <div className="mt-4">
-                      <Button variant="outline">
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload de Fotos
-                      </Button>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        JPG, JPEG, PNG, GIF até 5MB
-                      </p>
-                    </div>
+                    {newTraining.capa ? (
+                      <div className="space-y-4">
+                        <img 
+                          src={newTraining.capa} 
+                          alt="Capa do treinamento" 
+                          className="max-w-full h-32 object-cover mx-auto rounded-lg"
+                        />
+                        <div className="flex gap-2 justify-center">
+                          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Alterar Capa
+                          </Button>
+                          <Button variant="outline" onClick={() => setNewTraining(prev => ({ ...prev, capa: undefined }))}>
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="mt-4">
+                          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload de Capa
+                          </Button>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            JPG, JPEG, PNG, GIF até 5MB
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -424,8 +413,14 @@ export default function GestaoTreinamentos() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTrainings.map((training) => (
           <Card key={training.id} className="hover:shadow-md transition-shadow">
-            <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center">
-              {training.videoUrl ? (
+            <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
+              {training.capa ? (
+                <img 
+                  src={training.capa} 
+                  alt={training.titulo} 
+                  className="w-full h-full object-cover"
+                />
+              ) : training.videoUrl ? (
                 <Video className="h-12 w-12 text-white" />
               ) : (
                 <BookOpen className="h-12 w-12 text-white" />

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTraining } from "@/contexts/training-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -22,69 +23,24 @@ import {
 export default function MeusTreinamentos() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("todos")
+  const { getActiveTrainings } = useTraining()
   
-  const trainings = [
-    {
-      id: 1,
-      title: "Segurança no Trabalho - Módulo Básico",
-      description: "Aprenda os fundamentos da segurança ocupacional e prevenção de acidentes",
-      category: "Segurança",
-      duration: "2h 30min",
-      progress: 85,
-      status: "em-progresso",
-      rating: 4.8,
-      instructor: "Maria Silva",
-      deadline: "2024-02-15",
-      lastAccessed: "Há 2 dias",
-      completed: false,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 2,
-      title: "Atendimento ao Cliente Excelente",
-      description: "Técnicas avançadas para proporcionar uma experiência excepcional ao cliente",
-      category: "Vendas",
-      duration: "1h 45min",
-      progress: 100,
-      status: "concluido",
-      rating: 4.9,
-      instructor: "João Santos",
-      deadline: "2024-01-30",
-      lastAccessed: "Concluído",
-      completed: true,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 3,
-      title: "Gestão de Tempo e Produtividade",
-      description: "Maximize sua eficiência com técnicas comprovadas de gestão do tempo",
-      category: "Desenvolvimento",
-      duration: "3h 15min",
-      progress: 45,
-      status: "em-progresso",
-      rating: 4.7,
-      instructor: "Ana Costa",
-      deadline: "2024-02-28",
-      lastAccessed: "Há 1 semana",
-      completed: false,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 4,
-      title: "Comunicação Eficaz",
-      description: "Desenvolva suas habilidades de comunicação verbal e escrita",
-      category: "Soft Skills",
-      duration: "2h 00min",
-      progress: 0,
-      status: "nao-iniciado",
-      rating: 4.6,
-      instructor: "Carlos Lima",
-      deadline: "2024-03-15",
-      lastAccessed: "Nunca acessado",
-      completed: false,
-      thumbnail: "/api/placeholder/300/200"
-    }
-  ]
+  // Buscar apenas treinamentos ativos (publicados)
+  const trainings = getActiveTrainings().map(training => ({
+    id: training.id,
+    title: training.titulo,
+    description: training.descricao,
+    category: training.categoria,
+    duration: training.duracao,
+    progress: training.progress || 0,
+    status: training.progress === 100 ? "concluido" : training.progress && training.progress > 0 ? "em-progresso" : "nao-iniciado",
+    rating: training.rating || 4.5,
+    instructor: training.instrutor,
+    deadline: training.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    lastAccessed: training.lastAccessed || "Nunca acessado",
+    completed: training.completed || false,
+    thumbnail: training.capa || "/api/placeholder/300/200"
+  }))
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -222,8 +178,16 @@ export default function MeusTreinamentos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center">
-                  <PlayCircle className="h-12 w-12 text-white" />
+                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
+                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                    <img 
+                      src={training.thumbnail} 
+                      alt={training.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <PlayCircle className="h-12 w-12 text-white" />
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -290,8 +254,16 @@ export default function MeusTreinamentos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {inProgressTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center">
-                  <PlayCircle className="h-12 w-12 text-white" />
+                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
+                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                    <img 
+                      src={training.thumbnail} 
+                      alt={training.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <PlayCircle className="h-12 w-12 text-white" />
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
@@ -318,8 +290,16 @@ export default function MeusTreinamentos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {completedTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center">
-                  <CheckCircle className="h-12 w-12 text-white" />
+                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
+                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                    <img 
+                      src={training.thumbnail} 
+                      alt={training.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <CheckCircle className="h-12 w-12 text-white" />
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
@@ -347,8 +327,16 @@ export default function MeusTreinamentos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {notStartedTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center">
-                  <BookOpen className="h-12 w-12 text-muted-foreground" />
+                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center overflow-hidden">
+                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                    <img 
+                      src={training.thumbnail} 
+                      alt={training.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <BookOpen className="h-12 w-12 text-muted-foreground" />
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>

@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import { LoginForm } from "@/components/auth/login-form";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { TrainingProvider } from "@/contexts/training-context";
 import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
@@ -58,7 +59,9 @@ const App = () => {
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <AppContent />
+              <TrainingProvider>
+                <AppContent />
+              </TrainingProvider>
             </AuthProvider>
           </BrowserRouter>
           <Toaster />
