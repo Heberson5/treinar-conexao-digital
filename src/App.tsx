@@ -18,46 +18,49 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AppRoutes() {
+function AppContent() {
+  console.log("AppContent rendering...");
   const { isAuthenticated, login, logout } = useAuth();
+  console.log("AppContent - isAuthenticated:", isAuthenticated);
 
   if (!isAuthenticated) {
     return <LoginForm onLogin={login} />;
   }
 
   return (
-    <BrowserRouter>
-      <MainLayout onLogout={logout}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
-          <Route path="/catalogo" element={<Catalogo />} />
-          <Route path="/relatorios" element={<div className="p-8"><h1 className="text-2xl font-bold">Relatórios em desenvolvimento</h1></div>} />
-          <Route path="/calendario" element={<div className="p-8"><h1 className="text-2xl font-bold">Calendário em desenvolvimento</h1></div>} />
-          <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
-          <Route path="/admin/usuarios" element={<Usuarios />} />
-          <Route path="/admin/cargos" element={<Cargos />} />
-          <Route path="/admin/departamentos" element={<Departamentos />} />
-          <Route path="/admin/empresas" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Empresas em desenvolvimento</h1></div>} />
-          <Route path="/admin/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics em desenvolvimento</h1></div>} />
-          <Route path="/admin/permissoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Permissões em desenvolvimento</h1></div>} />
-          <Route path="/admin/configuracoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações em desenvolvimento</h1></div>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </MainLayout>
-    </BrowserRouter>
+    <MainLayout onLogout={logout}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
+        <Route path="/catalogo" element={<Catalogo />} />
+        <Route path="/relatorios" element={<div className="p-8"><h1 className="text-2xl font-bold">Relatórios em desenvolvimento</h1></div>} />
+        <Route path="/calendario" element={<div className="p-8"><h1 className="text-2xl font-bold">Calendário em desenvolvimento</h1></div>} />
+        <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
+        <Route path="/admin/usuarios" element={<Usuarios />} />
+        <Route path="/admin/cargos" element={<Cargos />} />
+        <Route path="/admin/departamentos" element={<Departamentos />} />
+        <Route path="/admin/empresas" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Empresas em desenvolvimento</h1></div>} />
+        <Route path="/admin/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics em desenvolvimento</h1></div>} />
+        <Route path="/admin/permissoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Permissões em desenvolvimento</h1></div>} />
+        <Route path="/admin/configuracoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações em desenvolvimento</h1></div>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </MainLayout>
   );
 }
 
 const App = () => {
+  console.log("App rendering...");
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </BrowserRouter>
           <Toaster />
           <Sonner />
         </TooltipProvider>

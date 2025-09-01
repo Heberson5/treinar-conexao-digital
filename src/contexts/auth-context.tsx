@@ -33,16 +33,19 @@ async function hashString(str: string): Promise<string> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  console.log("AuthProvider rendering...");
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    console.log("AuthProvider useEffect running...");
     // Verificar se há sessão salva
     const savedAuth = localStorage.getItem('training-portal-auth');
     if (savedAuth) {
       const authData = JSON.parse(savedAuth);
       setUser(authData.user);
       setIsAuthenticated(true);
+      console.log("Restored user from localStorage:", authData.user);
     }
   }, []);
 
