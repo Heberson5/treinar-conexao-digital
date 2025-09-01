@@ -19,7 +19,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AuthenticatedApp() {
+function AppContent() {
   const { isAuthenticated, login, logout } = useAuth();
 
   if (!isAuthenticated) {
@@ -59,7 +59,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <AuthProvider>
-            <AuthenticatedApp />
+            <AppContent />
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>
