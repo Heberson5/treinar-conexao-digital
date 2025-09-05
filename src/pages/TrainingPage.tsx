@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTraining } from "@/contexts/training-context";
-import { TrainingBlocks, type TrainingBlock } from "@/components/training/training-blocks";
+import { TrainingContentViewer, type TrainingContentBlock } from "@/components/training/training-content-viewer";
+import { useActiveTimer } from "@/hooks/use-active-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,12 @@ import {
   Target,
   Calendar,
   CheckCircle2,
-  X
+  X,
+  Timer,
+  Eye,
+  EyeOff,
+  Pause,
+  Play
 } from "lucide-react";
 
 export default function TrainingPage() {
@@ -29,6 +35,49 @@ export default function TrainingPage() {
   
   const [training, setTraining] = useState<any>(null);
   const [currentProgress, setCurrentProgress] = useState(0);
+  
+  // Parse duration to get target time in minutes
+  const getTargetDurationMinutes = (duration: string) => {
+    const match = duration.match(/(\d+)h?\s*(\d+)?/);
+    if (match) {
+      const hours = parseInt(match[1]) || 0;
+      const minutes = parseInt(match[2]) || 0;
+      return hours * 60 + minutes;
+    }
+    // Default fallback
+    return 60;
+  };
+
+  const targetDuration = training ? getTargetDurationMinutes(training.duracao) : 60;
+  
+  // Active timer for tracking study time
+  const {
+    activeTime,
+    totalTime,
+    isActive,
+    isPageVisible,
+    isCompleted: timerCompleted,
+    canComplete,
+    start: startTimer,
+    pause: pauseTimer,
+    progress: timeProgress,
+    formattedActiveTime,
+    formattedTargetTime,
+    formattedRemainingTime
+  } = useActiveTimer({
+    targetDuration,
+    onTimeUpdate: (active, total) => {
+      // Update progress based on time spent
+      const timeBasedProgress = Math.min((active / (targetDuration * 60)) * 100, 100);
+      setCurrentProgress(timeBasedProgress);
+    },
+    onCompletion: () => {
+      toast.success("🎉 Tempo mínimo de estudo concluído!", {
+        description: "Agora você pode finalizar o treinamento."
+      });
+    },
+    autoStart: true
+  });
 
   useEffect(() => {
     if (id) {
@@ -56,8 +105,8 @@ export default function TrainingPage() {
   }, [id, getTrainingById, addAuditLog, navigate]);
 
   // Criar blocos de exemplo baseados no conteúdo do treinamento
-  const generateTrainingBlocks = (training: any): TrainingBlock[] => {
-    const blocks: TrainingBlock[] = [
+  const generateTrainingBlocks = (training: any): TrainingContentBlock[] => {
+    const blocks: TrainingContentBlock[] = [
       {
         id: "intro",
         type: "text",
@@ -79,7 +128,8 @@ export default function TrainingPage() {
           </ul>
         `,
         order: 1,
-        duration: "10 min"
+        duration: "10 min",
+        thumbnail: training.capa
       },
       {
         id: "content-1",
@@ -104,7 +154,8 @@ export default function TrainingPage() {
           </blockquote>
         `,
         order: 2,
-        duration: "25 min"
+        duration: "25 min",
+        thumbnail: training.capa
       }
     ];
 
@@ -116,14 +167,15 @@ export default function TrainingPage() {
         title: "Vídeo Explicativo",
         content: training.videoUrl,
         order: 3,
-        duration: "15 min"
+        duration: "15 min",
+        thumbnail: `https://img.youtube.com/vi/${training.videoUrl?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`
       });
     }
 
     // Adicionar exercício prático
     blocks.push({
       id: "quiz-1",
-      type: "quiz",
+      type: "document",
       title: "Exercício de Fixação",
       content: "Teste seus conhecimentos sobre o conteúdo estudado até agora.",
       order: 4,
@@ -171,11 +223,19 @@ export default function TrainingPage() {
   };
 
   const handleProgressUpdate = (progress: number) => {
+    // Only allow completion if minimum time has been spent
+    if (progress >= 100 && !canComplete) {
+      toast.warning("Tempo mínimo de estudo não atingido", {
+        description: `Continue estudando por mais ${formattedRemainingTime} para poder concluir.`
+      });
+      return;
+    }
+
     setCurrentProgress(progress);
     
     // Atualizar progresso no treinamento
     if (training) {
-      const isCompleted = progress >= 100;
+      const isCompleted = progress >= 100 && canComplete;
       
       updateTraining(training.id, {
         progress: Math.round(progress),
@@ -192,6 +252,8 @@ export default function TrainingPage() {
         details: {
           progress: Math.round(progress),
           completed: isCompleted,
+          activeTime: activeTime,
+          totalTime: totalTime,
           timestamp: new Date().toISOString()
         },
         userId: "user-1",
@@ -245,15 +307,42 @@ export default function TrainingPage() {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Timer display */}
+            <div className="flex items-center gap-2 text-sm">
+              {isPageVisible ? (
+                <Eye className="h-4 w-4 text-success" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-destructive" />
+              )}
+              <div className="text-center">
+                <p className="font-mono font-medium">{formattedActiveTime}</p>
+                <p className="text-xs text-muted-foreground">de {formattedTargetTime}</p>
+              </div>
+            </div>
+            
+            <Separator orientation="vertical" className="h-6" />
+            
+            {/* Progress display */}
             <div className="text-right text-sm">
               <p className="font-medium">{Math.round(currentProgress)}% concluído</p>
               <p className="text-muted-foreground">
-                {completedBlocks} de {trainingBlocks.length} blocos
+                Tempo: {Math.round(timeProgress)}%
               </p>
             </div>
-            <div className="w-32">
+            <div className="w-32 space-y-1">
               <Progress value={currentProgress} />
+              <Progress value={timeProgress} className="h-1" />
             </div>
+            
+            {/* Timer controls */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isActive ? pauseTimer : startTimer}
+            >
+              {isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+            
             <Button variant="outline" size="sm" onClick={handleExit}>
               <X className="h-4 w-4" />
             </Button>
@@ -310,15 +399,30 @@ export default function TrainingPage() {
           </CardContent>
         </Card>
 
-        {/* Blocos do treinamento */}
-        <TrainingBlocks
+        {/* Timer status alert */}
+        {!isPageVisible && isActive && (
+          <Card className="border-warning bg-warning/5 mb-6">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Timer className="h-5 w-5 text-warning" />
+              <div className="flex-1">
+                <p className="font-medium text-warning">Cronômetro pausado</p>
+                <p className="text-sm text-muted-foreground">
+                  O tempo só é contabilizado quando você está visualizando a página
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Conteúdo do treinamento */}
+        <TrainingContentViewer
           blocks={trainingBlocks}
-          onBlockComplete={handleBlockComplete}
-          onProgressUpdate={handleProgressUpdate}
+          progress={currentProgress}
+          onContentRead={handleBlockComplete}
         />
 
         {/* Ações de finalização */}
-        {currentProgress >= 100 && (
+        {currentProgress >= 100 && canComplete && (
           <Card className="mt-6 border-success">
             <CardContent className="p-6 text-center">
               <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />

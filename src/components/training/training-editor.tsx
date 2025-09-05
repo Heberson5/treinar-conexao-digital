@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Image as ImageIcon, FileText } from "lucide-react"
 import { Training } from "@/contexts/training-context"
+import { TrainingBlockEditor, type ContentBlock } from "@/components/training/training-block-editor"
 
 interface TrainingEditorProps {
   training: Training | null
@@ -31,6 +32,7 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
     status: "ativo" | "inativo" | "rascunho"
     instrutor: string
     capa?: string
+    contentBlocks: ContentBlock[]
   }>({
     titulo: "",
     subtitulo: "",
@@ -41,7 +43,8 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
     duracao: "",
     status: "rascunho",
     instrutor: "",
-    capa: undefined
+    capa: undefined,
+    contentBlocks: []
   })
 
   useEffect(() => {
@@ -56,7 +59,8 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
         duracao: training.duracao,
         status: training.status,
         instrutor: training.instrutor,
-        capa: training.capa
+        capa: training.capa,
+        contentBlocks: (training as any).contentBlocks || []
       })
     }
   }, [training])
@@ -89,8 +93,9 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
         </DialogHeader>
         
         <Tabs defaultValue="basico" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="basico">Básico</TabsTrigger>
+            <TabsTrigger value="blocos">Blocos</TabsTrigger>
             <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
             <TabsTrigger value="midia">Mídia</TabsTrigger>
             <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
@@ -173,6 +178,19 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
               />
               <Label>Publicar imediatamente</Label>
             </div>
+          </TabsContent>
+          
+          <TabsContent value="blocos" className="space-y-4">
+            <div className="space-y-2">
+              <Label>Blocos de Conteúdo</Label>
+              <p className="text-sm text-muted-foreground">
+                Organize o conteúdo do treinamento em blocos. Você pode adicionar textos, vídeos, imagens e documentos na ordem desejada.
+              </p>
+            </div>
+            <TrainingBlockEditor
+              blocks={formData.contentBlocks}
+              onBlocksChange={(blocks) => setFormData({...formData, contentBlocks: blocks})}
+            />
           </TabsContent>
           
           <TabsContent value="conteudo" className="space-y-4">
