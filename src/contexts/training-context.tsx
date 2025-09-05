@@ -165,7 +165,38 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('training-portal-trainings', JSON.stringify(trainings));
+    try {
+      // Limitar auditLog a últimos 50 registros por treinamento para economizar espaço
+      const optimizedTrainings = trainings.map(training => ({
+        ...training,
+        auditLog: training.auditLog.slice(-50)
+      }));
+      
+      localStorage.setItem('training-portal-trainings', JSON.stringify(optimizedTrainings));
+    } catch (error) {
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.warn('Armazenamento local cheio. Limpando dados antigos...');
+        // Limpar dados antigos e tentar novamente
+        try {
+          // Manter apenas treinamentos dos últimos 6 meses
+          const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000);
+          const recentTrainings = trainings.filter(training => 
+            new Date(training.criadoEm) > sixMonthsAgo
+          ).map(training => ({
+            ...training,
+            auditLog: training.auditLog.slice(-20) // Ainda menos logs para economizar espaço
+          }));
+          
+          localStorage.setItem('training-portal-trainings', JSON.stringify(recentTrainings));
+        } catch (secondError) {
+          console.error('Não foi possível salvar dados mesmo após limpeza:', secondError);
+          // Como último recurso, limpar completamente
+          localStorage.removeItem('training-portal-trainings');
+        }
+      } else {
+        console.error('Erro ao salvar treinamentos:', error);
+      }
+    }
   }, [trainings]);
 
   const createTraining = (trainingData: Omit<Training, 'id' | 'participantes' | 'criadoEm' | 'fotos' | 'arquivos' | 'auditLog'>) => {
