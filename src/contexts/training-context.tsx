@@ -153,7 +153,15 @@ const initialTrainings: Training[] = [
 export function TrainingProvider({ children }: { children: ReactNode }) {
   const [trainings, setTrainings] = useState<Training[]>(() => {
     const saved = localStorage.getItem('training-portal-trainings');
-    return saved ? JSON.parse(saved) : initialTrainings;
+    if (saved) {
+      const parsedTrainings = JSON.parse(saved);
+      // Garantir que todos os treinamentos tenham auditLog como array
+      return parsedTrainings.map((training: any) => ({
+        ...training,
+        auditLog: Array.isArray(training.auditLog) ? training.auditLog : []
+      }));
+    }
+    return initialTrainings;
   });
 
   useEffect(() => {
