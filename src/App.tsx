@@ -11,6 +11,7 @@ import { TrainingProvider } from "@/contexts/training-context";
 import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
+import TrainingPage from "./pages/TrainingPage";
 import GestaoTreinamentos from "./pages/admin/GestaoTreinamentos";
 import Usuarios from "./pages/admin/Usuarios";
 import Cargos from "./pages/admin/Cargos";
@@ -35,6 +36,7 @@ function AppContent() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
         <Route path="/catalogo" element={<Catalogo />} />
+        <Route path="/treinamento/:id" element={<TrainingPage />} />
         <Route path="/relatorios" element={<div className="p-8"><h1 className="text-2xl font-bold">Relatórios em desenvolvimento</h1></div>} />
         <Route path="/calendario" element={<div className="p-8"><h1 className="text-2xl font-bold">Calendário em desenvolvimento</h1></div>} />
         <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />

@@ -11,6 +11,27 @@ export function useBrazilianDate() {
     }
   }
 
+  const formatLastAccessed = (lastAccessed: string | Date) => {
+    if (typeof lastAccessed === 'string') {
+      // Se for uma string como "Há 2 dias", "Nunca acessado", etc, retornar como está
+      if (lastAccessed.includes('Há') || lastAccessed.includes('Nunca') || lastAccessed.includes('Concluído')) {
+        return lastAccessed;
+      }
+      // Caso contrário, tentar converter para data
+      try {
+        const dateObj = parseISO(lastAccessed);
+        return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      } catch {
+        return lastAccessed;
+      }
+    }
+    try {
+      return format(lastAccessed, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    } catch {
+      return "Data inválida";
+    }
+  }
+
   const formatDateOnly = (date: string | Date) => {
     try {
       const dateObj = typeof date === 'string' ? parseISO(date) : date
@@ -37,6 +58,7 @@ export function useBrazilianDate() {
     formatDate,
     formatDateOnly,
     formatDateTime,
+    formatLastAccessed,
     getCurrentBrazilianDateTime
   }
 }

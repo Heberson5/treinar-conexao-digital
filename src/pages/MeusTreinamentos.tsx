@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useTraining } from "@/contexts/training-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -28,8 +29,9 @@ export default function MeusTreinamentos() {
   const [statusFilter, setStatusFilter] = useState("todos")
   const [viewingTraining, setViewingTraining] = useState<any>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const navigate = useNavigate()
   const { getActiveTrainings, startTraining, accessTraining } = useTraining()
-  const { formatDateOnly } = useBrazilianDate()
+  const { formatDateOnly, formatLastAccessed } = useBrazilianDate()
   
   // Buscar apenas treinamentos ativos (publicados)
   const trainings = getActiveTrainings().map(training => ({
@@ -236,24 +238,25 @@ export default function MeusTreinamentos() {
                      <span className="text-muted-foreground">
                        Prazo: {formatDateOnly(training.deadline)}
                      </span>
-                     <span className="text-muted-foreground">
-                       {training.lastAccessed}
-                     </span>
+                      <span className="text-muted-foreground">
+                        {formatLastAccessed(training.lastAccessed)}
+                      </span>
                    </div>
                    
-                   <div className="flex gap-2">
-                     <Button 
-                       className="flex-1"
-                       onClick={() => {
-                         if (training.progress === 0) {
-                           startTraining(training.originalTraining.id)
-                         } else {
-                           accessTraining(training.originalTraining.id)
-                         }
-                       }}
-                     >
-                       {training.progress === 0 ? "Iniciar" : training.completed ? "Revisar" : "Continuar"}
-                     </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        className="flex-1"
+                        onClick={() => {
+                          if (training.progress === 0) {
+                            startTraining(training.originalTraining.id)
+                          } else {
+                            accessTraining(training.originalTraining.id)
+                          }
+                          navigate(`/treinamento/${training.originalTraining.id}`)
+                        }}
+                      >
+                        {training.progress === 0 ? "Iniciar" : training.completed ? "Revisar" : "Continuar"}
+                      </Button>
                      <Button 
                        variant="outline" 
                        size="icon"
@@ -308,7 +311,10 @@ export default function MeusTreinamentos() {
                    <div className="flex gap-2">
                      <Button 
                        className="flex-1"
-                       onClick={() => accessTraining(training.originalTraining.id)}
+                       onClick={() => {
+                         accessTraining(training.originalTraining.id)
+                         navigate(`/treinamento/${training.originalTraining.id}`)
+                       }}
                      >
                        Continuar
                      </Button>
@@ -355,7 +361,10 @@ export default function MeusTreinamentos() {
                      <Button 
                        variant="outline" 
                        className="flex-1"
-                       onClick={() => accessTraining(training.originalTraining.id)}
+                       onClick={() => {
+                         accessTraining(training.originalTraining.id)
+                         navigate(`/treinamento/${training.originalTraining.id}`)
+                       }}
                      >
                        <RotateCcw className="mr-2 h-4 w-4" />
                        Revisar
@@ -405,7 +414,10 @@ export default function MeusTreinamentos() {
                    <div className="flex gap-2">
                      <Button 
                        className="flex-1"
-                       onClick={() => startTraining(training.originalTraining.id)}
+                       onClick={() => {
+                         startTraining(training.originalTraining.id)
+                         navigate(`/treinamento/${training.originalTraining.id}`)
+                       }}
                      >
                        <PlayCircle className="mr-2 h-4 w-4" />
                        Iniciar Treinamento
