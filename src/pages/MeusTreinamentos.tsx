@@ -22,6 +22,7 @@ import {
   Eye
 } from "lucide-react"
 import { TrainingViewer } from "@/components/training/training-viewer"
+import { TrainingCertificate } from "@/components/training/training-certificate"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 
 export default function MeusTreinamentos() {
@@ -268,9 +269,15 @@ export default function MeusTreinamentos() {
                        <Eye className="h-4 w-4" />
                      </Button>
                      {training.completed && (
-                       <Button variant="outline" size="icon">
-                         <Award className="h-4 w-4" />
-                       </Button>
+                      <TrainingCertificate
+                        training={training.originalTraining}
+                        userProgress={{
+                          totalTime: training.progress * 2, // Simulated
+                          completionRate: training.progress,
+                          score: 85 // Simulated
+                        }}
+                        userName="Usuário Demo"
+                      />
                      )}
                    </div>
                 </CardContent>
@@ -379,9 +386,15 @@ export default function MeusTreinamentos() {
                      >
                        <Eye className="h-4 w-4" />
                      </Button>
-                     <Button variant="outline" size="icon">
-                       <Award className="h-4 w-4" />
-                     </Button>
+                      <TrainingCertificate
+                        training={training.originalTraining}
+                        userProgress={{
+                          totalTime: training.progress * 2,
+                          completionRate: training.progress,
+                          score: 85
+                        }}
+                        userName="Usuário Demo"
+                      />
                    </div>
                  </CardContent>
               </Card>

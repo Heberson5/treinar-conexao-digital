@@ -54,11 +54,27 @@ export function useBrazilianDate() {
     return new Date().toISOString()
   }
 
+  const formatRelativeTime = (date: string | Date): string => {
+    const now = new Date()
+    const targetDate = typeof date === 'string' ? new Date(date) : date
+    const diffMs = now.getTime() - targetDate.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffMinutes < 1) return "Agora"
+    if (diffMinutes < 60) return `${diffMinutes}m atrás`
+    if (diffHours < 24) return `${diffHours}h atrás`
+    if (diffDays < 7) return `${diffDays}d atrás`
+    return formatDateOnly(targetDate)
+  }
+
   return {
     formatDate,
     formatDateOnly,
     formatDateTime,
     formatLastAccessed,
-    getCurrentBrazilianDateTime
+    getCurrentBrazilianDateTime,
+    formatRelativeTime
   }
 }

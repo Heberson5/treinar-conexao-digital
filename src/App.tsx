@@ -26,7 +26,7 @@ function AppContent() {
   console.log("AppContent - isAuthenticated:", isAuthenticated);
 
   if (!isAuthenticated) {
-    return <LoginForm onLogin={login} />;
+    return <LoginForm />;
   }
 
   return (
