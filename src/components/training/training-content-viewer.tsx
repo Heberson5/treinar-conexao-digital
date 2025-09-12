@@ -30,8 +30,6 @@ interface TrainingContentViewerProps {
 }
 
 export function TrainingContentViewer({ blocks, progress, onContentRead }: TrainingContentViewerProps) {
-  const { formatDate } = useBrazilianDate();
-  
   const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
   
   const getVideoThumbnail = (videoUrl: string) => {
@@ -40,7 +38,6 @@ export function TrainingContentViewer({ blocks, progress, onContentRead }: Train
     if (youtubeMatch) {
       return `https://img.youtube.com/vi/${youtubeMatch[1]}/maxresdefault.jpg`;
     }
-    // For other video sources, show play icon
     return null;
   };
 
@@ -144,9 +141,9 @@ export function TrainingContentViewer({ blocks, progress, onContentRead }: Train
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto">
       {/* Progress indicator */}
-      <div className="sticky top-20 z-40 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-sm">
+      <div className="sticky top-20 z-40 bg-background/95 backdrop-blur p-4 rounded-lg border shadow-sm mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">Progresso do Estudo</span>
           <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
@@ -154,34 +151,11 @@ export function TrainingContentViewer({ blocks, progress, onContentRead }: Train
         <Progress value={progress} className="h-2" />
       </div>
 
-      {/* Content blocks */}
-      <div className="space-y-12">
+      {/* Continuous content flow - no separators between blocks */}
+      <div className="prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground">
         {sortedBlocks.map((block, index) => (
           <div key={block.id} className="scroll-mt-24">
-            {/* Block header - only show for non-text content */}
-            {block.type !== "text" && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  {block.type === "video" && <Play className="h-5 w-5 text-primary" />}
-                  {block.type === "image" && <Image className="h-5 w-5 text-primary" />}
-                  {(block.type === "file" || block.type === "document") && <FileText className="h-5 w-5 text-primary" />}
-                  <h2 className="text-xl font-semibold">{block.title}</h2>
-                </div>
-                <div className="h-px bg-gradient-to-r from-primary/30 to-transparent mb-4" />
-              </div>
-            )}
-            
-            {/* Block content */}
-            <div className="mb-8">
-              {renderBlock(block)}
-            </div>
-
-            {/* Subtle separator between blocks (except last) */}
-            {index < sortedBlocks.length - 1 && (
-              <div className="my-12 flex justify-center">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-              </div>
-            )}
+            {renderBlock(block)}
           </div>
         ))}
       </div>
