@@ -74,7 +74,7 @@ export function TrainingReports({ trainings, timeRange = "30d" }: TrainingReport
         </div>
         
         <div className="flex gap-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+          <Select value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as "7d" | "30d" | "90d" | "1y")}>
             <SelectTrigger className="w-[140px]">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
