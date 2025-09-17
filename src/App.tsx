@@ -32,35 +32,36 @@ function AppContent() {
   const { isAuthenticated, login, logout } = useAuth();
   console.log("AppContent - isAuthenticated:", isAuthenticated);
 
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="*" element={<Index />} />
+      </Routes>
+    );
+  }
+
   return (
-    <Routes>
-      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Index />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginForm />} />
-      {isAuthenticated && (
-        <Route path="/*" element={
-          <MainLayout onLogout={logout}>
-            <Routes>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
-              <Route path="/catalogo" element={<Catalogo />} />
-              <Route path="/treinamento/:id" element={<TrainingPage />} />
-              <Route path="/relatorios" element={<Relatorios />} />
-              <Route path="/calendario" element={<Calendario />} />
-              <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
-              <Route path="/admin/usuarios" element={<Usuarios />} />
-              <Route path="/admin/cargos" element={<Cargos />} />
-              <Route path="/admin/departamentos" element={<Departamentos />} />
-              <Route path="/admin/empresas" element={<Empresas />} />
-              <Route path="/admin/analytics" element={<Analytics />} />
-              <Route path="/admin/permissoes" element={<Permissoes />} />
-              <Route path="/admin/configuracoes" element={<Configuracoes />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </MainLayout>
-        } />
-      )}
-      {!isAuthenticated && <Route path="*" element={<Index />} />}
-    </Routes>
+    <MainLayout onLogout={logout}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
+        <Route path="/catalogo" element={<Catalogo />} />
+        <Route path="/treinamento/:id" element={<TrainingPage />} />
+        <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/calendario" element={<Calendario />} />
+        <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
+        <Route path="/admin/usuarios" element={<Usuarios />} />
+        <Route path="/admin/cargos" element={<Cargos />} />
+        <Route path="/admin/departamentos" element={<Departamentos />} />
+        <Route path="/admin/empresas" element={<Empresas />} />
+        <Route path="/admin/analytics" element={<Analytics />} />
+        <Route path="/admin/permissoes" element={<Permissoes />} />
+        <Route path="/admin/configuracoes" element={<Configuracoes />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </MainLayout>
   );
 }
 

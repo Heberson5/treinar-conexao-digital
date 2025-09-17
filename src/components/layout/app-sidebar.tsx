@@ -50,7 +50,10 @@ export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
-  const { canAccessAdmin } = useAuth()
+  const { canAccessAdmin, user } = useAuth()
+  
+  console.log("AppSidebar - user:", user);
+  console.log("AppSidebar - canAccessAdmin:", canAccessAdmin());
   
   const isMainExpanded = mainMenuItems.some((item) => currentPath === item.url)
   const isAdminExpanded = adminMenuItems.some((item) => currentPath === item.url)
@@ -98,25 +101,23 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Menu Administrativo */}
-        {canAccessAdmin() && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} end className={getNavClass}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarGroup>
+          <SidebarGroupLabel>Administração</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} end className={getNavClass}>
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {open && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   )

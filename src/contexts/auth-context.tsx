@@ -4,7 +4,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: "master" | "admin" | "usuario";
+  role: "master" | "admin" | "usuario" | "Master" | "Admin";
 }
 
 interface AuthContextType {
@@ -43,6 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedAuth = localStorage.getItem('training-portal-auth');
     if (savedAuth) {
       const authData = JSON.parse(savedAuth);
+      // Normalizar role para minúsculas
+      if (authData.user && authData.user.role) {
+        authData.user.role = authData.user.role.toLowerCase();
+      }
       setUser(authData.user);
       setIsAuthenticated(true);
       console.log("Restored user from localStorage:", authData.user);
@@ -91,19 +95,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Funções de autorização
   const canCreateMaster = () => {
     console.log("canCreateMaster - user:", user);
-    return user?.role === "master";
+    return user?.role?.toLowerCase() === "master";
   };
   const canCreateAdmin = () => {
     console.log("canCreateAdmin - user:", user);
-    return user?.role === "master" || user?.role === "admin";
+    const role = user?.role?.toLowerCase();
+    return role === "master" || role === "admin";
   };
   const canCreateUser = () => {
     console.log("canCreateUser - user:", user);
-    return user?.role === "master" || user?.role === "admin";
+    const role = user?.role?.toLowerCase();
+    return role === "master" || role === "admin";
   };
   const canAccessAdmin = () => {
     console.log("canAccessAdmin - user:", user);
-    return user?.role === "master" || user?.role === "admin";
+    const role = user?.role?.toLowerCase();
+    return role === "master" || role === "admin";
   };
 
   return (
