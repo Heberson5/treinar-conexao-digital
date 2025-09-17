@@ -114,7 +114,7 @@ export default function Configuracoes() {
   })
 
   const handleSave = async (categoria: string) => {
-    if (user?.papel !== "master") {
+    if (user?.role !== "master") {
       toast({
         title: "Permissão negada",
         description: "Apenas Masters podem alterar configurações do sistema",
@@ -170,7 +170,7 @@ export default function Configuracoes() {
   }
 
   const handleReset = () => {
-    if (user?.papel !== "master") {
+    if (user?.role !== "master") {
       toast({
         title: "Permissão negada",
         description: "Apenas Masters podem resetar configurações",
@@ -196,7 +196,7 @@ export default function Configuracoes() {
           </p>
         </div>
         
-        {user?.papel !== "master" && (
+        {user?.role !== "master" && (
           <Badge variant="destructive" className="flex items-center gap-2">
             <Shield className="h-3 w-3" />
             Acesso Restrito
@@ -205,7 +205,7 @@ export default function Configuracoes() {
       </div>
 
       {/* Permission Warning */}
-      {user?.papel !== "master" && (
+      {user?.role !== "master" && (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-yellow-800">
@@ -248,7 +248,7 @@ export default function Configuracoes() {
                     id="nomeEmpresa"
                     value={config.nomeEmpresa}
                     onChange={(e) => setConfig({...config, nomeEmpresa: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 <div className="space-y-2">
@@ -258,7 +258,7 @@ export default function Configuracoes() {
                     type="email"
                     value={config.emailContato}
                     onChange={(e) => setConfig({...config, emailContato: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
               </div>
@@ -270,7 +270,7 @@ export default function Configuracoes() {
                     id="telefone"
                     value={config.telefoneContato}
                     onChange={(e) => setConfig({...config, telefoneContato: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 <div className="space-y-2">
@@ -278,7 +278,7 @@ export default function Configuracoes() {
                   <Select 
                     value={config.timezone} 
                     onValueChange={(value) => setConfig({...config, timezone: value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -298,7 +298,7 @@ export default function Configuracoes() {
                   id="endereco"
                   value={config.endereco}
                   onChange={(e) => setConfig({...config, endereco: e.target.value})}
-                  disabled={user?.papel !== "master"}
+                        disabled={user?.role !== "master"}
                   rows={2}
                 />
               </div>
@@ -308,7 +308,7 @@ export default function Configuracoes() {
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
                   <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
                   <div className="mt-4">
-                    <Button variant="outline" disabled={user?.papel !== "master"}>
+                    <Button variant="outline" disabled={user?.role !== "master"}>
                       <Upload className="mr-2 h-4 w-4" />
                       Upload de Logo
                     </Button>
@@ -322,7 +322,7 @@ export default function Configuracoes() {
               <div className="flex justify-end">
                 <Button 
                   onClick={() => handleSave("gerais")} 
-                  disabled={loading || user?.papel !== "master"}
+                  disabled={loading || user?.role !== "master"}
                   className="bg-gradient-primary"
                 >
                   <Save className="mr-2 h-4 w-4" />
@@ -353,7 +353,7 @@ export default function Configuracoes() {
                     id="smtpHost"
                     value={config.smtpHost}
                     onChange={(e) => setConfig({...config, smtpHost: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                          disabled={user?.role !== "master"}
                     placeholder="smtp.gmail.com"
                   />
                 </div>
@@ -364,7 +364,7 @@ export default function Configuracoes() {
                     type="number"
                     value={config.smtpPort}
                     onChange={(e) => setConfig({...config, smtpPort: parseInt(e.target.value)})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function Configuracoes() {
                     id="smtpUsuario"
                     value={config.smtpUsuario}
                     onChange={(e) => setConfig({...config, smtpUsuario: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                     placeholder="usuario@gmail.com"
                   />
                 </div>
@@ -387,7 +387,7 @@ export default function Configuracoes() {
                     type="password"
                     value={config.smtpSenha}
                     onChange={(e) => setConfig({...config, smtpSenha: e.target.value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                     placeholder="••••••••"
                   />
                 </div>
@@ -400,7 +400,7 @@ export default function Configuracoes() {
                   type="email"
                   value={config.emailRemetente}
                   onChange={(e) => setConfig({...config, emailRemetente: e.target.value})}
-                  disabled={user?.papel !== "master"}
+                  disabled={user?.role !== "master"}
                 />
               </div>
               
@@ -408,7 +408,7 @@ export default function Configuracoes() {
                 <Switch
                   checked={config.smtpTls}
                   onCheckedChange={(checked) => setConfig({...config, smtpTls: checked})}
-                  disabled={user?.papel !== "master"}
+                          disabled={user?.role !== "master"}
                 />
                 <Label>Usar TLS/SSL</Label>
               </div>
@@ -417,7 +417,7 @@ export default function Configuracoes() {
                 <Button 
                   variant="outline" 
                   onClick={handleTestEmail} 
-                  disabled={testingEmail || user?.papel !== "master"}
+                  disabled={testingEmail || user?.role !== "master"}
                 >
                   <Mail className="mr-2 h-4 w-4" />
                   {testingEmail ? "Enviando..." : "Testar Email"}
@@ -425,7 +425,7 @@ export default function Configuracoes() {
                 
                 <Button 
                   onClick={() => handleSave("email")} 
-                  disabled={loading || user?.papel !== "master"}
+                  disabled={loading || user?.role !== "master"}
                   className="bg-gradient-primary"
                 >
                   <Save className="mr-2 h-4 w-4" />
@@ -460,7 +460,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.notificacoesEmail}
                     onCheckedChange={(checked) => setConfig({...config, notificacoesEmail: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -474,7 +474,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.notificacoesPush}
                     onCheckedChange={(checked) => setConfig({...config, notificacoesPush: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -488,7 +488,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.notificacoesConclusao}
                     onCheckedChange={(checked) => setConfig({...config, notificacoesConclusao: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -502,7 +502,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.notificacoesLembrete}
                     onCheckedChange={(checked) => setConfig({...config, notificacoesLembrete: checked})}
-                    disabled={user?.papel !== "master"}
+                          disabled={user?.role !== "master"}
                   />
                 </div>
               </div>
@@ -510,7 +510,7 @@ export default function Configuracoes() {
               <div className="flex justify-end">
                 <Button 
                   onClick={() => handleSave("notificações")} 
-                  disabled={loading || user?.papel !== "master"}
+                  disabled={loading || user?.role !== "master"}
                   className="bg-gradient-primary"
                 >
                   <Save className="mr-2 h-4 w-4" />
@@ -541,7 +541,7 @@ export default function Configuracoes() {
                     type="number"
                     value={config.senhaMinLength}
                     onChange={(e) => setConfig({...config, senhaMinLength: parseInt(e.target.value)})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                     min="6"
                     max="32"
                   />
@@ -552,7 +552,7 @@ export default function Configuracoes() {
                     type="number"
                     value={config.sessionTimeout}
                     onChange={(e) => setConfig({...config, sessionTimeout: parseInt(e.target.value)})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                     min="5"
                     max="480"
                   />
@@ -567,7 +567,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.senhaRequerMaiuscula}
                     onCheckedChange={(checked) => setConfig({...config, senhaRequerMaiuscula: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -576,7 +576,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.senhaRequerNumero}
                     onCheckedChange={(checked) => setConfig({...config, senhaRequerNumero: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -585,7 +585,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.senhaRequerEspecial}
                     onCheckedChange={(checked) => setConfig({...config, senhaRequerEspecial: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
               </div>
@@ -596,7 +596,7 @@ export default function Configuracoes() {
                   type="number"
                   value={config.tentativasLogin}
                   onChange={(e) => setConfig({...config, tentativasLogin: parseInt(e.target.value)})}
-                  disabled={user?.papel !== "master"}
+                          disabled={user?.role !== "master"}
                   min="3"
                   max="10"
                 />
@@ -605,7 +605,7 @@ export default function Configuracoes() {
               <div className="flex justify-end">
                 <Button 
                   onClick={() => handleSave("segurança")} 
-                  disabled={loading || user?.papel !== "master"}
+                  disabled={loading || user?.role !== "master"}
                   className="bg-gradient-primary"
                 >
                   <Save className="mr-2 h-4 w-4" />
@@ -640,7 +640,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.manuntencaoModo}
                     onCheckedChange={(checked) => setConfig({...config, manuntencaoModo: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -654,7 +654,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.registroPublico}
                     onCheckedChange={(checked) => setConfig({...config, registroPublico: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
                 
@@ -668,7 +668,7 @@ export default function Configuracoes() {
                   <Switch
                     checked={config.backupAutomatico}
                     onCheckedChange={(checked) => setConfig({...config, backupAutomatico: checked})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   />
                 </div>
               </div>
@@ -679,7 +679,7 @@ export default function Configuracoes() {
                   <Select 
                     value={config.logLevel} 
                     onValueChange={(value) => setConfig({...config, logLevel: value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -698,7 +698,7 @@ export default function Configuracoes() {
                   <Select 
                     value={config.backupFrequencia} 
                     onValueChange={(value) => setConfig({...config, backupFrequencia: value})}
-                    disabled={user?.papel !== "master"}
+                    disabled={user?.role !== "master"}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -716,7 +716,7 @@ export default function Configuracoes() {
                 <Button 
                   variant="outline" 
                   onClick={handleReset}
-                  disabled={user?.papel !== "master"}
+                          disabled={user?.role !== "master"}
                   className="text-destructive hover:text-destructive"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -725,7 +725,7 @@ export default function Configuracoes() {
                 
                 <Button 
                   onClick={() => handleSave("sistema")} 
-                  disabled={loading || user?.papel !== "master"}
+                  disabled={loading || user?.role !== "master"}
                   className="bg-gradient-primary"
                 >
                   <Save className="mr-2 h-4 w-4" />
@@ -757,7 +757,7 @@ export default function Configuracoes() {
                   </p>
                   <Button 
                     onClick={handleBackup} 
-                    disabled={loading || user?.papel !== "master"}
+                    disabled={loading || user?.role !== "master"}
                     className="bg-gradient-primary"
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -785,7 +785,7 @@ export default function Configuracoes() {
                   </p>
                   <Button 
                     variant="outline" 
-                    disabled={user?.papel !== "master"}
+                        disabled={user?.role !== "master"}
                   >
                     <Upload className="mr-2 h-4 w-4" />
                     Selecionar Arquivo
