@@ -17,6 +17,13 @@ import Usuarios from "./pages/admin/Usuarios";
 import Cargos from "./pages/admin/Cargos";
 import Departamentos from "./pages/admin/Departamentos";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
+import Relatorios from "./pages/Relatorios";
+import Calendario from "./pages/Calendario";
+import Empresas from "./pages/admin/Empresas";
+import Analytics from "./pages/admin/Analytics";
+import Permissoes from "./pages/admin/Permissoes";
+import Configuracoes from "./pages/admin/Configuracoes";
 
 const queryClient = new QueryClient();
 
@@ -25,31 +32,35 @@ function AppContent() {
   const { isAuthenticated, login, logout } = useAuth();
   console.log("AppContent - isAuthenticated:", isAuthenticated);
 
-  if (!isAuthenticated) {
-    return <LoginForm />;
-  }
-
   return (
-    <MainLayout onLogout={logout}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
-        <Route path="/catalogo" element={<Catalogo />} />
-        <Route path="/treinamento/:id" element={<TrainingPage />} />
-        <Route path="/relatorios" element={<div className="p-8"><h1 className="text-2xl font-bold">Relatórios em desenvolvimento</h1></div>} />
-        <Route path="/calendario" element={<div className="p-8"><h1 className="text-2xl font-bold">Calendário em desenvolvimento</h1></div>} />
-        <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
-        <Route path="/admin/usuarios" element={<Usuarios />} />
-        <Route path="/admin/cargos" element={<Cargos />} />
-        <Route path="/admin/departamentos" element={<Departamentos />} />
-        <Route path="/admin/empresas" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Empresas em desenvolvimento</h1></div>} />
-        <Route path="/admin/analytics" element={<div className="p-8"><h1 className="text-2xl font-bold">Analytics em desenvolvimento</h1></div>} />
-        <Route path="/admin/permissoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Gestão de Permissões em desenvolvimento</h1></div>} />
-        <Route path="/admin/configuracoes" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações em desenvolvimento</h1></div>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </MainLayout>
+    <Routes>
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Index />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginForm />} />
+      {isAuthenticated && (
+        <Route path="/*" element={
+          <MainLayout onLogout={logout}>
+            <Routes>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
+              <Route path="/catalogo" element={<Catalogo />} />
+              <Route path="/treinamento/:id" element={<TrainingPage />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/calendario" element={<Calendario />} />
+              <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
+              <Route path="/admin/usuarios" element={<Usuarios />} />
+              <Route path="/admin/cargos" element={<Cargos />} />
+              <Route path="/admin/departamentos" element={<Departamentos />} />
+              <Route path="/admin/empresas" element={<Empresas />} />
+              <Route path="/admin/analytics" element={<Analytics />} />
+              <Route path="/admin/permissoes" element={<Permissoes />} />
+              <Route path="/admin/configuracoes" element={<Configuracoes />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </MainLayout>
+        } />
+      )}
+      {!isAuthenticated && <Route path="*" element={<Index />} />}
+    </Routes>
   );
 }
 
