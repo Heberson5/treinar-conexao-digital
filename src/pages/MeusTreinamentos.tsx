@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTraining } from "@/contexts/training-context"
+import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -31,11 +32,16 @@ export default function MeusTreinamentos() {
   const [viewingTraining, setViewingTraining] = useState<any>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const navigate = useNavigate()
-  const { getActiveTrainings, startTraining, accessTraining } = useTraining()
+  const { getTrainingsByDepartment, startTraining, accessTraining } = useTraining()
+  const { user } = useAuth()
   const { formatDateOnly, formatLastAccessed } = useBrazilianDate()
   
-  // Buscar apenas treinamentos ativos (publicados)
-  const trainings = getActiveTrainings().map(training => ({
+  // Buscar treinamentos disponíveis para o departamento do usuário
+  const availableTrainings = getTrainingsByDepartment(user?.departamento).filter(
+    training => training.status === "ativo"
+  )
+  
+  const trainings = availableTrainings.map(training => ({
     id: training.id,
     title: training.titulo,
     description: training.descricao,

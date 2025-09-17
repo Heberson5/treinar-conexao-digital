@@ -5,6 +5,7 @@ export interface User {
   email: string;
   name: string;
   role: "master" | "admin" | "usuario" | "Master" | "Admin";
+  departamento?: string;
 }
 
 interface AuthContextType {
@@ -68,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: 1,
         email,
         name: "Heber Sohas",
-        role: "master"
+        role: "master",
+        departamento: "TI"
       }
 
       setUser(userData)

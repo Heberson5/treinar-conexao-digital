@@ -28,6 +28,7 @@ export interface Training {
   fotos: string[];
   arquivos: string[];
   capa?: string;
+  departamento?: string; // Campo para controlar acesso por departamento
   // Campos para visualização do usuário
   progress?: number;
   rating?: number;
@@ -45,6 +46,7 @@ interface TrainingContextType {
   deleteTraining: (id: number) => void;
   getActiveTrainings: () => Training[];
   getTrainingById: (id: number) => Training | undefined;
+  getTrainingsByDepartment: (departamento?: string) => Training[];
   startTraining: (id: number) => void;
   pauseTraining: (id: number) => void;
   completeTraining: (id: number) => void;
@@ -80,6 +82,7 @@ const initialTrainings: Training[] = [
     participantes: 45,
     criadoEm: new Date('2024-01-15').toISOString(),
     instrutor: "Maria Silva",
+    departamento: "todos", // Disponível para todos os departamentos
     fotos: [],
     arquivos: [],
     progress: 85,
@@ -113,6 +116,7 @@ const initialTrainings: Training[] = [
     participantes: 32,
     criadoEm: new Date('2024-01-10').toISOString(),
     instrutor: "João Santos",
+    departamento: "Vendas", // Disponível apenas para o departamento de Vendas
     fotos: [],
     arquivos: [],
     progress: 100,
@@ -316,6 +320,15 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     return trainings.filter(training => training.status === 'ativo');
   };
 
+  const getTrainingsByDepartment = (departamento?: string) => {
+    if (!departamento) return trainings;
+    
+    return trainings.filter(training => 
+      training.departamento === 'todos' || 
+      training.departamento === departamento
+    );
+  };
+
   const getTrainingById = (id: number) => {
     return trainings.find(training => training.id === id);
   };
@@ -408,6 +421,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       deleteTraining,
       getActiveTrainings,
       getTrainingById,
+      getTrainingsByDepartment,
       startTraining,
       pauseTraining,
       completeTraining,

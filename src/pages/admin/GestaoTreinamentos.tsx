@@ -29,9 +29,11 @@ import { useTraining, Training } from "@/contexts/training-context"
 import { TrainingViewer } from "@/components/training/training-viewer"
 import { TrainingEditor } from "@/components/training/training-editor"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
+import { useDepartments } from "@/contexts/department-context"
 
 export default function GestaoTreinamentos() {
   const { trainings: treinamentos, createTraining, updateTraining, deleteTraining: removeTraining } = useTraining()
+  const { departments } = useDepartments()
   const { formatDate } = useBrazilianDate()
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -53,6 +55,7 @@ export default function GestaoTreinamentos() {
     duracao: string
     status: "ativo" | "inativo" | "rascunho"
     instrutor: string
+    departamento: string
     capa?: string
   }>({
     titulo: "",
@@ -64,6 +67,7 @@ export default function GestaoTreinamentos() {
     duracao: "",
     status: "rascunho",
     instrutor: "",
+    departamento: "todos",
     capa: undefined
   })
 
@@ -78,6 +82,7 @@ export default function GestaoTreinamentos() {
       duracao: "",
       status: "rascunho",
       instrutor: "",
+      departamento: "todos",
       capa: undefined
     })
   }
@@ -239,6 +244,26 @@ export default function GestaoTreinamentos() {
                       placeholder="Nome do instrutor"
                     />
                   </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="departamento">Departamento</Label>
+                  <Select value={newTraining.departamento} onValueChange={(value) => setNewTraining({...newTraining, departamento: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o departamento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os Departamentos</SelectItem>
+                      {departments.filter(dept => dept.ativo).map((dept) => (
+                        <SelectItem key={dept.id} value={dept.nome}>
+                          {dept.nome} - {dept.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione "Todos" para disponibilizar o treinamento para todos os departamentos, ou escolha um departamento específico
+                  </p>
                 </div>
                 
                 <div className="flex items-center space-x-2">

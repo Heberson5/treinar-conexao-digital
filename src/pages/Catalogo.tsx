@@ -15,6 +15,8 @@ import {
   Award,
   TrendingUp
 } from "lucide-react"
+import { useTraining } from "@/contexts/training-context"
+import { useAuth } from "@/contexts/auth-context"
 
 interface TrainingCatalog {
   id: number
@@ -33,9 +35,17 @@ interface TrainingCatalog {
 }
 
 export default function Catalogo() {
+  const { getTrainingsByDepartment } = useTraining()
+  const { user } = useAuth()
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("todas")
   const [levelFilter, setLevelFilter] = useState("todos")
+  
+  // Obter treinamentos filtrados por departamento do usuário
+  const availableTrainings = getTrainingsByDepartment(user?.departamento).filter(
+    training => training.status === "ativo"
+  )
   
   const trainings: TrainingCatalog[] = [
     {

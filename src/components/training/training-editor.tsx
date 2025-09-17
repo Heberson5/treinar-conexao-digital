@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Image as ImageIcon, FileText } from "lucide-react"
 import { Training } from "@/contexts/training-context"
 import { TrainingBlockEditor, type ContentBlock } from "@/components/training/training-block-editor"
+import { useDepartments } from "@/contexts/department-context"
 
 interface TrainingEditorProps {
   training: Training | null
@@ -19,6 +20,7 @@ interface TrainingEditorProps {
 }
 
 export function TrainingEditor({ training, open, onOpenChange, onSave }: TrainingEditorProps) {
+  const { departments } = useDepartments()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState<{
@@ -31,6 +33,7 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
     duracao: string
     status: "ativo" | "inativo" | "rascunho"
     instrutor: string
+    departamento: string
     capa?: string
     contentBlocks: ContentBlock[]
   }>({
@@ -43,6 +46,7 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
     duracao: "",
     status: "rascunho",
     instrutor: "",
+    departamento: "todos",
     capa: undefined,
     contentBlocks: []
   })
@@ -59,6 +63,7 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
         duracao: training.duracao,
         status: training.status,
         instrutor: training.instrutor,
+        departamento: training.departamento || "todos",
         capa: training.capa,
         contentBlocks: (training as any).contentBlocks || []
       })
@@ -169,6 +174,26 @@ export function TrainingEditor({ training, open, onOpenChange, onSave }: Trainin
                   placeholder="Nome do instrutor"
                 />
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="departamento">Departamento</Label>
+              <Select value={formData.departamento} onValueChange={(value) => setFormData({...formData, departamento: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o departamento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Departamentos</SelectItem>
+                  {departments.filter(dept => dept.ativo).map((dept) => (
+                    <SelectItem key={dept.id} value={dept.nome}>
+                      {dept.nome} - {dept.descricao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Selecione "Todos" para disponibilizar o treinamento para todos os departamentos, ou escolha um departamento específico
+              </p>
             </div>
             
             <div className="flex items-center space-x-2">
