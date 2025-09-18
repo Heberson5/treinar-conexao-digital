@@ -12,7 +12,7 @@ interface TrainingCertificateProps {
     titulo: string
     categoria: string
     duracao: string
-    instructor?: string
+    instrutor?: string
     completedAt?: string
     rating?: number
   }
@@ -22,9 +22,11 @@ interface TrainingCertificateProps {
     score?: number
   }
   userName: string
+  userCompany?: string
+  userDepartment?: string
 }
 
-export function TrainingCertificate({ training, userProgress, userName }: TrainingCertificateProps) {
+export function TrainingCertificate({ training, userProgress, userName, userCompany = "Portal Treinamentos Ltda", userDepartment }: TrainingCertificateProps) {
   const [isOpen, setIsOpen] = useState(false)
   const certificateRef = useRef<HTMLDivElement>(null)
   const { formatDate } = useBrazilianDate()
@@ -90,7 +92,10 @@ export function TrainingCertificate({ training, userProgress, userName }: Traini
                 <Award className="h-8 w-8 text-yellow-600" />
               </div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">CERTIFICADO DE CONCLUSÃO</h1>
-              <p className="text-lg text-gray-600">Portal Treinamentos</p>
+              <p className="text-lg text-gray-600">{userCompany}</p>
+              {userDepartment && (
+                <p className="text-sm text-gray-500">Departamento: {userDepartment}</p>
+              )}
             </div>
             
             {/* Content */}
@@ -109,10 +114,10 @@ export function TrainingCertificate({ training, userProgress, userName }: Traini
                     <Calendar className="h-4 w-4" />
                     {training.duracao}
                   </span>
-                  {training.instructor && (
+                  {training.instrutor && (
                     <span className="flex items-center gap-1">
                       <User className="h-4 w-4" />
-                      {training.instructor}
+                      {training.instrutor}
                     </span>
                   )}
                 </div>

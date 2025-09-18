@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { Training } from "@/contexts/training-context"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
+import { getVideoInfo } from "@/lib/video-utils"
 
 interface TrainingViewerProps {
   training: Training | null
@@ -187,16 +188,35 @@ export function TrainingViewer({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <PlayCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-muted-foreground mb-4">Vídeo disponível</p>
-                        <Button>
-                          <Play className="mr-2 h-4 w-4" />
-                          Assistir Vídeo
-                        </Button>
-                      </div>
-                    </div>
+                    {(() => {
+                      const videoInfo = getVideoInfo(training.videoUrl);
+                      if (videoInfo.isYoutube && videoInfo.embedUrl) {
+                        return (
+                          <div className="aspect-video rounded-lg overflow-hidden">
+                            <iframe
+                              src={videoInfo.embedUrl}
+                              className="w-full h-full"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="aspect-video rounded-lg overflow-hidden">
+                            <video 
+                              controls 
+                              className="w-full h-full"
+                              poster={training.capa}
+                            >
+                              <source src={training.videoUrl} type="video/mp4" />
+                              Seu navegador não suporta o elemento de vídeo.
+                            </video>
+                          </div>
+                        );
+                      }
+                    })()}
                   </CardContent>
                 </Card>
               ) : (

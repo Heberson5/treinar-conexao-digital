@@ -195,7 +195,46 @@ export default function MeusTreinamentos() {
             {filteredTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                  {training.originalTraining.videoUrl ? (
+                    // Show video thumbnail or iframe for videos
+                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        <img 
+                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
+                          alt={training.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // For other video types, show capa or placeholder with play icon
+                      <div className="relative w-full h-full group cursor-pointer">
+                        {training.thumbnail !== "/api/placeholder/300/200" ? (
+                          <img 
+                            src={training.thumbnail} 
+                            alt={training.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
+                            <PlayCircle className="h-12 w-12 text-white" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
                     <img 
                       src={training.thumbnail} 
                       alt={training.title} 
@@ -274,17 +313,19 @@ export default function MeusTreinamentos() {
                      >
                        <Eye className="h-4 w-4" />
                      </Button>
-                     {training.completed && (
-                      <TrainingCertificate
-                        training={training.originalTraining}
-                        userProgress={{
-                          totalTime: training.progress * 2, // Simulated
-                          completionRate: training.progress,
-                          score: 85 // Simulated
-                        }}
-                        userName="Usuário Demo"
-                      />
-                     )}
+                      {training.completed && (
+                       <TrainingCertificate
+                         training={training.originalTraining}
+                         userProgress={{
+                           totalTime: training.progress * 2, // Simulated
+                           completionRate: training.progress,
+                           score: 85 // Simulated
+                         }}
+                         userName={user?.name || "Usuário"}
+                         userCompany="Portal Treinamentos Ltda"
+                         userDepartment={user?.departamento}
+                       />
+                      )}
                    </div>
                 </CardContent>
               </Card>
@@ -297,7 +338,45 @@ export default function MeusTreinamentos() {
             {inProgressTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                  {training.originalTraining.videoUrl ? (
+                    // Show video thumbnail for videos
+                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        <img 
+                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
+                          alt={training.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        {training.thumbnail !== "/api/placeholder/300/200" ? (
+                          <img 
+                            src={training.thumbnail} 
+                            alt={training.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
+                            <PlayCircle className="h-12 w-12 text-white" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
                     <img 
                       src={training.thumbnail} 
                       alt={training.title} 
@@ -353,7 +432,45 @@ export default function MeusTreinamentos() {
             {completedTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                  {training.originalTraining.videoUrl ? (
+                    // Show video thumbnail for videos
+                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        <img 
+                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
+                          alt={training.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        {training.thumbnail !== "/api/placeholder/300/200" ? (
+                          <img 
+                            src={training.thumbnail} 
+                            alt={training.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
+                            <CheckCircle className="h-12 w-12 text-white" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
                     <img 
                       src={training.thumbnail} 
                       alt={training.title} 
@@ -392,15 +509,17 @@ export default function MeusTreinamentos() {
                      >
                        <Eye className="h-4 w-4" />
                      </Button>
-                      <TrainingCertificate
-                        training={training.originalTraining}
-                        userProgress={{
-                          totalTime: training.progress * 2,
-                          completionRate: training.progress,
-                          score: 85
-                        }}
-                        userName="Usuário Demo"
-                      />
+                       <TrainingCertificate
+                         training={training.originalTraining}
+                         userProgress={{
+                           totalTime: training.progress * 2,
+                           completionRate: training.progress,
+                           score: 85
+                         }}
+                         userName={user?.name || "Usuário"}
+                         userCompany="Portal Treinamentos Ltda"
+                         userDepartment={user?.departamento}
+                       />
                    </div>
                  </CardContent>
               </Card>
@@ -413,7 +532,45 @@ export default function MeusTreinamentos() {
             {notStartedTrainings.map((training) => (
               <Card key={training.id} className="hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.thumbnail !== "/api/placeholder/300/200" ? (
+                  {training.originalTraining.videoUrl ? (
+                    // Show video thumbnail for videos
+                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        <img 
+                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
+                          alt={training.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full group cursor-pointer">
+                        {training.thumbnail !== "/api/placeholder/300/200" ? (
+                          <img 
+                            src={training.thumbnail} 
+                            alt={training.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <BookOpen className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                            <PlayCircle className="h-8 w-8 text-black" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
                     <img 
                       src={training.thumbnail} 
                       alt={training.title} 
