@@ -79,8 +79,14 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
       duration: type === "video" ? "5 min" : undefined
     };
 
-    onBlocksChange([...blocks, newBlock]);
-    setEditingBlock(newBlock.id);
+    const newBlocks = [...blocks, newBlock];
+    onBlocksChange(newBlocks);
+    
+    // Use setTimeout to ensure the block is rendered before setting editing state
+    setTimeout(() => {
+      setEditingBlock(newBlock.id);
+    }, 100);
+    
     setShowAddMenu(false);
   };
 
@@ -319,9 +325,11 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                           
                           <div className="flex items-center gap-2">
                             <Button
+                              type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditingBlock(editingBlock === block.id ? null : block.id)}
+                              title="Editar bloco"
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>
@@ -343,44 +351,68 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                           
                           {block.type === "text" && (
                             <div className="space-y-2">
-                              <Label>Conteúdo</Label>
+                              <Label htmlFor={`text-content-${block.id}`}>Conteúdo</Label>
                               <Textarea
-                                value={block.content}
+                                id={`text-content-${block.id}`}
+                                value={block.content || ""}
                                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
                                 rows={8}
                                 placeholder="Escreva o conteúdo aqui..."
+                                autoComplete="off"
                               />
+                              <p className="text-xs text-muted-foreground">
+                                Você pode usar HTML básico para formatação (h3, p, strong, em)
+                              </p>
                             </div>
                           )}
                           
                           {block.type === "video" && (
                             <div className="space-y-4">
                               <div className="space-y-2">
-                                <Label>URL do Vídeo</Label>
+                                <Label htmlFor={`video-url-${block.id}`}>URL do Vídeo</Label>
                                 <Input
-                                  value={block.content}
+                                  id={`video-url-${block.id}`}
+                                  type="url"
+                                  value={block.content || ""}
                                   onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                                  placeholder="https://youtube.com/watch?v=..."
+                                  placeholder="https://youtube.com/watch?v=... ou https://vimeo.com/..."
+                                  autoComplete="off"
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                  Suporta YouTube, Vimeo e links diretos de vídeo
+                                </p>
                               </div>
                               
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                  <Label>Duração</Label>
+                                  <Label htmlFor={`video-duration-${block.id}`}>Duração</Label>
                                   <Input
+                                    id={`video-duration-${block.id}`}
                                     value={block.duration || ""}
                                     onChange={(e) => updateBlock(block.id, { duration: e.target.value })}
                                     placeholder="Ex: 15 min"
+                                    autoComplete="off"
                                   />
                                 </div>
                               </div>
                               
-                              {block.content && (
-                                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                                  <div className="text-center">
-                                    <Play className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">Prévia do vídeo</p>
-                                  </div>
+                              {block.content && block.content.trim() && (
+                                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border">
+                                  {block.content.includes('youtube.com') || block.content.includes('youtu.be') ? (
+                                    <div className="text-center">
+                                      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <Play className="h-8 w-8 text-red-600" fill="currentColor" />
+                                      </div>
+                                      <p className="text-sm font-medium">YouTube Video</p>
+                                      <p className="text-xs text-muted-foreground">Prévia será exibida no treinamento</p>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center">
+                                      <Play className="h-12 w-12 mx-auto mb-2 text-primary" />
+                                      <p className="text-sm font-medium">Vídeo Adicionado</p>
+                                      <p className="text-xs text-muted-foreground">Prévia será exibida no treinamento</p>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -414,11 +446,13 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                           {block.type === "document" && (
                             <div className="space-y-4">
                               <div className="space-y-2">
-                                <Label>Descrição</Label>
+                                <Label htmlFor={`document-desc-${block.id}`}>Descrição</Label>
                                 <Input
-                                  value={block.content}
+                                  id={`document-desc-${block.id}`}
+                                  value={block.content || ""}
                                   onChange={(e) => updateBlock(block.id, { content: e.target.value })}
                                   placeholder="Descrição do documento"
+                                  autoComplete="off"
                                 />
                               </div>
                               
@@ -434,6 +468,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                               )}
                               
                               <Button
+                                type="button"
                                 variant="outline"
                                 onClick={() => {
                                   setUploadType("document");
@@ -441,7 +476,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                 }}
                               >
                                 <Upload className="h-4 w-4 mr-2" />
-                                Alterar Documento
+                                {block.fileSize ? "Alterar Documento" : "Adicionar Documento"}
                               </Button>
                             </div>
                           )}
