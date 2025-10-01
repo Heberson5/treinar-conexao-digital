@@ -1,448 +1,218 @@
-import { useEffect, useState } from "react";
+// src/pages/TrainingPage.tsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTraining } from "@/contexts/training-context";
-import { TrainingContentViewer, type TrainingContentBlock } from "@/components/training/training-content-viewer";
-import { useActiveTimer } from "@/hooks/use-active-timer";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { useBrazilianDate } from "@/hooks/use-brazilian-date";
-import {
-  ArrowLeft,
-  Clock,
-  User,
-  Award,
-  BookOpen,
-  Target,
-  Calendar,
-  CheckCircle2,
-  X,
-  Timer,
-  Eye,
-  EyeOff,
-  Pause,
-  Play
-} from "lucide-react";
+import { useActiveTimer } from "@/hooks/use-active-timer";
+import { Volume2, VolumeX, ArrowLeft, ChevronDown } from "lucide-react";
 
+/* ================= Helpers ================= */
+const isYouTube = (u: string) =>
+  !!u && /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/)/i.test(u);
+
+const getYouTubeId = (u: string): string | null => {
+  try {
+    const url = new URL(u);
+    if (url.hostname.includes("youtu.be")) return url.pathname.slice(1);
+    const v = url.searchParams.get("v");
+    if (v) return v;
+    const parts = url.pathname.split("/");
+    const idx = parts.findIndex((p) => p === "embed");
+    if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
+  } catch {}
+  return null;
+};
+
+function formatHMS(total: number) {
+  const h = Math.floor(total / 3600).toString().padStart(2, "0");
+  const m = Math.floor((total % 3600) / 60).toString().padStart(2, "0");
+  const s = Math.floor(total % 60).toString().padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+/** Tenta achar a URL do vídeo em diferentes formatos de treinamento */
+function resolveVideoUrl(t: any): string {
+  if (!t) return "";
+  // campos diretos comuns
+  if (t.videoUrl) return String(t.videoUrl);
+  if (t.video) return String(t.video);
+  if (t.url) return String(t.url);
+  // blocos/conteúdos
+  if (Array.isArray(t.conteudos) && t.conteudos.length) {
+    // prioriza tipo 'video'
+    const byType = t.conteudos.find((c: any) => (c?.tipo || c?.type) === "video" && (c?.url || c?.src));
+    if (byType) return String(byType.url || byType.src);
+    // primeiro que tiver url/src
+    const any = t.conteudos.find((c: any) => c?.url || c?.src);
+    if (any) return String(any.url || any.src);
+  }
+  // capas às vezes vêm com vídeo (menos comum)
+  if (t.capa && /\.(mp4|webm|ogg)(\?.*)?$/i.test(t.capa)) return String(t.capa);
+  return "";
+}
+
+/* ================= Página ================= */
 export default function TrainingPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams();
   const navigate = useNavigate();
-  const { getTrainingById, addAuditLog, updateTraining } = useTraining();
-  const { formatDate, formatLastAccessed } = useBrazilianDate();
-  
-  const [training, setTraining] = useState<any>(null);
-  const [currentProgress, setCurrentProgress] = useState(0);
-  
-  // Parse duration to get target time in minutes
-  const getTargetDurationMinutes = (duration: string) => {
-    const match = duration.match(/(\d+)h?\s*(\d+)?/);
-    if (match) {
-      const hours = parseInt(match[1]) || 0;
-      const minutes = parseInt(match[2]) || 0;
-      return hours * 60 + minutes;
-    }
-    // Default fallback
-    return 60;
-  };
+  const rawId = params.id ?? "";
+  const normalizedId = decodeURIComponent(rawId);
 
-  const targetDuration = training ? getTargetDurationMinutes(training.duracao) : 60;
-  
-  // Active timer for tracking study time
-  const {
-    activeTime,
-    totalTime,
-    isActive,
-    isPageVisible,
-    isCompleted: timerCompleted,
-    canComplete,
-    start: startTimer,
-    pause: pauseTimer,
-    progress: timeProgress,
-    formattedActiveTime,
-    formattedTargetTime,
-    formattedRemainingTime
-  } = useActiveTimer({
-    targetDuration,
-    onTimeUpdate: (active, total) => {
-      // Update progress based on time spent
-      const timeBasedProgress = Math.min((active / (targetDuration * 60)) * 100, 100);
-      setCurrentProgress(timeBasedProgress);
-    },
-    onCompletion: () => {
-      toast.success("🎉 Tempo mínimo de estudo concluído!", {
-        description: "Agora você pode finalizar o treinamento."
-      });
-    },
-    autoStart: true
-  });
+  const { getTrainingById, accessTraining } = useTraining();
 
+  // Busca tolerante: string ou number
+  const training = useMemo(() => {
+    const t = getTrainingById(normalizedId as any);
+    if (t) return t;
+    const asNum = Number(normalizedId);
+    if (!Number.isNaN(asNum)) return getTrainingById(String(asNum) as any);
+    return undefined;
+  }, [getTrainingById, normalizedId]);
+
+  const videoUrl = resolveVideoUrl(training);
+  const [muted, setMuted] = useState(true);
+  const [techOpen, setTechOpen] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Timer: conta só com aba visível/focada
+  const timer = useActiveTimer(true, 1000);
+
+  // marca acesso
   useEffect(() => {
-    if (id) {
-      const trainingData = getTrainingById(parseInt(id));
-      if (trainingData) {
-        setTraining(trainingData);
-        setCurrentProgress(trainingData.progress || 0);
-        
-        // Registrar acesso ao treinamento
-        addAuditLog(trainingData.id, {
-          action: "accessed",
-          description: "Usuário acessou a página de estudo do treinamento",
-          details: {
-            currentProgress: trainingData.progress || 0,
-            accessedAt: new Date().toISOString()
-          },
-          userId: "user-1",
-          userName: "Usuário Atual"
-        });
-      } else {
-        toast.error("Treinamento não encontrado");
-        navigate("/meus-treinamentos");
-      }
-    }
-  }, [id, getTrainingById, addAuditLog, navigate]);
+    if (training?.id != null) accessTraining(Number(training.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [training?.id]);
 
-  // Criar blocos de exemplo baseados no conteúdo do treinamento
-  const generateTrainingBlocks = (training: any): TrainingContentBlock[] => {
-    const blocks: TrainingContentBlock[] = [
-      {
-        id: "intro",
-        type: "text",
-        title: "Introdução ao Treinamento",
-        content: `
-          <h3>Bem-vindo ao ${training.titulo}</h3>
-          <p><strong>Instrutor:</strong> ${training.instrutor}</p>
-          <p><strong>Duração estimada:</strong> ${training.duracao}</p>
-          <p><strong>Categoria:</strong> ${training.categoria}</p>
-          <br>
-          <p>${training.descricao}</p>
-          <br>
-          <h4>Objetivos do Treinamento:</h4>
-          <ul>
-            <li>Compreender os conceitos fundamentais</li>
-            <li>Aplicar conhecimentos práticos</li>
-            <li>Desenvolver competências essenciais</li>
-            <li>Obter certificação ao final</li>
-          </ul>
-        `,
-        order: 1,
-        duration: "10 min",
-        thumbnail: training.capa
-      },
-      {
-        id: "content-1",
-        type: "text",
-        title: "Conteúdo Principal",
-        content: training.texto || `
-          <h3>Módulo 1: Fundamentos</h3>
-          <p>Este módulo aborda os conceitos fundamentais necessários para compreender o tema do treinamento.</p>
-          
-          <h4>Tópicos Abordados:</h4>
-          <ul>
-            <li>Conceitos básicos e definições</li>
-            <li>Princípios fundamentais</li>
-            <li>Melhores práticas da área</li>
-            <li>Casos de estudo práticos</li>
-          </ul>
-          
-          <p>É importante que você leia com atenção e faça anotações dos pontos mais relevantes para sua atividade profissional.</p>
-          
-          <blockquote style="border-left: 4px solid hsl(var(--primary)); padding-left: 16px; margin: 16px 0; font-style: italic;">
-            "O conhecimento é um investimento que sempre oferece os melhores retornos." - Benjamin Franklin
-          </blockquote>
-        `,
-        order: 2,
-        duration: "25 min",
-        thumbnail: training.capa
-      }
-    ];
-
-    // Adicionar bloco de vídeo se existir
-    if (training.videoUrl) {
-      blocks.push({
-        id: "video-1",
-        type: "video",
-        title: "Vídeo Explicativo",
-        content: training.videoUrl,
-        order: 3,
-        duration: "15 min",
-        thumbnail: `https://img.youtube.com/vi/${training.videoUrl?.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`
-      });
-    }
-
-    // Adicionar exercício prático
-    blocks.push({
-      id: "quiz-1",
-      type: "document",
-      title: "Exercício de Fixação",
-      content: "Teste seus conhecimentos sobre o conteúdo estudado até agora.",
-      order: 4,
-      duration: "10 min"
+  // tenta autoplay em HTML5 (YouTube usa param no src)
+  useEffect(() => {
+    setVideoError(null);
+    if (!videoRef.current || !videoUrl) return;
+    if (isYouTube(videoUrl)) return;
+    const v = videoRef.current;
+    v.muted = true;
+    v.play().catch(() => {
+      // alguns navegadores bloqueiam; usuário pode clicar Play
     });
-
-    // Adicionar conclusão
-    blocks.push({
-      id: "conclusion",
-      type: "text",
-      title: "Conclusão e Próximos Passos",
-      content: `
-        <h3>Parabéns por concluir este treinamento!</h3>
-        <p>Você chegou ao final do treinamento <strong>${training.titulo}</strong>. Esperamos que o conteúdo tenha sido útil e aplicável em sua rotina de trabalho.</p>
-        
-        <h4>O que você aprendeu:</h4>
-        <ul>
-          <li>✅ Conceitos fundamentais da área</li>
-          <li>✅ Melhores práticas e metodologias</li>
-          <li>✅ Aplicação prática dos conhecimentos</li>
-          <li>✅ Exercícios de fixação</li>
-        </ul>
-        
-        <h4>Próximos Passos:</h4>
-        <p>1. <strong>Aplique o conhecimento:</strong> Utilize o que aprendeu em sua rotina de trabalho</p>
-        <p>2. <strong>Compartilhe:</strong> Divida os conhecimentos com sua equipe</p>
-        <p>3. <strong>Continue aprendendo:</strong> Explore outros treinamentos relacionados</p>
-        <p>4. <strong>Feedback:</strong> Avalie este treinamento para nos ajudar a melhorar</p>
-        
-        <div style="text-align: center; margin-top: 24px; padding: 16px; background: hsl(var(--success) / 0.1); border-radius: 8px;">
-          <h4 style="color: hsl(var(--success)); margin-bottom: 8px;">🏆 Certificado Disponível</h4>
-          <p>Seu certificado de conclusão já está disponível para download!</p>
-        </div>
-      `,
-      order: 5,
-      duration: "5 min"
-    });
-
-    return blocks;
-  };
-
-  const handleBlockComplete = (blockId: string) => {
-    // Lógica para marcar bloco como concluído
-    toast.success("Bloco concluído com sucesso!");
-  };
-
-  const handleProgressUpdate = (progress: number) => {
-    // Only allow completion if minimum time has been spent
-    if (progress >= 100 && !canComplete) {
-      toast.warning("Tempo mínimo de estudo não atingido", {
-        description: `Continue estudando por mais ${formattedRemainingTime} para poder concluir.`
-      });
-      return;
-    }
-
-    setCurrentProgress(progress);
-    
-    // Atualizar progresso no treinamento
-    if (training) {
-      const isCompleted = progress >= 100 && canComplete;
-      
-      updateTraining(training.id, {
-        progress: Math.round(progress),
-        completed: isCompleted,
-        lastAccessed: new Date().toISOString()
-      });
-
-      // Adicionar log de progresso
-      addAuditLog(training.id, {
-        action: isCompleted ? "completed" : "accessed",
-        description: isCompleted 
-          ? "Treinamento concluído com sucesso" 
-          : `Progresso atualizado para ${Math.round(progress)}%`,
-        details: {
-          progress: Math.round(progress),
-          completed: isCompleted,
-          activeTime: activeTime,
-          totalTime: totalTime,
-          timestamp: new Date().toISOString()
-        },
-        userId: "user-1",
-        userName: "Usuário Atual"
-      });
-
-      if (isCompleted) {
-        toast.success("🎉 Parabéns! Você concluiu o treinamento!", {
-          description: "Seu certificado já está disponível para download."
-        });
-      }
-    }
-  };
-
-  const handleExit = () => {
-    if (currentProgress > (training?.progress || 0)) {
-      toast.success("Progresso salvo com sucesso!");
-    }
-    navigate("/meus-treinamentos");
-  };
+  }, [videoUrl]);
 
   if (!training) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando treinamento...</p>
-        </div>
+      <div className="space-y-4">
+        <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+        <Card className="p-6">Treinamento não encontrado.</Card>
       </div>
     );
   }
 
-  const trainingBlocks = generateTrainingBlocks(training);
-  const completedBlocks = Math.floor((currentProgress / 100) * trainingBlocks.length);
+  const title = training.titulo || "Treinamento";
+  const isYT = isYouTube(videoUrl);
+  const ytId = isYT ? getYouTubeId(videoUrl) : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header fixo */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={handleExit}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Sair do Treinamento
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div>
-              <h1 className="font-semibold text-lg">{training.titulo}</h1>
-              <p className="text-sm text-muted-foreground">{training.subtitulo}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Timer display */}
-            <div className="flex items-center gap-2 text-sm">
-              {isPageVisible ? (
-                <Eye className="h-4 w-4 text-success" />
-              ) : (
-                <EyeOff className="h-4 w-4 text-destructive" />
-              )}
-              <div className="text-center">
-                <p className="font-mono font-medium">{formattedActiveTime}</p>
-                <p className="text-xs text-muted-foreground">de {formattedTargetTime}</p>
-              </div>
-            </div>
-            
-            <Separator orientation="vertical" className="h-6" />
-            
-            {/* Progress display */}
-            <div className="text-right text-sm">
-              <p className="font-medium">{Math.round(currentProgress)}% concluído</p>
-              <p className="text-muted-foreground">
-                Tempo: {Math.round(timeProgress)}%
-              </p>
-            </div>
-            <div className="w-32 space-y-1">
-              <Progress value={currentProgress} />
-              <Progress value={timeProgress} className="h-1" />
-            </div>
-            
-            {/* Timer controls */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={isActive ? pauseTimer : startTimer}
-            >
-              {isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-            
-            <Button variant="outline" size="sm" onClick={handleExit}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
         </div>
-      </header>
+        <Badge variant="secondary" className="text-sm">
+          Tempo nesta tela: {formatHMS(timer.seconds)}
+        </Badge>
+      </div>
 
-      {/* Conteúdo principal */}
-      <main className="container mx-auto px-4 py-6">
-        {/* Informações do treinamento */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Informações do Treinamento
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Instrutor</p>
-                  <p className="text-muted-foreground">{training.instrutor}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Duração</p>
-                  <p className="text-muted-foreground">{training.duracao}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Último Acesso</p>
-                  <p className="text-muted-foreground">
-                    {formatLastAccessed(training.lastAccessed)}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Categoria</p>
-                  <Badge variant="secondary">{training.categoria}</Badge>
-                </div>
-              </div>
+      {/* Player */}
+      <Card className="p-0 overflow-hidden">
+        <div className="relative bg-black aspect-video">
+          {!videoUrl ? (
+            <div className="absolute inset-0 grid place-items-center text-muted-foreground p-4 text-center">
+              Nenhum vídeo associado a este treinamento.
             </div>
-          </CardContent>
+          ) : isYT && ytId ? (
+            <iframe
+              className="absolute inset-0 w-full h-full border-0"
+              // autoplay + mudo (navegadores exigem mudo p/ autoplay)
+              src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=1&playsinline=1`}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                muted={muted}
+                controls
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                onError={() => setVideoError("Não foi possível carregar o vídeo. Verifique a URL ou as permissões (CORS).")}
+              />
+              <div className="absolute top-3 right-3 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setMuted((m) => !m)}
+                  className="gap-2"
+                  title={muted ? "Ativar som" : "Silenciar"}
+                >
+                  {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  {muted ? "Mudo" : "Som"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+        {videoError && (
+          <div className="p-3 text-sm text-destructive">
+            {videoError}
+          </div>
+        )}
+      </Card>
+
+      {/* Detalhes técnicos (diagnóstico) */}
+      <Card className="p-0 overflow-hidden">
+        <button
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted-foreground hover:bg-muted/40"
+          onClick={() => setTechOpen((o) => !o)}
+        >
+          <span>⚙ Detalhes técnicos</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${techOpen ? "rotate-180" : ""}`} />
+        </button>
+        {techOpen && (
+          <div className="px-4 pb-4 text-sm">
+            <div><b>ID (rota):</b> {normalizedId}</div>
+            <div><b>ID (objeto):</b> {String(training.id)}</div>
+            <div className="break-all">
+              <b>URL detectada:</b> {videoUrl || "(vazio)"}
+            </div>
+            <div><b>Tipo:</b> {isYT ? "YouTube (embed)" : "HTML5 (video tag)"}</div>
+            {!isYT && videoUrl && videoUrl.startsWith("http://") && (
+              <div className="text-amber-500">
+                Aviso: URLs HTTP podem ser bloqueadas em sites HTTPS (mixed content).
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Descrição (se houver) */}
+      {training.descricao && (
+        <Card className="p-4">
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            {training.descricao}
+          </div>
         </Card>
-
-        {/* Timer status alert */}
-        {!isPageVisible && isActive && (
-          <Card className="border-warning bg-warning/5 mb-6">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Timer className="h-5 w-5 text-warning" />
-              <div className="flex-1">
-                <p className="font-medium text-warning">Cronômetro pausado</p>
-                <p className="text-sm text-muted-foreground">
-                  O tempo só é contabilizado quando você está visualizando a página
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Conteúdo do treinamento */}
-        <TrainingContentViewer
-          blocks={trainingBlocks}
-          progress={currentProgress}
-          onContentRead={handleBlockComplete}
-        />
-
-        {/* Ações de finalização */}
-        {currentProgress >= 100 && canComplete && (
-          <Card className="mt-6 border-success">
-            <CardContent className="p-6 text-center">
-              <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Treinamento Concluído!</h3>
-              <p className="text-muted-foreground mb-4">
-                Parabéns por concluir o treinamento. Seu certificado está disponível.
-              </p>
-              <div className="flex justify-center gap-4">
-                <Button>
-                  <Award className="h-4 w-4 mr-2" />
-                  Baixar Certificado
-                </Button>
-                <Button variant="outline" onClick={handleExit}>
-                  Voltar aos Treinamentos
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </main>
+      )}
     </div>
   );
 }
