@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import NewTrainingPage from "./pages/NewTrainingPage";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import { LoginForm } from "@/components/auth/login-form";
@@ -13,6 +14,7 @@ import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
 import TrainingPage from "./pages/TrainingPage";
 import GestaoTreinamentos from "./pages/admin/GestaoTreinamentos";
+import NovoTreinamento from "./pages/admin/NovoTreinamento";
 import Usuarios from "./pages/admin/Usuarios";
 import Cargos from "./pages/admin/Cargos";
 import Departamentos from "./pages/admin/Departamentos";
@@ -37,7 +39,8 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={<LoginForm />} />
         <Route path="*" element={<Index />} />
-      </Routes>
+        <Route path="/gestao/treinamentos/novo" element={<NewTrainingPage />} />
+</Routes>
     );
   }
 
@@ -52,6 +55,7 @@ function AppContent() {
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/calendario" element={<Calendario />} />
         <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
+        <Route path="/admin/treinamentos/novo" element={<NovoTreinamento />} />
         <Route path="/admin/usuarios" element={<Usuarios />} />
         <Route path="/admin/cargos" element={<Cargos />} />
         <Route path="/admin/departamentos" element={<Departamentos />} />
