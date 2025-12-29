@@ -1,15 +1,9 @@
-import { useState, useRef } from "react"
-import { Link } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Plus, 
   Search, 
@@ -19,106 +13,24 @@ import {
   BookOpen, 
   Users, 
   Clock,
-  Upload,
-  Video,
-  FileText,
-  Image as ImageIcon,
-  History
+  Video
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTraining, Training } from "@/contexts/training-context"
 import { TrainingViewer } from "@/components/training/training-viewer"
-import { TrainingEditor } from "@/components/training/training-editor"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { useDepartments } from "@/contexts/department-context"
 
 export default function GestaoTreinamentos() {
-  const { trainings: treinamentos, createTraining, updateTraining, deleteTraining: removeTraining } = useTraining()
+  const { trainings: treinamentos, deleteTraining: removeTraining } = useTraining()
   const { departments } = useDepartments()
   const { formatDate } = useBrazilianDate()
+  const navigate = useNavigate()
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingTraining, setEditingTraining] = useState<Training | null>(null)
-  const [isEditOpen, setIsEditOpen] = useState(false)
   const [viewingTraining, setViewingTraining] = useState<Training | null>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const { toast } = useToast()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const [newTraining, setNewTraining] = useState<{
-    titulo: string
-    subtitulo: string
-    descricao: string
-    texto: string
-    videoUrl: string
-    categoria: string
-    duracao: string
-    status: "ativo" | "inativo" | "rascunho"
-    instrutor: string
-    departamento: string
-    capa?: string
-  }>({
-    titulo: "",
-    subtitulo: "",
-    descricao: "",
-    texto: "",
-    videoUrl: "",
-    categoria: "",
-    duracao: "",
-    status: "rascunho",
-    instrutor: "",
-    departamento: "todos",
-    capa: undefined
-  })
-
-  const resetForm = () => {
-    setNewTraining({
-      titulo: "",
-      subtitulo: "",
-      descricao: "",
-      texto: "",
-      videoUrl: "",
-      categoria: "",
-      duracao: "",
-      status: "rascunho",
-      instrutor: "",
-      departamento: "todos",
-      capa: undefined
-    })
-  }
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string
-        setNewTraining(prev => ({ ...prev, capa: imageData }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleCreate = () => {
-    if (!newTraining.titulo || !newTraining.descricao) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Título e descrição são obrigatórios",
-        variant: "destructive"
-      })
-      return
-    }
-
-    createTraining(newTraining)
-    setIsCreateOpen(false)
-    resetForm()
-    
-    toast({
-      title: "Treinamento criado!",
-      description: "O treinamento foi criado com sucesso."
-    })
-  }
 
   const handleDelete = (id: number) => {
     removeTraining(id)
@@ -155,11 +67,11 @@ export default function GestaoTreinamentos() {
         </div>
         
         <Button asChild className="bg-gradient-primary">
-  <Link to="/admin/treinamentos/novo">
-    <Plus className="mr-2 h-4 w-4" />
-    Novo Treinamento
-  </Link>
-</Button>
+          <Link to="/admin/treinamentos/novo">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Treinamento
+          </Link>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -269,69 +181,50 @@ export default function GestaoTreinamentos() {
                 <span className="text-muted-foreground">
                   {training.participantes} participantes
                 </span>
-                 <span className="text-muted-foreground">
-                   {formatDate(training.criadoEm)}
-                 </span>
-               </div>
-               <div className="flex gap-2">
-                 <Button 
-                   variant="outline" 
-                   size="sm" 
-                   className="flex-1"
-                   onClick={() => {
-                     setViewingTraining(training)
-                     setIsViewOpen(true)
-                   }}
-                 >
-                   <Eye className="mr-2 h-4 w-4" />
-                   Visualizar
-                 </Button>
-                 <Button 
-                   variant="outline" 
-                   size="sm"
-                   onClick={() => {
-                     setEditingTraining(training)
-                     setIsEditOpen(true)
-                   }}
-                 >
-                   <Edit3 className="h-4 w-4" />
-                 </Button>
-                 <Button 
-                   variant="outline" 
-                   size="sm"
-                   onClick={() => handleDelete(training.id)}
-                   className="text-destructive hover:text-destructive"
-                 >
-                   <Trash2 className="h-4 w-4" />
-                 </Button>
-               </div>
+                <span className="text-muted-foreground">
+                  {formatDate(training.criadoEm)}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => {
+                    setViewingTraining(training)
+                    setIsViewOpen(true)
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Visualizar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/admin/treinamentos/editar/${training.id}`)}
+                >
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleDelete(training.id)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
-         ))}
-       </div>
+        ))}
+      </div>
 
-       {/* Training Viewer Modal */}
-       <TrainingViewer
-         training={viewingTraining}
-         open={isViewOpen}
-         onOpenChange={setIsViewOpen}
-       />
-
-       {/* Training Editor Modal */}
-       <TrainingEditor
-         training={editingTraining}
-         open={isEditOpen}
-         onOpenChange={setIsEditOpen}
-         onSave={(data) => {
-           if (editingTraining) {
-             updateTraining(editingTraining.id, data)
-             toast({
-               title: "Treinamento atualizado!",
-               description: "As alterações foram salvas com sucesso."
-             })
-           }
-         }}
-       />
-     </div>
-   )
- }
+      {/* Training Viewer Modal */}
+      <TrainingViewer
+        training={viewingTraining}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+      />
+    </div>
+  )
+}
