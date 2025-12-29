@@ -33,7 +33,7 @@ interface Empresa {
   telefone: string
   endereco: string
   responsavel: string
-  plano: "basico" | "premium" | "enterprise"
+  plano: "basico" | "plus" | "premium" | "enterprise"
   status: "ativa" | "inativa" | "suspensa"
   usuariosAtivos: number
   usuariosTotal: number
@@ -41,7 +41,17 @@ interface Empresa {
   dataContratacao: string
   proximoVencimento: string
   logo?: string
+  pacotesAdicionais?: number
 }
+
+const LIMITE_USUARIOS_POR_PLANO = {
+  basico: 3,
+  plus: 5,
+  premium: 15,
+  enterprise: 50
+}
+
+const USUARIOS_POR_PACOTE = 5
 
 const empresasIniciais: Empresa[] = [
   {
@@ -56,10 +66,11 @@ const empresasIniciais: Empresa[] = [
     plano: "enterprise",
     status: "ativa",
     usuariosAtivos: 1,
-    usuariosTotal: 5,
+    usuariosTotal: 50,
     treinamentosAtivos: 15,
     dataContratacao: "2024-01-01",
-    proximoVencimento: "2025-01-01"
+    proximoVencimento: "2025-01-01",
+    pacotesAdicionais: 2
   },
   {
     id: 2,
@@ -72,8 +83,8 @@ const empresasIniciais: Empresa[] = [
     responsavel: "Maria Silva",
     plano: "premium",
     status: "ativa",
-    usuariosAtivos: 45,
-    usuariosTotal: 50,
+    usuariosAtivos: 12,
+    usuariosTotal: 15,
     treinamentosAtivos: 8,
     dataContratacao: "2023-06-15",
     proximoVencimento: "2024-06-15"
@@ -89,8 +100,8 @@ const empresasIniciais: Empresa[] = [
     responsavel: "Carlos Santos",
     plano: "basico",
     status: "ativa",
-    usuariosAtivos: 12,
-    usuariosTotal: 15,
+    usuariosAtivos: 2,
+    usuariosTotal: 3,
     treinamentosAtivos: 3,
     dataContratacao: "2023-12-01",
     proximoVencimento: "2024-12-01"
@@ -113,7 +124,8 @@ export default function Empresas() {
     telefone: string
     endereco: string
     responsavel: string
-    plano: "basico" | "premium" | "enterprise"
+    plano: "basico" | "plus" | "premium" | "enterprise"
+    pacotesAdicionais: number
   }>({
     nome: "",
     razaoSocial: "",
@@ -122,8 +134,17 @@ export default function Empresas() {
     telefone: "",
     endereco: "",
     responsavel: "",
-    plano: "basico"
+    plano: "basico",
+    pacotesAdicionais: 0
   })
+
+  const getLimiteUsuarios = (plano: string, pacotes: number = 0) => {
+    const limiteBase = LIMITE_USUARIOS_POR_PLANO[plano as keyof typeof LIMITE_USUARIOS_POR_PLANO] || 3
+    if (plano === "enterprise") {
+      return limiteBase + (pacotes * USUARIOS_POR_PACOTE)
+    }
+    return limiteBase
+  }
 
   const resetForm = () => {
     setNewEmpresa({
@@ -134,7 +155,8 @@ export default function Empresas() {
       telefone: "",
       endereco: "",
       responsavel: "",
-      plano: "basico"
+      plano: "basico",
+      pacotesAdicionais: 0
     })
     setEditingEmpresa(null)
   }
@@ -149,15 +171,18 @@ export default function Empresas() {
       return
     }
 
+    const limiteUsuarios = getLimiteUsuarios(newEmpresa.plano, newEmpresa.pacotesAdicionais)
+    
     const empresa: Empresa = {
       id: Date.now(),
       ...newEmpresa,
       status: "ativa",
       usuariosAtivos: 0,
-      usuariosTotal: 0,
+      usuariosTotal: limiteUsuarios,
       treinamentosAtivos: 0,
       dataContratacao: new Date().toISOString().split('T')[0],
-      proximoVencimento: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      proximoVencimento: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      pacotesAdicionais: newEmpresa.plano === "enterprise" ? newEmpresa.pacotesAdicionais : undefined
     }
 
     setEmpresas([...empresas, empresa])
@@ -180,7 +205,8 @@ export default function Empresas() {
       telefone: empresa.telefone,
       endereco: empresa.endereco,
       responsavel: empresa.responsavel,
-      plano: empresa.plano
+      plano: empresa.plano,
+      pacotesAdicionais: empresa.pacotesAdicionais || 0
     })
     setIsCreateOpen(true)
   }
@@ -188,9 +214,16 @@ export default function Empresas() {
   const handleUpdate = () => {
     if (!editingEmpresa) return
 
+    const limiteUsuarios = getLimiteUsuarios(newEmpresa.plano, newEmpresa.pacotesAdicionais)
+
     setEmpresas(empresas.map(e => 
       e.id === editingEmpresa.id 
-        ? { ...editingEmpresa, ...newEmpresa }
+        ? { 
+            ...editingEmpresa, 
+            ...newEmpresa,
+            usuariosTotal: limiteUsuarios,
+            pacotesAdicionais: newEmpresa.plano === "enterprise" ? newEmpresa.pacotesAdicionais : undefined
+          }
         : e
     ))
     
@@ -224,16 +257,18 @@ export default function Empresas() {
 
   const getPlanoColor = (plano: string) => {
     switch (plano) {
-      case "basico": return "bg-gray-500"
-      case "premium": return "bg-blue-500"
-      case "enterprise": return "bg-purple-500"
-      default: return "bg-gray-500"
+      case "basico": return "bg-slate-500"
+      case "plus": return "bg-blue-500"
+      case "premium": return "bg-purple-500"
+      case "enterprise": return "bg-amber-500"
+      default: return "bg-slate-500"
     }
   }
 
   const getPlanoLabel = (plano: string) => {
     switch (plano) {
       case "basico": return "Básico"
+      case "plus": return "Plus"
       case "premium": return "Premium"
       case "enterprise": return "Enterprise"
       default: return "Básico"
@@ -325,18 +360,62 @@ export default function Empresas() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="plano">Plano de Assinatura</Label>
-                  <Select value={newEmpresa.plano} onValueChange={(value: any) => setNewEmpresa({...newEmpresa, plano: value})}>
+                  <Select value={newEmpresa.plano} onValueChange={(value: any) => setNewEmpresa({...newEmpresa, plano: value, pacotesAdicionais: value === "enterprise" ? newEmpresa.pacotesAdicionais : 0})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basico">Básico (até 20 usuários)</SelectItem>
-                      <SelectItem value="premium">Premium (até 100 usuários)</SelectItem>
-                      <SelectItem value="enterprise">Enterprise (usuários ilimitados)</SelectItem>
+                      <SelectItem value="basico">Básico (até 3 usuários)</SelectItem>
+                      <SelectItem value="plus">Plus (até 5 usuários)</SelectItem>
+                      <SelectItem value="premium">Premium (até 15 usuários)</SelectItem>
+                      <SelectItem value="enterprise">Enterprise (50 usuários + pacotes)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              
+              {/* Campo de pacotes adicionais - só aparece para Enterprise */}
+              {newEmpresa.plano === "enterprise" && (
+                <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <Label htmlFor="pacotesAdicionais" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Pacotes Adicionais de Usuários
+                  </Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Cada pacote contém 5 usuários. O plano Enterprise inclui 50 usuários base.
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="pacotesAdicionais"
+                      type="number"
+                      min={0}
+                      value={newEmpresa.pacotesAdicionais}
+                      onChange={(e) => setNewEmpresa({...newEmpresa, pacotesAdicionais: Math.max(0, parseInt(e.target.value) || 0)})}
+                      className="w-24"
+                    />
+                    <div className="text-sm">
+                      <span className="font-medium">
+                        Total de usuários: {getLimiteUsuarios("enterprise", newEmpresa.pacotesAdicionais)}
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        (50 base + {newEmpresa.pacotesAdicionais * 5} adicionais)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Mostrar limite de usuários para outros planos */}
+              {newEmpresa.plano !== "enterprise" && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>Limite de usuários para o plano {getPlanoLabel(newEmpresa.plano)}: </span>
+                    <strong>{getLimiteUsuarios(newEmpresa.plano)} usuários</strong>
+                    <span className="text-muted-foreground">(incluindo o administrador)</span>
+                  </p>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
