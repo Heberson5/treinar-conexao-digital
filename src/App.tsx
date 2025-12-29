@@ -24,6 +24,7 @@ import Index from "./pages/Index";
 import Relatorios from "./pages/Relatorios";
 import Calendario from "./pages/Calendario";
 import Empresas from "./pages/admin/Empresas";
+import Planos from "./pages/admin/Planos";
 import Analytics from "./pages/admin/Analytics";
 import Permissoes from "./pages/admin/Permissoes";
 import Configuracoes from "./pages/admin/Configuracoes";
@@ -62,6 +63,7 @@ function AppContent() {
         <Route path="/admin/cargos" element={<Cargos />} />
         <Route path="/admin/departamentos" element={<Departamentos />} />
         <Route path="/admin/empresas" element={<Empresas />} />
+        <Route path="/admin/planos" element={<Planos />} />
         <Route path="/admin/analytics" element={<Analytics />} />
         <Route path="/admin/permissoes" element={<Permissoes />} />
         <Route path="/admin/configuracoes" element={<Configuracoes />} />

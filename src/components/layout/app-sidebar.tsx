@@ -23,6 +23,7 @@ import {
   FileText,
   Calendar,
   Briefcase,
+  CreditCard,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
@@ -41,6 +42,7 @@ const adminMenuItems = [
   { title: "Cargos", url: "/admin/cargos", icon: Briefcase },
   { title: "Departamentos", url: "/admin/departamentos", icon: Building2 },
   { title: "Empresas", url: "/admin/empresas", icon: Building2 },
+  { title: "Planos", url: "/admin/planos", icon: CreditCard },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Permissões", url: "/admin/permissoes", icon: Shield },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
