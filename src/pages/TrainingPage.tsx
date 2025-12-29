@@ -78,7 +78,7 @@ export default function TrainingPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Timer: conta só com aba visível/focada
-  const timer = useActiveTimer(true, 1000);
+  const timer = useActiveTimer({ autoStart: true });
 
   // marca acesso
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function TrainingPage() {
           <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
         </div>
         <Badge variant="secondary" className="text-sm">
-          Tempo nesta tela: {formatHMS(timer.seconds)}
+          Tempo nesta tela: {timer.formattedActiveTime}
         </Badge>
       </div>
 
