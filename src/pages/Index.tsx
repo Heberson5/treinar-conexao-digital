@@ -13,15 +13,17 @@ import {
   Clock, 
   CheckCircle, 
   TrendingUp,
-  Search,
   ArrowRight,
   Building,
   Shield,
-  Zap
+  Zap,
+  Check
 } from "lucide-react"
+import { usePlans, ICONES_PLANOS } from "@/contexts/plans-context"
 
 export default function Index() {
   const [email, setEmail] = useState("")
+  const { planosAtivos } = usePlans()
 
   const featuredTrainings = [
     {
@@ -106,6 +108,10 @@ export default function Index() {
       color: "bg-green-100 text-green-600"
     }
   ]
+
+  const getIconComponent = (iconName: string) => {
+    return ICONES_PLANOS[iconName] || Users
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -238,8 +244,112 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Pricing Section - Dynamic from PlansContext */}
+      {planosAtivos.length > 0 && (
+        <section className="py-20 bg-accent/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                Planos e Preços
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Escolha o plano ideal para sua empresa
+              </p>
+            </div>
+            
+            <div className={`grid gap-6 ${
+              planosAtivos.length === 1 ? 'md:grid-cols-1 max-w-md mx-auto' :
+              planosAtivos.length === 2 ? 'md:grid-cols-2 max-w-2xl mx-auto' :
+              planosAtivos.length === 3 ? 'md:grid-cols-3 max-w-4xl mx-auto' :
+              'md:grid-cols-2 lg:grid-cols-4'
+            }`}>
+              {planosAtivos.map((plano) => {
+                const IconComponent = getIconComponent(plano.icon)
+                
+                return (
+                  <Card 
+                    key={plano.id} 
+                    className={`relative flex flex-col ${plano.popular ? 'border-primary shadow-xl scale-105' : 'hover:shadow-lg'} transition-all`}
+                  >
+                    {plano.popular && (
+                      <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
+                        Mais Popular
+                      </Badge>
+                    )}
+                    
+                    <CardHeader className="text-center pb-2">
+                      <div className={`mx-auto p-3 rounded-full ${plano.cor} text-white mb-3`}>
+                        <IconComponent className="h-6 w-6" />
+                      </div>
+                      <CardTitle className="text-xl">{plano.nome}</CardTitle>
+                      <CardDescription className="min-h-[40px]">{plano.descricao}</CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="flex-1 flex flex-col">
+                      <div className="text-center mb-6">
+                        <span className="text-4xl font-bold">
+                          R$ {plano.preco.toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-muted-foreground">{plano.periodo}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-muted rounded-lg">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">
+                          {plano.id === "enterprise" 
+                            ? `${plano.limiteUsuarios} usuários + pacotes` 
+                            : `Até ${plano.limiteUsuarios} usuários`}
+                        </span>
+                      </div>
+                      
+                      <ul className="space-y-2 flex-1">
+                        {plano.recursos.slice(0, 5).map((recurso, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm">
+                            <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>{recurso}</span>
+                          </li>
+                        ))}
+                        {plano.recursos.length > 5 && (
+                          <li className="text-sm text-muted-foreground text-center">
+                            + {plano.recursos.length - 5} recursos adicionais
+                          </li>
+                        )}
+                      </ul>
+                      
+                      <Link to="/login" className="mt-6">
+                        <Button 
+                          className={`w-full ${plano.popular ? '' : ''}`}
+                          variant={plano.popular ? "default" : "outline"}
+                        >
+                          Escolher {plano.nome}
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+
+            {/* Enterprise additional info */}
+            {planosAtivos.some(p => p.id === "enterprise") && (
+              <div className="mt-12 max-w-2xl mx-auto">
+                <Card className="bg-muted/50">
+                  <CardContent className="p-6 text-center">
+                    <p className="text-muted-foreground">
+                      <strong>Plano Enterprise:</strong> Precisa de mais usuários? 
+                      Contrate pacotes adicionais de {planosAtivos.find(p => p.id === "enterprise")?.usuariosPorPacote || 5} usuários 
+                      por R$ {(planosAtivos.find(p => p.id === "enterprise")?.precoPacoteAdicional || 150).toFixed(2).replace('.', ',')}/mês cada.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Featured Trainings */}
-      <section className="py-20 bg-accent/30">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
