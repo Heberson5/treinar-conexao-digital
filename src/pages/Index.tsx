@@ -303,15 +303,18 @@ export default function Index() {
                       </div>
                       
                       <ul className="space-y-2 flex-1">
-                        {plano.recursos.slice(0, 5).map((recurso, index) => (
-                          <li key={index} className="flex items-start gap-2 text-sm">
-                            <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            <span>{recurso}</span>
-                          </li>
-                        ))}
-                        {plano.recursos.length > 5 && (
+                        {plano.recursos
+                          .filter(r => r.habilitado)
+                          .slice(0, 5)
+                          .map((recurso, index) => (
+                            <li key={index} className="flex items-start gap-2 text-sm">
+                              <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <span>{recurso.descricaoCustomizada || recurso.recursoId}</span>
+                            </li>
+                          ))}
+                        {plano.recursos.filter(r => r.habilitado).length > 5 && (
                           <li className="text-sm text-muted-foreground text-center">
-                            + {plano.recursos.length - 5} recursos adicionais
+                            + {plano.recursos.filter(r => r.habilitado).length - 5} recursos adicionais
                           </li>
                         )}
                       </ul>

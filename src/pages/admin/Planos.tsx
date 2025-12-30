@@ -6,19 +6,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Check, 
   Users, 
-  Zap, 
-  Crown, 
-  Building2, 
   Pencil, 
   X, 
-  Plus, 
-  Trash2,
   Save,
-  Eye,
-  EyeOff
+  EyeOff,
+  Shield,
+  Settings2,
+  Infinity
 } from "lucide-react"
 import {
   Dialog,
@@ -27,19 +25,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { usePlans, ICONES_PLANOS, Plano } from "@/contexts/plans-context"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { usePlans, ICONES_PLANOS, Plano, RECURSOS_SISTEMA, RecursoPlano, RecursoId } from "@/contexts/plans-context"
 import { toast } from "@/hooks/use-toast"
 
 export default function Planos() {
-  const { planos, atualizarPlano, adicionarRecurso, removerRecurso } = usePlans()
+  const { planos, atualizarPlano, recursosSistema } = usePlans()
   const [editandoPlano, setEditandoPlano] = useState<Plano | null>(null)
-  const [novoRecurso, setNovoRecurso] = useState("")
   const [formData, setFormData] = useState<Partial<Plano>>({})
 
   const handleEdit = (plano: Plano) => {
     setEditandoPlano(plano)
     setFormData({ ...plano })
-    setNovoRecurso("")
   }
 
   const handleSave = () => {
@@ -64,25 +66,52 @@ export default function Planos() {
     })
   }
 
-  const handleAddRecurso = () => {
-    if (novoRecurso.trim() && editandoPlano) {
-      setFormData(prev => ({
-        ...prev,
-        recursos: [...(prev.recursos || []), novoRecurso.trim()]
-      }))
-      setNovoRecurso("")
-    }
-  }
-
-  const handleRemoveRecurso = (index: number) => {
+  const handleToggleRecurso = (recursoId: RecursoId, habilitado: boolean) => {
     setFormData(prev => ({
       ...prev,
-      recursos: (prev.recursos || []).filter((_, i) => i !== index)
+      recursos: (prev.recursos || []).map(r => 
+        r.recursoId === recursoId ? { ...r, habilitado } : r
+      )
+    }))
+  }
+
+  const handleUpdateRecursoLimite = (recursoId: RecursoId, limite: number | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      recursos: (prev.recursos || []).map(r => 
+        r.recursoId === recursoId ? { ...r, limite } : r
+      )
+    }))
+  }
+
+  const handleUpdateRecursoDescricao = (recursoId: RecursoId, descricaoCustomizada: string) => {
+    setFormData(prev => ({
+      ...prev,
+      recursos: (prev.recursos || []).map(r => 
+        r.recursoId === recursoId ? { ...r, descricaoCustomizada } : r
+      )
     }))
   }
 
   const getIconComponent = (iconName: string) => {
     return ICONES_PLANOS[iconName] || Users
+  }
+
+  const getRecursoFromForm = (recursoId: RecursoId): RecursoPlano | undefined => {
+    return formData.recursos?.find(r => r.recursoId === recursoId)
+  }
+
+  const categorias = [
+    { id: "usuarios", nome: "Usuários" },
+    { id: "treinamento", nome: "Treinamento" },
+    { id: "relatorios", nome: "Relatórios" },
+    { id: "suporte", nome: "Suporte" },
+    { id: "integracao", nome: "Integrações" },
+    { id: "enterprise", nome: "Enterprise" }
+  ]
+
+  const getRecursosHabilitadosCount = (plano: Plano) => {
+    return plano.recursos.filter(r => r.habilitado).length
   }
 
   return (
@@ -92,9 +121,13 @@ export default function Planos() {
         <div>
           <h1 className="text-3xl font-bold">Configuração de Planos</h1>
           <p className="text-muted-foreground mt-2">
-            Gerencie os planos, valores e configurações. As alterações são refletidas automaticamente na página inicial.
+            Gerencie os planos, valores, recursos e permissões. As alterações são refletidas automaticamente na página inicial.
           </p>
         </div>
+        <Badge variant="outline" className="gap-2">
+          <Shield className="h-4 w-4" />
+          Acesso Master
+        </Badge>
       </div>
 
       {/* Alerta sobre planos inativos */}
@@ -113,10 +146,28 @@ export default function Planos() {
         </CardContent>
       </Card>
 
+      {/* Alerta sobre recursos */}
+      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Settings2 className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-blue-800 dark:text-blue-200">Recursos integrados com permissões</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Os recursos configurados aqui são vinculados às permissões do sistema. Por exemplo, 
+                certificados ilimitados só estão disponíveis nos planos Premium e Enterprise, 
+                enquanto os planos Básico e Plus possuem limites mensais.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Planos Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {planos.map((plano) => {
           const IconComponent = getIconComponent(plano.icon)
+          const recursosHabilitados = plano.recursos.filter(r => r.habilitado)
           
           return (
             <Card 
@@ -172,6 +223,11 @@ export default function Planos() {
                   </span>
                 </div>
 
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Shield className="h-4 w-4" />
+                  <span>{getRecursosHabilitadosCount(plano)} recursos habilitados</span>
+                </div>
+
                 {plano.id === "enterprise" && (
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-sm">
                     <p className="font-medium text-amber-800 dark:text-amber-200">Pacotes Adicionais</p>
@@ -182,10 +238,15 @@ export default function Planos() {
                 )}
                 
                 <ul className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {plano.recursos.map((recurso, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
+                  {recursosHabilitados.map((recurso) => (
+                    <li key={recurso.recursoId} className="flex items-start gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>{recurso}</span>
+                      <span>{recurso.descricaoCustomizada || recursosSistema.find(r => r.id === recurso.recursoId)?.nome}</span>
+                      {recurso.limite !== undefined && (
+                        <Badge variant="secondary" className="text-xs ml-auto">
+                          Limite: {recurso.limite}
+                        </Badge>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -197,141 +258,197 @@ export default function Planos() {
 
       {/* Dialog de Edição */}
       <Dialog open={editandoPlano !== null} onOpenChange={(open) => !open && setEditandoPlano(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Plano - {editandoPlano?.nome}</DialogTitle>
             <DialogDescription>
-              Altere as configurações do plano. As mudanças serão refletidas na página inicial.
+              Altere as configurações do plano. As mudanças serão refletidas na página inicial e nas permissões do sistema.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome do Plano</Label>
-                <Input
-                  id="nome"
-                  value={formData.nome || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="preco">Preço (R$)</Label>
-                <Input
-                  id="preco"
-                  type="number"
-                  step="0.01"
-                  value={formData.preco || 0}
-                  onChange={(e) => setFormData(prev => ({ ...prev, preco: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
+          <Tabs defaultValue="geral" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="geral">Informações Gerais</TabsTrigger>
+              <TabsTrigger value="recursos">Recursos e Permissões</TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Textarea
-                id="descricao"
-                value={formData.descricao || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="limiteUsuarios">Limite de Usuários</Label>
-                <Input
-                  id="limiteUsuarios"
-                  type="number"
-                  value={formData.limiteUsuarios || 0}
-                  onChange={(e) => setFormData(prev => ({ ...prev, limiteUsuarios: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="periodo">Período</Label>
-                <Input
-                  id="periodo"
-                  value={formData.periodo || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, periodo: e.target.value }))}
-                  placeholder="/mês, /ano, etc"
-                />
-              </div>
-            </div>
-
-            {editandoPlano?.id === "enterprise" && (
-              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+            <TabsContent value="geral" className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="precoPacote">Preço do Pacote Adicional (R$)</Label>
+                  <Label htmlFor="nome">Nome do Plano</Label>
                   <Input
-                    id="precoPacote"
+                    id="nome"
+                    value={formData.nome || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="preco">Preço (R$)</Label>
+                  <Input
+                    id="preco"
                     type="number"
                     step="0.01"
-                    value={formData.precoPacoteAdicional || 0}
-                    onChange={(e) => setFormData(prev => ({ ...prev, precoPacoteAdicional: parseFloat(e.target.value) || 0 }))}
+                    value={formData.preco || 0}
+                    onChange={(e) => setFormData(prev => ({ ...prev, preco: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="descricao">Descrição</Label>
+                <Textarea
+                  id="descricao"
+                  value={formData.descricao || ""}
+                  onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="limiteUsuarios">Limite de Usuários Base</Label>
+                  <Input
+                    id="limiteUsuarios"
+                    type="number"
+                    value={formData.limiteUsuarios || 0}
+                    onChange={(e) => setFormData(prev => ({ ...prev, limiteUsuarios: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="usuariosPacote">Usuários por Pacote</Label>
+                  <Label htmlFor="periodo">Período</Label>
                   <Input
-                    id="usuariosPacote"
-                    type="number"
-                    value={formData.usuariosPorPacote || 5}
-                    onChange={(e) => setFormData(prev => ({ ...prev, usuariosPorPacote: parseInt(e.target.value) || 5 }))}
+                    id="periodo"
+                    value={formData.periodo || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, periodo: e.target.value }))}
+                    placeholder="/mês, /ano, etc"
                   />
                 </div>
               </div>
-            )}
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="popular"
-                  checked={formData.popular || false}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, popular: checked }))}
-                />
-                <Label htmlFor="popular">Marcar como Popular</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="ativo"
-                  checked={formData.ativo !== false}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, ativo: checked }))}
-                />
-                <Label htmlFor="ativo">Plano Ativo</Label>
-              </div>
-            </div>
+              {editandoPlano?.id === "enterprise" && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                  <div className="space-y-2">
+                    <Label htmlFor="precoPacote">Preço do Pacote Adicional (R$)</Label>
+                    <Input
+                      id="precoPacote"
+                      type="number"
+                      step="0.01"
+                      value={formData.precoPacoteAdicional || 0}
+                      onChange={(e) => setFormData(prev => ({ ...prev, precoPacoteAdicional: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="usuariosPacote">Usuários por Pacote</Label>
+                    <Input
+                      id="usuariosPacote"
+                      type="number"
+                      value={formData.usuariosPorPacote || 5}
+                      onChange={(e) => setFormData(prev => ({ ...prev, usuariosPorPacote: parseInt(e.target.value) || 5 }))}
+                    />
+                  </div>
+                </div>
+              )}
 
-            <div className="space-y-3">
-              <Label>Recursos do Plano</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Adicionar novo recurso..."
-                  value={novoRecurso}
-                  onChange={(e) => setNovoRecurso(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddRecurso()}
-                />
-                <Button type="button" onClick={handleAddRecurso} size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="popular"
+                    checked={formData.popular || false}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, popular: checked }))}
+                  />
+                  <Label htmlFor="popular">Marcar como Popular</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="ativo"
+                    checked={formData.ativo !== false}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, ativo: checked }))}
+                  />
+                  <Label htmlFor="ativo">Plano Ativo</Label>
+                </div>
               </div>
-              <ul className="space-y-2 max-h-48 overflow-y-auto">
-                {(formData.recursos || []).map((recurso, index) => (
-                  <li key={index} className="flex items-center justify-between gap-2 p-2 bg-muted rounded">
-                    <span className="text-sm">{recurso}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6"
-                      onClick={() => handleRemoveRecurso(index)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+            </TabsContent>
 
-          <div className="flex justify-end gap-3">
+            <TabsContent value="recursos" className="space-y-6 py-4">
+              <div className="space-y-6">
+                {categorias.map(categoria => {
+                  const recursosCategoria = recursosSistema.filter(r => r.categoria === categoria.id)
+                  if (recursosCategoria.length === 0) return null
+
+                  return (
+                    <div key={categoria.id} className="space-y-3">
+                      <h3 className="font-semibold text-lg border-b pb-2">{categoria.nome}</h3>
+                      <div className="space-y-3">
+                        {recursosCategoria.map(recurso => {
+                          const recursoPlano = getRecursoFromForm(recurso.id)
+                          const habilitado = recursoPlano?.habilitado ?? false
+                          const limite = recursoPlano?.limite
+                          const descricaoCustomizada = recursoPlano?.descricaoCustomizada || ""
+
+                          return (
+                            <div key={recurso.id} className="p-4 border rounded-lg space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3">
+                                  <Checkbox
+                                    id={recurso.id}
+                                    checked={habilitado}
+                                    onCheckedChange={(checked) => handleToggleRecurso(recurso.id, !!checked)}
+                                  />
+                                  <div>
+                                    <Label htmlFor={recurso.id} className="font-medium cursor-pointer">
+                                      {recurso.nome}
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">{recurso.descricao}</p>
+                                  </div>
+                                </div>
+                                {habilitado && (
+                                  <Badge variant={limite === undefined ? "default" : "secondary"}>
+                                    {limite === undefined ? (
+                                      <span className="flex items-center gap-1">
+                                        <Infinity className="h-3 w-3" /> Ilimitado
+                                      </span>
+                                    ) : (
+                                      `Limite: ${limite}`
+                                    )}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {habilitado && (
+                                <div className="pl-7 grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label className="text-sm">Limite (deixe vazio para ilimitado)</Label>
+                                    <Input
+                                      type="number"
+                                      placeholder="Ilimitado"
+                                      value={limite ?? ""}
+                                      onChange={(e) => handleUpdateRecursoLimite(
+                                        recurso.id, 
+                                        e.target.value ? parseInt(e.target.value) : undefined
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm">Descrição para exibição</Label>
+                                    <Input
+                                      placeholder={recurso.nome}
+                                      value={descricaoCustomizada}
+                                      onChange={(e) => handleUpdateRecursoDescricao(recurso.id, e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={() => setEditandoPlano(null)}>
               <X className="h-4 w-4 mr-2" />
               Cancelar
