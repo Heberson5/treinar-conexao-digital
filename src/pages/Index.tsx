@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { 
   Play, 
   BookOpen, 
@@ -23,7 +25,8 @@ import { usePlans, ICONES_PLANOS } from "@/contexts/plans-context"
 
 export default function Index() {
   const [email, setEmail] = useState("")
-  const { planosAtivos } = usePlans()
+  const [pagamentoAnual, setPagamentoAnual] = useState(false)
+  const { planosAtivos, descontoAnual, calcularPrecoAnual } = usePlans()
 
   const featuredTrainings = [
     {
@@ -255,6 +258,28 @@ export default function Index() {
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Escolha o plano ideal para sua empresa
               </p>
+              
+              {/* Toggle Mensal/Anual */}
+              {descontoAnual.habilitado && (
+                <div className="flex items-center justify-center gap-4 mt-8">
+                  <Label htmlFor="pagamentoAnual" className={`text-sm ${!pagamentoAnual ? 'font-semibold' : 'text-muted-foreground'}`}>
+                    Mensal
+                  </Label>
+                  <Switch
+                    id="pagamentoAnual"
+                    checked={pagamentoAnual}
+                    onCheckedChange={setPagamentoAnual}
+                  />
+                  <Label htmlFor="pagamentoAnual" className={`text-sm ${pagamentoAnual ? 'font-semibold' : 'text-muted-foreground'}`}>
+                    Anual
+                  </Label>
+                  {pagamentoAnual && (
+                    <Badge className="bg-green-500 text-white">
+                      Economize {descontoAnual.percentual}%
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className={`grid gap-6 ${
@@ -265,6 +290,9 @@ export default function Index() {
             }`}>
               {planosAtivos.map((plano) => {
                 const IconComponent = getIconComponent(plano.icon)
+                const { precoAnual, precoComDesconto, economia } = calcularPrecoAnual(plano.preco)
+                const precoExibido = pagamentoAnual ? precoComDesconto : plano.preco
+                const periodoExibido = pagamentoAnual ? "/ano" : plano.periodo
                 
                 return (
                   <Card 
@@ -287,10 +315,20 @@ export default function Index() {
                     
                     <CardContent className="flex-1 flex flex-col">
                       <div className="text-center mb-6">
+                        {pagamentoAnual && (
+                          <span className="text-sm text-muted-foreground line-through block">
+                            R$ {precoAnual.toFixed(2).replace('.', ',')}
+                          </span>
+                        )}
                         <span className="text-4xl font-bold">
-                          R$ {plano.preco.toFixed(2).replace('.', ',')}
+                          R$ {precoExibido.toFixed(2).replace('.', ',')}
                         </span>
-                        <span className="text-muted-foreground">{plano.periodo}</span>
+                        <span className="text-muted-foreground">{periodoExibido}</span>
+                        {pagamentoAnual && (
+                          <p className="text-sm text-green-600 mt-1">
+                            Economia de R$ {economia.toFixed(2).replace('.', ',')}
+                          </p>
+                        )}
                       </div>
                       
                       <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-muted rounded-lg">

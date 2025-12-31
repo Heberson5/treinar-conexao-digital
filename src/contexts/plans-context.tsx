@@ -57,6 +57,12 @@ export interface RecursoPlano {
   descricaoCustomizada?: string // descrição personalizada para exibição
 }
 
+// Configuração global de desconto anual
+export interface ConfiguracaoDescontoAnual {
+  habilitado: boolean
+  percentual: number // Ex: 15 = 15% de desconto
+}
+
 export interface Plano {
   id: string
   nome: string
@@ -210,19 +216,26 @@ interface PlansContextType {
   planos: Plano[]
   planosAtivos: Plano[]
   recursosSistema: RecursoSistema[]
+  descontoAnual: ConfiguracaoDescontoAnual
   atualizarPlano: (id: string, dados: Partial<Plano>) => void
   atualizarRecursoPlano: (planoId: string, recursoId: RecursoId, dados: Partial<RecursoPlano>) => void
+  atualizarDescontoAnual: (dados: Partial<ConfiguracaoDescontoAnual>) => void
   getPlanoById: (id: string) => Plano | undefined
   getRecursoPlano: (planoId: string, recursoId: RecursoId) => RecursoPlano | undefined
   verificarPermissao: (planoId: string, recursoId: RecursoId) => boolean
   getLimiteRecurso: (planoId: string, recursoId: RecursoId) => number | undefined
   getRecursosHabilitados: (planoId: string) => RecursoPlano[]
+  calcularPrecoAnual: (preco: number) => { precoAnual: number, precoComDesconto: number, economia: number }
 }
 
 const PlansContext = createContext<PlansContextType | undefined>(undefined)
 
 export function PlansProvider({ children }: { children: ReactNode }) {
   const [planos, setPlanos] = useState<Plano[]>(planosIniciais)
+  const [descontoAnual, setDescontoAnual] = useState<ConfiguracaoDescontoAnual>({
+    habilitado: false,
+    percentual: 15 // 15% de desconto padrão
+  })
 
   const planosAtivos = planos.filter(p => p.ativo)
 
@@ -266,18 +279,32 @@ export function PlansProvider({ children }: { children: ReactNode }) {
     return plano?.recursos.filter(r => r.habilitado) ?? []
   }
 
+  const atualizarDescontoAnual = (dados: Partial<ConfiguracaoDescontoAnual>) => {
+    setDescontoAnual(prev => ({ ...prev, ...dados }))
+  }
+
+  const calcularPrecoAnual = (preco: number) => {
+    const precoAnual = preco * 12
+    const economia = (precoAnual * descontoAnual.percentual) / 100
+    const precoComDesconto = precoAnual - economia
+    return { precoAnual, precoComDesconto, economia }
+  }
+
   return (
     <PlansContext.Provider value={{ 
       planos, 
       planosAtivos,
       recursosSistema: RECURSOS_SISTEMA,
+      descontoAnual,
       atualizarPlano, 
       atualizarRecursoPlano,
+      atualizarDescontoAnual,
       getPlanoById,
       getRecursoPlano,
       verificarPermissao,
       getLimiteRecurso,
-      getRecursosHabilitados
+      getRecursosHabilitados,
+      calcularPrecoAnual
     }}>
       {children}
     </PlansContext.Provider>
