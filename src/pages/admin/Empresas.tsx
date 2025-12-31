@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
+import { EmpresaConfigModal } from "@/components/empresa/empresa-config-modal"
 
 interface Empresa {
   id: number
@@ -113,6 +114,7 @@ export default function Empresas() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null)
+  const [configEmpresa, setConfigEmpresa] = useState<Empresa | null>(null)
   const { toast } = useToast()
   const { formatDate } = useBrazilianDate()
 
@@ -622,7 +624,7 @@ export default function Empresas() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setConfigEmpresa(empresa)}>
                     <Settings className="h-4 w-4 mr-2" />
                     Configurar
                   </Button>
@@ -640,6 +642,16 @@ export default function Empresas() {
           </Card>
         ))}
       </div>
+
+      {/* Modal de Configuração */}
+      <EmpresaConfigModal
+        empresa={configEmpresa}
+        open={configEmpresa !== null}
+        onOpenChange={(open) => !open && setConfigEmpresa(null)}
+        onUpdate={(empresaAtualizada) => {
+          setEmpresas(empresas.map(e => e.id === empresaAtualizada.id ? empresaAtualizada : e))
+        }}
+      />
     </div>
   )
 }

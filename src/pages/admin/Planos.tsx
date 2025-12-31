@@ -16,7 +16,9 @@ import {
   EyeOff,
   Shield,
   Settings2,
-  Infinity
+  Infinity,
+  Calendar,
+  Percent
 } from "lucide-react"
 import {
   Dialog,
@@ -35,7 +37,7 @@ import { usePlans, ICONES_PLANOS, Plano, RECURSOS_SISTEMA, RecursoPlano, Recurso
 import { toast } from "@/hooks/use-toast"
 
 export default function Planos() {
-  const { planos, atualizarPlano, recursosSistema } = usePlans()
+  const { planos, atualizarPlano, recursosSistema, descontoAnual, atualizarDescontoAnual, calcularPrecoAnual } = usePlans()
   const [editandoPlano, setEditandoPlano] = useState<Plano | null>(null)
   const [formData, setFormData] = useState<Partial<Plano>>({})
 
@@ -160,6 +162,79 @@ export default function Planos() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Configuração de Desconto Anual */}
+      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Calendar className="h-5 w-5 text-green-600 mt-0.5" />
+              <div className="space-y-2">
+                <p className="font-medium text-green-800 dark:text-green-200">Desconto para Pagamento Anual</p>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Configure o percentual de desconto para clientes que optarem pelo pagamento anual. 
+                  Este desconto será aplicado automaticamente na página de divulgação.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="percentualDesconto" className="text-sm whitespace-nowrap">Desconto:</Label>
+                <div className="relative w-20">
+                  <Input
+                    id="percentualDesconto"
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={descontoAnual.percentual}
+                    onChange={(e) => atualizarDescontoAnual({ percentual: Math.min(50, Math.max(0, parseInt(e.target.value) || 0)) })}
+                    className="pr-7"
+                    disabled={!descontoAnual.habilitado}
+                  />
+                  <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+              <Switch
+                checked={descontoAnual.habilitado}
+                onCheckedChange={(checked) => {
+                  atualizarDescontoAnual({ habilitado: checked })
+                  toast({
+                    title: checked ? "Desconto anual habilitado" : "Desconto anual desabilitado",
+                    description: checked 
+                      ? `Desconto de ${descontoAnual.percentual}% será exibido na página inicial.`
+                      : "A opção de pagamento anual foi removida da página inicial."
+                  })
+                }}
+              />
+            </div>
+          </div>
+          
+          {descontoAnual.habilitado && (
+            <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">Prévia dos valores com desconto:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {planos.filter(p => p.ativo).map(plano => {
+                  const { precoAnual, precoComDesconto, economia } = calcularPrecoAnual(plano.preco)
+                  return (
+                    <div key={plano.id} className="p-3 bg-white dark:bg-green-900/30 rounded-lg">
+                      <p className="font-medium text-sm">{plano.nome}</p>
+                      <p className="text-xs text-muted-foreground line-through">
+                        R$ {precoAnual.toFixed(2).replace('.', ',')}
+                      </p>
+                      <p className="text-lg font-bold text-green-600">
+                        R$ {precoComDesconto.toFixed(2).replace('.', ',')}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        Economia: R$ {economia.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
