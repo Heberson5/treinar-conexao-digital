@@ -10,6 +10,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { TrainingProvider } from "@/contexts/training-context";
 import { PlansProvider } from "@/contexts/plans-context";
+import { IntegrationProvider } from "@/contexts/integration-context";
 import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
@@ -29,6 +30,8 @@ import Planos from "./pages/admin/Planos";
 import Analytics from "./pages/admin/Analytics";
 import Permissoes from "./pages/admin/Permissoes";
 import Configuracoes from "./pages/admin/Configuracoes";
+import Integracoes from "./pages/admin/Integracoes";
+
 const queryClient = new QueryClient();
 
 function AppContent() {
@@ -67,6 +70,7 @@ function AppContent() {
         <Route path="/admin/analytics" element={<Analytics />} />
         <Route path="/admin/permissoes" element={<Permissoes />} />
         <Route path="/admin/configuracoes" element={<Configuracoes />} />
+        <Route path="/admin/integracoes" element={<Integracoes />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
@@ -82,9 +86,11 @@ const App = () => {
           <BrowserRouter>
             <AuthProvider>
               <PlansProvider>
-                <TrainingProvider>
-                  <AppContent />
-                </TrainingProvider>
+                <IntegrationProvider>
+                  <TrainingProvider>
+                    <AppContent />
+                  </TrainingProvider>
+                </IntegrationProvider>
               </PlansProvider>
             </AuthProvider>
           </BrowserRouter>
