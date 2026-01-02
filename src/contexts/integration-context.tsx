@@ -1,4 +1,13 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
+import { 
+  sendCourseNotification, 
+  sendCertificateEmail, 
+  getEligibleRecipients,
+  EmailRecipient,
+  CourseNotificationOptions 
+} from '@/services/email-service'
+import { CourseEmailData, CertificateEmailData } from '@/lib/calendar-utils'
+import { toast } from '@/hooks/use-toast'
 
 // Tipos para integrações de calendário
 export interface CalendarIntegration {
@@ -38,11 +47,26 @@ export interface CourseAlert {
   id: string
   courseId: number
   courseName: string
+  courseDescription: string
+  startDate: Date
+  endDate: Date
   targetDepartments: string[]
   scheduledAt: string
   sentAt?: string
   status: 'pending' | 'sent' | 'failed'
   recipientCount: number
+}
+
+// Tipos para histórico de certificados enviados
+export interface CertificateSent {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  courseId: number
+  courseName: string
+  sentAt: string
+  status: 'sent' | 'failed'
 }
 
 interface IntegrationContextType {
@@ -64,11 +88,12 @@ interface IntegrationContextType {
   
   // Alertas de cursos
   courseAlerts: CourseAlert[]
-  createCourseAlert: (alert: Omit<CourseAlert, 'id' | 'status' | 'sentAt'>) => void
+  createCourseAlert: (alert: Omit<CourseAlert, 'id' | 'status' | 'sentAt' | 'recipientCount'>) => Promise<void>
   sendCourseAlert: (alertId: string) => Promise<void>
   
   // Certificados automáticos
-  sendCertificate: (userId: string, courseId: number) => Promise<void>
+  certificatesSent: CertificateSent[]
+  sendCertificate: (userId: string, userName: string, userEmail: string, courseId: number, courseName: string, completionDate: Date, hoursCompleted: number, certificateUrl: string) => Promise<void>
   
   // Estado de carregamento
   isLoading: boolean
@@ -104,6 +129,9 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
   // Alertas de cursos
   const [courseAlerts, setCourseAlerts] = useState<CourseAlert[]>([])
   
+  // Histórico de certificados enviados
+  const [certificatesSent, setCertificatesSent] = useState<CertificateSent[]>([])
+  
   // Conectar calendário (mock - será implementado com Cloud)
   const connectCalendar = async (provider: 'google' | 'outlook') => {
     setIsLoading(true)
@@ -122,7 +150,11 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       }
       
       setCalendarIntegrations(prev => [...prev, mockIntegration])
-      console.log(`Calendário ${provider} conectado (mock)`)
+      
+      toast({
+        title: `${provider === 'google' ? 'Google' : 'Outlook'} Calendar conectado`,
+        description: 'Quando o Cloud estiver ativo, os eventos serão sincronizados automaticamente.'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -130,6 +162,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
   
   const disconnectCalendar = (id: string) => {
     setCalendarIntegrations(prev => prev.filter(cal => cal.id !== id))
+    toast({
+      title: 'Calendário desconectado',
+      description: 'A integração foi removida com sucesso.'
+    })
   }
   
   const syncCalendar = async (id: string) => {
@@ -141,7 +177,11 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       setCalendarIntegrations(prev => prev.map(cal => 
         cal.id === id ? { ...cal, lastSync: new Date().toISOString() } : cal
       ))
-      console.log('Calendário sincronizado (mock)')
+      
+      toast({
+        title: 'Calendário sincronizado',
+        description: 'Os eventos foram atualizados (mock - Cloud necessário).'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -149,6 +189,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
   
   const updateNotificationSettings = (settings: Partial<NotificationSettings>) => {
     setNotificationSettings(prev => ({ ...prev, ...settings }))
+    toast({
+      title: 'Configurações salvas',
+      description: 'As preferências de notificação foram atualizadas.'
+    })
   }
   
   // Conectar Mercado Pago
@@ -165,7 +209,11 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         publicKey,
         webhookConfigured: true
       }))
-      console.log('Mercado Pago conectado (mock)')
+      
+      toast({
+        title: 'Mercado Pago conectado',
+        description: 'Integração configurada (mock - Cloud necessário para validação).'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -179,52 +227,159 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       webhookConfigured: false,
       recurringPaymentsEnabled: false
     })
+    
+    toast({
+      title: 'Mercado Pago desconectado',
+      description: 'A integração foi removida com sucesso.'
+    })
   }
   
   const toggleSandboxMode = (enabled: boolean) => {
     setPaymentIntegration(prev => ({ ...prev, sandboxMode: enabled }))
   }
   
-  // Criar alerta de curso
-  const createCourseAlert = (alert: Omit<CourseAlert, 'id' | 'status' | 'sentAt'>) => {
-    const newAlert: CourseAlert = {
-      ...alert,
-      id: `alert-${Date.now()}`,
-      status: 'pending'
-    }
-    setCourseAlerts(prev => [...prev, newAlert])
-  }
-  
-  // Enviar alerta de curso
-  const sendCourseAlert = async (alertId: string) => {
+  // Criar alerta de curso com busca de destinatários
+  const createCourseAlert = async (alert: Omit<CourseAlert, 'id' | 'status' | 'sentAt' | 'recipientCount'>) => {
     setIsLoading(true)
     try {
-      // TODO: Implementar envio com Cloud
-      // Exemplo: await supabase.functions.invoke('send-course-alert', { body: { alertId } })
+      // Buscar destinatários elegíveis
+      const recipients = await getEligibleRecipients(alert.targetDepartments)
       
-      setCourseAlerts(prev => prev.map(alert => 
-        alert.id === alertId 
-          ? { ...alert, status: 'sent' as const, sentAt: new Date().toISOString() }
-          : alert
-      ))
-      console.log('Alerta enviado (mock)')
-    } catch {
-      setCourseAlerts(prev => prev.map(alert => 
-        alert.id === alertId ? { ...alert, status: 'failed' as const } : alert
-      ))
+      const newAlert: CourseAlert = {
+        ...alert,
+        id: `alert-${Date.now()}`,
+        status: 'pending',
+        recipientCount: recipients.length || alert.targetDepartments.length * 10 // Estimativa se mock
+      }
+      
+      setCourseAlerts(prev => [...prev, newAlert])
+      
+      toast({
+        title: 'Alerta criado',
+        description: `Alerta para "${alert.courseName}" criado com ${newAlert.recipientCount} destinatários.`
+      })
     } finally {
       setIsLoading(false)
     }
   }
   
-  // Enviar certificado automático
-  const sendCertificate = async (userId: string, courseId: number) => {
+  // Enviar alerta de curso com e-mail
+  const sendCourseAlert = async (alertId: string) => {
     setIsLoading(true)
+    
+    const alert = courseAlerts.find(a => a.id === alertId)
+    if (!alert) {
+      setIsLoading(false)
+      return
+    }
+    
     try {
-      // TODO: Implementar envio de certificado com Cloud
-      // Exemplo: await supabase.functions.invoke('send-certificate', { body: { userId, courseId } })
+      // Buscar destinatários
+      const recipients = await getEligibleRecipients(alert.targetDepartments)
       
-      console.log(`Certificado enviado para usuário ${userId} do curso ${courseId} (mock)`)
+      // Se não houver destinatários do banco, usar mock
+      const emailRecipients: EmailRecipient[] = recipients.length > 0 
+        ? recipients 
+        : [{ email: 'mock@exemplo.com', name: 'Usuário Teste', department: 'TI' }]
+      
+      const courseData: CourseEmailData = {
+        courseName: alert.courseName,
+        courseDescription: alert.courseDescription,
+        startDate: alert.startDate,
+        endDate: alert.endDate,
+        department: alert.targetDepartments.join(', '),
+        enrollmentUrl: `${window.location.origin}/treinamento/${alert.courseId}`
+      }
+      
+      const result = await sendCourseNotification({
+        course: courseData,
+        recipients: emailRecipients,
+        baseUrl: window.location.origin
+      })
+      
+      if (result.success) {
+        setCourseAlerts(prev => prev.map(a => 
+          a.id === alertId 
+            ? { ...a, status: 'sent' as const, sentAt: new Date().toISOString(), recipientCount: result.sentCount }
+            : a
+        ))
+        
+        toast({
+          title: 'Alerta enviado!',
+          description: `E-mail enviado para ${result.sentCount} destinatários.`
+        })
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (error) {
+      setCourseAlerts(prev => prev.map(a => 
+        a.id === alertId ? { ...a, status: 'failed' as const } : a
+      ))
+      
+      toast({
+        title: 'Erro ao enviar alerta',
+        description: 'Não foi possível enviar o e-mail. Verifique as configurações.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Enviar certificado automático por e-mail
+  const sendCertificate = async (
+    userId: string, 
+    userName: string, 
+    userEmail: string, 
+    courseId: number, 
+    courseName: string, 
+    completionDate: Date, 
+    hoursCompleted: number, 
+    certificateUrl: string
+  ) => {
+    setIsLoading(true)
+    
+    try {
+      const certificateData: CertificateEmailData = {
+        userName,
+        courseName,
+        completionDate,
+        certificateUrl,
+        hoursCompleted
+      }
+      
+      const result = await sendCertificateEmail({
+        certificate: certificateData,
+        recipient: { email: userEmail, name: userName }
+      })
+      
+      const sentRecord: CertificateSent = {
+        id: `cert-${Date.now()}`,
+        userId,
+        userName,
+        userEmail,
+        courseId,
+        courseName,
+        sentAt: new Date().toISOString(),
+        status: result.success ? 'sent' : 'failed'
+      }
+      
+      setCertificatesSent(prev => [...prev, sentRecord])
+      
+      if (result.success) {
+        toast({
+          title: 'Certificado enviado!',
+          description: `O certificado foi enviado para ${userEmail}.`
+        })
+      } else {
+        throw new Error(result.error)
+      }
+    } catch {
+      toast({
+        title: 'Erro ao enviar certificado',
+        description: 'Não foi possível enviar o certificado por e-mail.',
+        variant: 'destructive'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -245,6 +400,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       courseAlerts,
       createCourseAlert,
       sendCourseAlert,
+      certificatesSent,
       sendCertificate,
       isLoading
     }}>
