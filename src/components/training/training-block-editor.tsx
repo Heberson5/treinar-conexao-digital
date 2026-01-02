@@ -46,7 +46,12 @@ interface TrainingBlockEditorProps {
 }
 
 export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEditorProps) {
-  const [editingBlock, setEditingBlock] = useState<string | null>(null);
+  // Estado para bloco expandido (mostrar/ocultar conteúdo)
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
+
+  // Estado apenas para edição do título (não deve colapsar o bloco ao perder foco)
+  const [titleEditingBlockId, setTitleEditingBlockId] = useState<string | null>(null);
+
   const [showAddMenu, setShowAddMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<"image" | "document" | null>(null);
@@ -69,7 +74,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     onBlocksChange(updatedBlocks);
   };
 
-  const addBlock = (type: ContentBlock['type']) => {
+  const addBlock = (type: ContentBlock["type"]) => {
     const newBlock: ContentBlock = {
       id: `block-${Date.now()}`,
       type,
@@ -81,12 +86,13 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
 
     const newBlocks = [...blocks, newBlock];
     onBlocksChange(newBlocks);
-    
-    // Use setTimeout to ensure the block is rendered before setting editing state
+
+    // Use setTimeout to ensure the block is rendered before setting state
     setTimeout(() => {
-      setEditingBlock(newBlock.id);
+      setExpandedBlockId(newBlock.id);
+      setTitleEditingBlockId(newBlock.id); // inicia editando o título, mas sem risco de colapsar ao focar o conteúdo
     }, 100);
-    
+
     setShowAddMenu(false);
   };
 
@@ -99,15 +105,21 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
 
   const deleteBlock = (blockId: string) => {
     const updatedBlocks = blocks.filter(block => block.id !== blockId);
+
     // Reorder remaining blocks
     const reorderedBlocks = updatedBlocks.map((block, index) => ({
       ...block,
       order: index + 1
     }));
+
+    // Se estava expandido/editando título, limpar estado
+    if (expandedBlockId === blockId) setExpandedBlockId(null);
+    if (titleEditingBlockId === blockId) setTitleEditingBlockId(null);
+
     onBlocksChange(reorderedBlocks);
   };
 
-  const getDefaultTitle = (type: ContentBlock['type']) => {
+  const getDefaultTitle = (type: ContentBlock["type"]) => {
     switch (type) {
       case "text": return "Novo Conteúdo de Texto";
       case "video": return "Novo Vídeo";
@@ -117,7 +129,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     }
   };
 
-  const getDefaultContent = (type: ContentBlock['type']) => {
+  const getDefaultContent = (type: ContentBlock["type"]) => {
     switch (type) {
       case "text": return "<h3>Título do Conteúdo</h3><p>Escreva aqui o conteúdo do treinamento...</p>";
       case "video": return "";
@@ -127,7 +139,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     }
   };
 
-  const getBlockIcon = (type: ContentBlock['type']) => {
+  const getBlockIcon = (type: ContentBlock["type"]) => {
     switch (type) {
       case "text": return <FileText className="h-4 w-4" />;
       case "video": return <Video className="h-4 w-4" />;
@@ -137,7 +149,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     }
   };
 
-  const getBlockTypeLabel = (type: ContentBlock['type']) => {
+  const getBlockTypeLabel = (type: ContentBlock["type"]) => {
     switch (type) {
       case "text": return "Texto";
       case "video": return "Vídeo";
@@ -154,7 +166,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      
+
       if (uploadType === "image") {
         addBlock("image");
         const newBlock = blocks[blocks.length];
@@ -187,6 +199,23 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
     setUploadType(null);
   };
 
+  const toggleExpand = (blockId: string) => {
+    setExpandedBlockId(prev => (prev === blockId ? null : blockId));
+    // Ao expandir/colapsar via botão, não força edição do título.
+    // Mantém o comportamento previsível.
+  };
+
+  const startTitleEdit = (blockId: string) => {
+    setExpandedBlockId(blockId);           // garante que o conteúdo fique visível
+    setTitleEditingBlockId(blockId);       // entra em edição do título
+  };
+
+  const finishTitleEdit = (blockId: string) => {
+    if (titleEditingBlockId === blockId) {
+      setTitleEditingBlockId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Add Block Menu */}
@@ -204,7 +233,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
             </Button>
           </CardTitle>
         </CardHeader>
-        
+
         {showAddMenu && (
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -216,7 +245,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                 <FileText className="h-6 w-6" />
                 <span className="text-sm">Texto</span>
               </Button>
-              
+
               <Button
                 variant="outline"
                 className="h-auto p-4 flex flex-col gap-2"
@@ -225,7 +254,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                 <Video className="h-6 w-6" />
                 <span className="text-sm">Vídeo</span>
               </Button>
-              
+
               <Button
                 variant="outline"
                 className="h-auto p-4 flex flex-col gap-2"
@@ -237,7 +266,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                 <ImageIcon className="h-6 w-6" />
                 <span className="text-sm">Imagem</span>
               </Button>
-              
+
               <Button
                 variant="outline"
                 className="h-auto p-4 flex flex-col gap-2"
@@ -278,9 +307,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                     <Card
                       ref={provided.innerRef}
                       {...provided.draggableProps}
-                      className={`transition-shadow ${
-                        snapshot.isDragging ? "shadow-lg" : ""
-                      }`}
+                      className={`transition-shadow ${snapshot.isDragging ? "shadow-lg" : ""}`}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
@@ -291,49 +318,49 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                             >
                               <GripVertical className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
                               {getBlockIcon(block.type)}
                               <Badge variant="outline">
                                 {getBlockTypeLabel(block.type)}
                               </Badge>
                             </div>
-                            
+
                             <div className="flex-1">
-                              {editingBlock === block.id ? (
+                              {titleEditingBlockId === block.id ? (
                                 <Input
                                   value={block.title}
                                   onChange={(e) => updateBlock(block.id, { title: e.target.value })}
-                                  onBlur={() => setEditingBlock(null)}
+                                  onBlur={() => finishTitleEdit(block.id)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      setEditingBlock(null);
+                                    if (e.key === "Enter" || e.key === "Escape") {
+                                      finishTitleEdit(block.id);
                                     }
                                   }}
                                   autoFocus
                                 />
                               ) : (
-                                <h3 
+                                <h3
                                   className="font-medium cursor-pointer hover:text-primary"
-                                  onClick={() => setEditingBlock(block.id)}
+                                  onClick={() => startTitleEdit(block.id)}
                                 >
                                   {block.title}
                                 </h3>
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-2">
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => setEditingBlock(editingBlock === block.id ? null : block.id)}
+                              onClick={() => toggleExpand(block.id)}
                               title="Editar bloco"
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>
-                            
+
                             <Button
                               variant="ghost"
                               size="sm"
@@ -344,11 +371,11 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                           </div>
                         </div>
                       </CardHeader>
-                      
-                      {editingBlock === block.id && (
+
+                      {expandedBlockId === block.id && (
                         <CardContent className="pt-0 space-y-4">
                           <Separator />
-                          
+
                           {block.type === "text" && (
                             <div className="space-y-2">
                               <Label htmlFor={`text-content-${block.id}`}>Conteúdo</Label>
@@ -365,7 +392,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                               </p>
                             </div>
                           )}
-                          
+
                           {block.type === "video" && (
                             <div className="space-y-4">
                               <div className="space-y-2">
@@ -382,7 +409,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                   Suporta YouTube, Vimeo e links diretos de vídeo
                                 </p>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`video-duration-${block.id}`}>Duração</Label>
@@ -395,10 +422,10 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                   />
                                 </div>
                               </div>
-                              
+
                               {block.content && block.content.trim() && (
                                 <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border">
-                                  {block.content.includes('youtube.com') || block.content.includes('youtu.be') ? (
+                                  {block.content.includes("youtube.com") || block.content.includes("youtu.be") ? (
                                     <div className="text-center">
                                       <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
                                         <Play className="h-8 w-8 text-red-600" fill="currentColor" />
@@ -417,7 +444,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                               )}
                             </div>
                           )}
-                          
+
                           {block.type === "image" && (
                             <div className="space-y-4">
                               {block.content && (
@@ -429,7 +456,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                   />
                                 </div>
                               )}
-                              
+
                               <Button
                                 variant="outline"
                                 onClick={() => {
@@ -442,7 +469,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                               </Button>
                             </div>
                           )}
-                          
+
                           {block.type === "document" && (
                             <div className="space-y-4">
                               <div className="space-y-2">
@@ -455,7 +482,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                   autoComplete="off"
                                 />
                               </div>
-                              
+
                               {(block.fileSize || block.fileType) && (
                                 <div className="flex gap-2">
                                   {block.fileType && (
@@ -466,7 +493,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                                   )}
                                 </div>
                               )}
-                              
+
                               <Button
                                 type="button"
                                 variant="outline"
@@ -491,7 +518,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
           )}
         </Droppable>
       </DragDropContext>
-      
+
       {blocks.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
