@@ -34,35 +34,31 @@ async function hashString(str: string): Promise<string> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  console.log("AuthProvider rendering...");
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    console.log("AuthProvider useEffect running...");
     // Verificar se há sessão salva
     const savedAuth = localStorage.getItem('training-portal-auth');
     if (savedAuth) {
-      const authData = JSON.parse(savedAuth);
-      // Normalizar role para minúsculas
-      if (authData.user && authData.user.role) {
-        authData.user.role = authData.user.role.toLowerCase();
+      try {
+        const authData = JSON.parse(savedAuth);
+        // Normalizar role para minúsculas
+        if (authData.user && authData.user.role) {
+          authData.user.role = authData.user.role.toLowerCase();
+        }
+        setUser(authData.user);
+        setIsAuthenticated(true);
+      } catch {
+        // Invalid session data, clear it
+        localStorage.removeItem('training-portal-auth');
       }
-      setUser(authData.user);
-      setIsAuthenticated(true);
-      console.log("Restored user from localStorage:", authData.user);
     }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     const emailHash = await hashString(email)
     const passwordHash = await hashString(password)
-    
-    console.log("Login attempt - email:", email);
-    console.log("Login attempt - emailHash:", emailHash);
-    console.log("Login attempt - passwordHash:", passwordHash);
-    console.log("Expected EMAIL_HASH:", EMAIL_HASH);
-    console.log("Expected PASSWORD_HASH:", PASSWORD_HASH);
 
     if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
       const userData: User = {
@@ -96,21 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Funções de autorização
   const canCreateMaster = () => {
-    console.log("canCreateMaster - user:", user);
     return user?.role?.toLowerCase() === "master";
   };
   const canCreateAdmin = () => {
-    console.log("canCreateAdmin - user:", user);
     const role = user?.role?.toLowerCase();
     return role === "master" || role === "admin";
   };
   const canCreateUser = () => {
-    console.log("canCreateUser - user:", user);
     const role = user?.role?.toLowerCase();
     return role === "master" || role === "admin";
   };
   const canAccessAdmin = () => {
-    console.log("canAccessAdmin - user:", user);
     const role = user?.role?.toLowerCase();
     return role === "master" || role === "admin";
   };
