@@ -54,10 +54,7 @@ export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
-  const { canAccessAdmin, user } = useAuth()
-  
-  console.log("AppSidebar - user:", user);
-  console.log("AppSidebar - canAccessAdmin:", canAccessAdmin());
+  const { canAccessAdmin } = useAuth()
   
   const isMainExpanded = mainMenuItems.some((item) => currentPath === item.url)
   const isAdminExpanded = adminMenuItems.some((item) => currentPath === item.url)

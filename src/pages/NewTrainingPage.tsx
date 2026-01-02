@@ -63,9 +63,8 @@ export default function NewTrainingPage(): JSX.Element {
   const removeBlock = (id: string) => setBlocks((prev) => prev.filter((x) => x.id !== id));
 
   const handleSave = () => {
-    const payload = { title, blocks };
-    console.log("Salvar treinamento:", payload);
-    alert("Treinamento pronto para salvar (ver Console).");
+    // Training save logic - payload ready for backend integration
+    alert("Treinamento pronto para salvar.");
   };
 
   const container: React.CSSProperties = { maxWidth: 1200, margin: "0 auto", padding: "16px" };

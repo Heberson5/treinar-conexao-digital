@@ -1,7 +1,7 @@
-import { useBrazilianDate } from "@/hooks/use-brazilian-date";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { 
   Play, 
   FileText, 
@@ -46,7 +46,7 @@ export function TrainingContentViewer({ blocks, progress, onContentRead }: Train
       case "text":
         return (
           <div className="prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground">
-            <div dangerouslySetInnerHTML={{ __html: block.content }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />
           </div>
         );
         
@@ -134,7 +134,7 @@ export function TrainingContentViewer({ blocks, progress, onContentRead }: Train
       default:
         return (
           <div className="prose prose-lg max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: block.content }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />
           </div>
         );
     }

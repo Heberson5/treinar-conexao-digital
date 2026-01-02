@@ -35,9 +35,7 @@ import Integracoes from "./pages/admin/Integracoes";
 const queryClient = new QueryClient();
 
 function AppContent() {
-  console.log("AppContent rendering...");
-  const { isAuthenticated, login, logout } = useAuth();
-  console.log("AppContent - isAuthenticated:", isAuthenticated);
+  const { isAuthenticated, logout } = useAuth();
 
   if (!isAuthenticated) {
     return (
@@ -78,7 +76,6 @@ function AppContent() {
 }
 
 const App = () => {
-  console.log("App rendering...");
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">

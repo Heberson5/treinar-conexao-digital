@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { 
   GripVertical, 
   FileText, 
@@ -177,7 +178,7 @@ export function TrainingBlocks({
                   <div className="space-y-4">
                     {block.type === "text" && (
                       <div className="prose prose-sm max-w-none">
-                        <div dangerouslySetInnerHTML={{ __html: block.content }} />
+                        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />
                       </div>
                     )}
                     
