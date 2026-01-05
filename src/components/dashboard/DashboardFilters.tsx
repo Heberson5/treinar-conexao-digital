@@ -121,9 +121,9 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
       {/* Filtro de Empresa - Apenas para Master */}
       {isMaster && (
         <Select
-          value={filters.companyId}
+          value={filters.companyId || "all"}
           onValueChange={(value) =>
-            onFiltersChange({ ...filters, companyId: value, userId: "" })
+            onFiltersChange({ ...filters, companyId: value === "all" ? "" : value, userId: "" })
           }
         >
           <SelectTrigger className="w-[180px]">
@@ -131,7 +131,7 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
             <SelectValue placeholder="Todas as empresas" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as empresas</SelectItem>
+            <SelectItem value="all">Todas as empresas</SelectItem>
             {mockCompanies.map((company) => (
               <SelectItem key={company.id} value={company.id}>
                 {company.name}
@@ -210,9 +210,9 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
 
       {/* Filtro de Departamento */}
       <Select
-        value={filters.departmentId}
+        value={filters.departmentId || "all"}
         onValueChange={(value) =>
-          onFiltersChange({ ...filters, departmentId: value, userId: "" })
+          onFiltersChange({ ...filters, departmentId: value === "all" ? "" : value, userId: "" })
         }
       >
         <SelectTrigger className="w-[180px]">
@@ -220,7 +220,7 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
           <SelectValue placeholder="Todos departamentos" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todos departamentos</SelectItem>
+          <SelectItem value="all">Todos departamentos</SelectItem>
           {departments.map((dept) => (
             <SelectItem key={dept.id} value={dept.id.toString()}>
               {dept.nome}
@@ -231,15 +231,15 @@ export function DashboardFilters({ filters, onFiltersChange }: DashboardFiltersP
 
       {/* Filtro de Usuário */}
       <Select
-        value={filters.userId}
-        onValueChange={(value) => onFiltersChange({ ...filters, userId: value })}
+        value={filters.userId || "all"}
+        onValueChange={(value) => onFiltersChange({ ...filters, userId: value === "all" ? "" : value })}
       >
         <SelectTrigger className="w-[180px]">
           <Users className="h-4 w-4 mr-2" />
           <SelectValue placeholder="Todos usuários" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todos usuários</SelectItem>
+          <SelectItem value="all">Todos usuários</SelectItem>
           {filteredUsers.map((u) => (
             <SelectItem key={u.id} value={u.id}>
               {u.name}
