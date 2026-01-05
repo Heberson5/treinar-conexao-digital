@@ -1,7 +1,9 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { startOfDay, endOfDay } from "date-fns";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   BarChart3, 
   BookOpen, 
@@ -12,9 +14,34 @@ import {
   PlayCircle,
   Calendar,
   Target
-} from "lucide-react"
+} from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { DashboardFilters, DashboardFiltersState } from "@/components/dashboard/DashboardFilters";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  
+  // Estado inicial dos filtros
+  const [filters, setFilters] = useState<DashboardFiltersState>({
+    period: "month",
+    startDate: startOfDay(new Date()),
+    endDate: endOfDay(new Date()),
+    departmentId: "",
+    userId: "",
+    companyId: "",
+  });
+
+  // Determinar título baseado no role
+  const getDashboardTitle = () => {
+    const role = user?.role?.toLowerCase();
+    if (role === "master") {
+      return filters.companyId 
+        ? "Dashboard - Empresa Selecionada" 
+        : "Dashboard - Todas as Empresas";
+    }
+    return "Dashboard";
+  };
+
   const stats = [
     {
       title: "Treinamentos Ativos",
@@ -48,7 +75,7 @@ export default function Dashboard() {
       icon: Clock,
       color: "text-orange-600"
     }
-  ]
+  ];
 
   const recentTrainings = [
     {
@@ -78,17 +105,20 @@ export default function Dashboard() {
       participants: 28,
       dueDate: "2024-02-05"
     }
-  ]
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
         <p className="text-muted-foreground mt-2">
           Acompanhe o desempenho e progresso dos treinamentos
         </p>
       </div>
+
+      {/* Filtros */}
+      <DashboardFilters filters={filters} onFiltersChange={setFilters} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -236,5 +266,5 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
