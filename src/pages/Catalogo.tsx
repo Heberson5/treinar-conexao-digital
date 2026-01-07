@@ -43,7 +43,7 @@ export default function Catalogo() {
   const [levelFilter, setLevelFilter] = useState("todos")
   
   // Obter treinamentos filtrados por departamento do usuário
-  const availableTrainings = getTrainingsByDepartment(user?.departamento).filter(
+  const availableTrainings = getTrainingsByDepartment(user?.departamento_id).filter(
     training => training.status === "ativo"
   )
   

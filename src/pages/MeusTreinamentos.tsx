@@ -37,7 +37,7 @@ export default function MeusTreinamentos() {
   const { formatDateOnly, formatLastAccessed } = useBrazilianDate()
   
   // Buscar treinamentos disponíveis para o departamento do usuário
-  const availableTrainings = getTrainingsByDepartment(user?.departamento).filter(
+  const availableTrainings = getTrainingsByDepartment(user?.departamento_id).filter(
     training => training.status === "ativo"
   )
   
@@ -321,9 +321,9 @@ export default function MeusTreinamentos() {
                            completionRate: training.progress,
                            score: 85 // Simulated
                          }}
-                         userName={user?.name || "Usuário"}
-                         userCompany="Portal Treinamentos Ltda"
-                         userDepartment={user?.departamento}
+                          userName={user?.nome || "Usuário"}
+                          userCompany="Portal Treinamentos Ltda"
+                          userDepartment={user?.departamento_id}
                        />
                       )}
                    </div>
@@ -516,9 +516,9 @@ export default function MeusTreinamentos() {
                            completionRate: training.progress,
                            score: 85
                          }}
-                         userName={user?.name || "Usuário"}
-                         userCompany="Portal Treinamentos Ltda"
-                         userDepartment={user?.departamento}
+                          userName={user?.nome || "Usuário"}
+                          userCompany="Portal Treinamentos Ltda"
+                          userDepartment={user?.departamento_id}
                        />
                    </div>
                  </CardContent>

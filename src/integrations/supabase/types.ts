@@ -14,16 +14,314 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      atividades: {
+        Row: {
+          criado_em: string | null
+          descricao: string
+          id: string
+          metadata: Json | null
+          tipo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          descricao: string
+          id?: string
+          metadata?: Json | null
+          tipo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          descricao?: string
+          id?: string
+          metadata?: Json | null
+          tipo?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      departamentos: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          criado_em: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          cnpj: string | null
+          criado_em: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cnpj?: string | null
+          criado_em?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cnpj?: string | null
+          criado_em?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+        }
+        Relationships: []
+      }
+      perfis: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          avatar_url: string | null
+          cargo: string | null
+          criado_em: string | null
+          departamento_id: string | null
+          email: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          avatar_url?: string | null
+          cargo?: string | null
+          criado_em?: string | null
+          departamento_id?: string | null
+          email: string
+          empresa_id?: string | null
+          id: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          avatar_url?: string | null
+          cargo?: string | null
+          criado_em?: string | null
+          departamento_id?: string | null
+          email?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfis_departamento_id_fkey"
+            columns: ["departamento_id"]
+            isOneToOne: false
+            referencedRelation: "departamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      progresso_treinamentos: {
+        Row: {
+          atualizado_em: string | null
+          concluido: boolean | null
+          criado_em: string | null
+          data_conclusao: string | null
+          data_inicio: string | null
+          id: string
+          nota_avaliacao: number | null
+          percentual_concluido: number | null
+          tempo_assistido_minutos: number | null
+          treinamento_id: string
+          usuario_id: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          concluido?: boolean | null
+          criado_em?: string | null
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          id?: string
+          nota_avaliacao?: number | null
+          percentual_concluido?: number | null
+          tempo_assistido_minutos?: number | null
+          treinamento_id: string
+          usuario_id: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          concluido?: boolean | null
+          criado_em?: string | null
+          data_conclusao?: string | null
+          data_inicio?: string | null
+          id?: string
+          nota_avaliacao?: number | null
+          percentual_concluido?: number | null
+          tempo_assistido_minutos?: number | null
+          treinamento_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_treinamentos_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinamentos: {
+        Row: {
+          atualizado_em: string | null
+          categoria: string | null
+          criado_em: string | null
+          data_limite: string | null
+          departamento_id: string | null
+          descricao: string | null
+          duracao_minutos: number | null
+          empresa_id: string | null
+          id: string
+          instrutor_id: string | null
+          nivel: string | null
+          obrigatorio: boolean | null
+          publicado: boolean | null
+          thumbnail_url: string | null
+          titulo: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          categoria?: string | null
+          criado_em?: string | null
+          data_limite?: string | null
+          departamento_id?: string | null
+          descricao?: string | null
+          duracao_minutos?: number | null
+          empresa_id?: string | null
+          id?: string
+          instrutor_id?: string | null
+          nivel?: string | null
+          obrigatorio?: boolean | null
+          publicado?: boolean | null
+          thumbnail_url?: string | null
+          titulo: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          categoria?: string | null
+          criado_em?: string | null
+          data_limite?: string | null
+          departamento_id?: string | null
+          descricao?: string | null
+          duracao_minutos?: number | null
+          empresa_id?: string | null
+          id?: string
+          instrutor_id?: string | null
+          nivel?: string | null
+          obrigatorio?: boolean | null
+          publicado?: boolean | null
+          thumbnail_url?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinamentos_departamento_id_fkey"
+            columns: ["departamento_id"]
+            isOneToOne: false
+            referencedRelation: "departamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usuario_roles: {
+        Row: {
+          criado_em: string | null
+          id: string
+          role: Database["public"]["Enums"]["tipo_role"]
+          usuario_id: string
+        }
+        Insert: {
+          criado_em?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["tipo_role"]
+          usuario_id: string
+        }
+        Update: {
+          criado_em?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["tipo_role"]
+          usuario_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      eh_admin_ou_master: { Args: { usuario_id: string }; Returns: boolean }
+      verificar_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["tipo_role"]
+          usuario_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      tipo_role: "master" | "admin" | "instrutor" | "usuario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +448,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tipo_role: ["master", "admin", "instrutor", "usuario"],
+    },
   },
 } as const
