@@ -85,27 +85,33 @@ export type Database = {
           atualizado_em: string | null
           cnpj: string | null
           criado_em: string | null
+          data_contratacao: string | null
           id: string
           logo_url: string | null
           nome: string
+          plano_id: string | null
         }
         Insert: {
           ativo?: boolean | null
           atualizado_em?: string | null
           cnpj?: string | null
           criado_em?: string | null
+          data_contratacao?: string | null
           id?: string
           logo_url?: string | null
           nome: string
+          plano_id?: string | null
         }
         Update: {
           ativo?: boolean | null
           atualizado_em?: string | null
           cnpj?: string | null
           criado_em?: string | null
+          data_contratacao?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
+          plano_id?: string | null
         }
         Relationships: []
       }
@@ -165,6 +171,129 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plano_contratos: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          criado_em: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: string
+          id: string
+          limite_armazenamento_gb: number | null
+          limite_treinamentos: number
+          limite_usuarios: number
+          nome_plano: string
+          plano_id: string | null
+          preco_contratado: number
+          recursos_contratados: Json | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id: string
+          id?: string
+          limite_armazenamento_gb?: number | null
+          limite_treinamentos: number
+          limite_usuarios: number
+          nome_plano: string
+          plano_id?: string | null
+          preco_contratado: number
+          recursos_contratados?: Json | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: string
+          id?: string
+          limite_armazenamento_gb?: number | null
+          limite_treinamentos?: number
+          limite_usuarios?: number
+          nome_plano?: string
+          plano_id?: string | null
+          preco_contratado?: number
+          recursos_contratados?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_contratos_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planos: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          cor: string | null
+          criado_em: string | null
+          descricao: string | null
+          icone: string | null
+          id: string
+          limite_armazenamento_gb: number | null
+          limite_treinamentos: number
+          limite_usuarios: number
+          nome: string
+          ordem: number | null
+          periodo: string | null
+          popular: boolean | null
+          preco: number
+          recursos: Json | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cor?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          icone?: string | null
+          id?: string
+          limite_armazenamento_gb?: number | null
+          limite_treinamentos?: number
+          limite_usuarios?: number
+          nome: string
+          ordem?: number | null
+          periodo?: string | null
+          popular?: boolean | null
+          preco?: number
+          recursos?: Json | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cor?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          icone?: string | null
+          id?: string
+          limite_armazenamento_gb?: number | null
+          limite_treinamentos?: number
+          limite_usuarios?: number
+          nome?: string
+          ordem?: number | null
+          periodo?: string | null
+          popular?: boolean | null
+          preco?: number
+          recursos?: Json | null
+        }
+        Relationships: []
       }
       progresso_treinamentos: {
         Row: {
@@ -285,6 +414,41 @@ export type Database = {
           },
         ]
       }
+      uso_empresa: {
+        Row: {
+          armazenamento_usado_mb: number | null
+          atualizado_em: string | null
+          empresa_id: string
+          id: string
+          treinamentos_criados: number | null
+          usuarios_ativos: number | null
+        }
+        Insert: {
+          armazenamento_usado_mb?: number | null
+          atualizado_em?: string | null
+          empresa_id: string
+          id?: string
+          treinamentos_criados?: number | null
+          usuarios_ativos?: number | null
+        }
+        Update: {
+          armazenamento_usado_mb?: number | null
+          atualizado_em?: string | null
+          empresa_id?: string
+          id?: string
+          treinamentos_criados?: number | null
+          usuarios_ativos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uso_empresa_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuario_roles: {
         Row: {
           criado_em: string | null
@@ -311,7 +475,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      criar_contrato_plano: {
+        Args: { p_empresa_id: string; p_plano_id: string }
+        Returns: string
+      }
       eh_admin_ou_master: { Args: { usuario_id: string }; Returns: boolean }
+      verificar_limite_treinamentos: {
+        Args: { p_empresa_id: string }
+        Returns: boolean
+      }
       verificar_role: {
         Args: {
           _role: Database["public"]["Enums"]["tipo_role"]

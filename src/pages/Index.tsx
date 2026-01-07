@@ -331,13 +331,21 @@ export default function Index() {
                         )}
                       </div>
                       
-                      <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-muted rounded-lg">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">
-                          {plano.id === "enterprise" 
-                            ? `${plano.limiteUsuarios} usuários + pacotes` 
-                            : `Até ${plano.limiteUsuarios} usuários`}
-                        </span>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-center gap-2 p-2 bg-muted rounded-lg">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">
+                            Até {plano.limiteUsuarios} usuários
+                          </span>
+                        </div>
+                        {plano.limiteTreinamentos && (
+                          <div className="flex items-center justify-center gap-2 p-2 bg-muted rounded-lg">
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">
+                              Até {plano.limiteTreinamentos} treinamentos
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
                       <ul className="space-y-2 flex-1">
