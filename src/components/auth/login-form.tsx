@@ -5,15 +5,15 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, Mail, Lock, UserPlus, HelpCircle } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock } from "lucide-react"
 import { RegistrationForm } from "./registration-form"
 import { PasswordRecoveryForm } from "./password-recovery-form"
 
 type AuthMode = "login" | "register" | "recovery"
 
 export function LoginForm() {
-  const [email, setEmail] = useState("hebersohas@hotmail.com")
-  const [password, setPassword] = useState("123456")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>("login")
@@ -24,13 +24,18 @@ export function LoginForm() {
     e.preventDefault()
     setIsLoading(true)
     
-    const success = await login(email, password)
+    const result = await login(email, password)
     
-    if (!success) {
+    if (!result.success) {
       toast({
         title: "Erro no login",
-        description: "Email ou senha incorretos",
+        description: result.error || "Email ou senha incorretos",
         variant: "destructive"
+      })
+    } else {
+      toast({
+        title: "Bem-vindo!",
+        description: "Login realizado com sucesso"
       })
     }
     
@@ -140,18 +145,6 @@ export function LoginForm() {
               </p>
             </div>
           </form>
-          
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Conta Demo</span>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p><strong>Email:</strong> hebersohas@hotmail.com</p>
-              <p><strong>Senha:</strong> 123456</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

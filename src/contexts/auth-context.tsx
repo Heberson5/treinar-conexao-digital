@@ -1,122 +1,198 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User as SupabaseUser, Session } from "@supabase/supabase-js";
+
+export type TipoRole = "master" | "admin" | "instrutor" | "usuario";
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
-  name: string;
-  role: "master" | "admin" | "usuario" | "Master" | "Admin";
-  departamento?: string;
+  nome: string;
+  role: TipoRole;
+  departamento_id?: string;
+  empresa_id?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  session: Session | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, nome: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
   canCreateMaster: () => boolean;
   canCreateAdmin: () => boolean;
   canCreateUser: () => boolean;
   canAccessAdmin: () => boolean;
+  verificarRole: (role: TipoRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hash hardcoded para o usuário master inicial (hebersohas@gmail.com)
-const EMAIL_HASH = "8b0d8e8c917a528bf82b6ccc700491eefba6b85a7b32ae6039b866410910b84b"
-const PASSWORD_HASH = "97cbf42d84a09a02027288f4a94228fdda3737abb2299bfdb3310bea3cb40695"
-
-async function hashString(str: string): Promise<string> {
-  const buffer = new TextEncoder().encode(str)
-  const digest = await crypto.subtle.digest("SHA-256", buffer)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Verificar se há sessão salva
-    const savedAuth = localStorage.getItem('training-portal-auth');
-    if (savedAuth) {
-      try {
-        const authData = JSON.parse(savedAuth);
-        // Normalizar role para minúsculas
-        if (authData.user && authData.user.role) {
-          authData.user.role = authData.user.role.toLowerCase();
-        }
-        setUser(authData.user);
-        setIsAuthenticated(true);
-      } catch {
-        // Invalid session data, clear it
-        localStorage.removeItem('training-portal-auth');
+  // Buscar dados do perfil e role do usuário
+  const fetchUserData = async (supabaseUser: SupabaseUser) => {
+    try {
+      // Buscar perfil
+      const { data: perfil, error: perfilError } = await supabase
+        .from("perfis")
+        .select("*")
+        .eq("id", supabaseUser.id)
+        .single();
+
+      if (perfilError && perfilError.code !== "PGRST116") {
+        console.error("Erro ao buscar perfil:", perfilError);
       }
-    }
-  }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const emailHash = await hashString(email)
-    const passwordHash = await hashString(password)
+      // Buscar role do usuário
+      const { data: roleData, error: roleError } = await supabase
+        .from("usuario_roles")
+        .select("role")
+        .eq("usuario_id", supabaseUser.id)
+        .single();
 
-    if (emailHash === EMAIL_HASH && passwordHash === PASSWORD_HASH) {
+      if (roleError && roleError.code !== "PGRST116") {
+        console.error("Erro ao buscar role:", roleError);
+      }
+
       const userData: User = {
-        id: 1,
-        email,
-        name: "Heber Sohas",
-        role: "master",
-        departamento: "TI"
-      }
+        id: supabaseUser.id,
+        email: supabaseUser.email || "",
+        nome: perfil?.nome || supabaseUser.email?.split("@")[0] || "Usuário",
+        role: (roleData?.role as TipoRole) || "usuario",
+        departamento_id: perfil?.departamento_id,
+        empresa_id: perfil?.empresa_id,
+        avatar_url: perfil?.avatar_url
+      };
 
-      setUser(userData)
-      setIsAuthenticated(true)
-
-      // Salvar sessão
-      localStorage.setItem('training-portal-auth', JSON.stringify({
-        user: userData,
-        timestamp: Date.now()
-      }))
-      
-      return true;
+      setUser(userData);
+    } catch (error) {
+      console.error("Erro ao buscar dados do usuário:", error);
     }
-    
-    return false;
   };
 
-  const logout = () => {
+  useEffect(() => {
+    // Configurar listener de autenticação PRIMEIRO
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          // Usar setTimeout para evitar deadlock
+          setTimeout(() => {
+            fetchUserData(session.user);
+          }, 0);
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // DEPOIS verificar sessão existente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      
+      if (session?.user) {
+        fetchUserData(session.user);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Erro ao fazer login" };
+    }
+  };
+
+  const signup = async (email: string, password: string, nome: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            nome
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Erro ao criar conta" };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('training-portal-auth');
+    setSession(null);
   };
 
   // Funções de autorização
+  const verificarRole = (role: TipoRole): boolean => {
+    return user?.role === role;
+  };
+
   const canCreateMaster = () => {
-    return user?.role?.toLowerCase() === "master";
+    return user?.role === "master";
   };
+
   const canCreateAdmin = () => {
-    const role = user?.role?.toLowerCase();
-    return role === "master" || role === "admin";
+    return user?.role === "master" || user?.role === "admin";
   };
+
   const canCreateUser = () => {
-    const role = user?.role?.toLowerCase();
-    return role === "master" || role === "admin";
+    return user?.role === "master" || user?.role === "admin";
   };
+
   const canAccessAdmin = () => {
-    const role = user?.role?.toLowerCase();
-    return role === "master" || role === "admin";
+    return user?.role === "master" || user?.role === "admin" || user?.role === "instrutor";
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
       login,
+      signup,
       logout,
-      isAuthenticated,
+      isAuthenticated: !!session,
+      isLoading,
       canCreateMaster,
       canCreateAdmin,
       canCreateUser,
-      canAccessAdmin
+      canAccessAdmin,
+      verificarRole
     }}>
       {children}
     </AuthContext.Provider>

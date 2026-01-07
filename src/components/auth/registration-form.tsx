@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Building2, Mail, Lock, User, Phone } from "lucide-react"
 
@@ -29,6 +30,7 @@ export function RegistrationForm({ onBack, onSuccess }: RegistrationFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const { signup } = useAuth()
   const { toast } = useToast()
 
   const departamentos = [
@@ -49,10 +51,10 @@ export function RegistrationForm({ onBack, onSuccess }: RegistrationFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.nome || !formData.email || !formData.senha || !formData.empresa) {
+    if (!formData.nome || !formData.email || !formData.senha) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Preencha nome, email e senha",
         variant: "destructive"
       })
       return
@@ -87,15 +89,23 @@ export function RegistrationForm({ onBack, onSuccess }: RegistrationFormProps) {
 
     setIsLoading(true)
     
-    // Simular registro
-    setTimeout(() => {
-      setIsLoading(false)
+    const result = await signup(formData.email, formData.senha, formData.nome)
+    
+    if (result.success) {
       toast({
         title: "Conta criada com sucesso!",
-        description: "Verifique seu email para ativar a conta"
+        description: "Você já pode fazer login"
       })
       onSuccess()
-    }, 2000)
+    } else {
+      toast({
+        title: "Erro ao criar conta",
+        description: result.error || "Tente novamente mais tarde",
+        variant: "destructive"
+      })
+    }
+    
+    setIsLoading(false)
   }
 
   const updateField = (field: string, value: string | boolean) => {
@@ -216,7 +226,7 @@ export function RegistrationForm({ onBack, onSuccess }: RegistrationFormProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="empresa">Empresa *</Label>
+                <Label htmlFor="empresa">Empresa</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
