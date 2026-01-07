@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/select"
 import {
   Users,
-  Shield,
+  UserCheck,
+  Crown,
   Building2,
   Search,
   Filter,
@@ -151,7 +152,7 @@ export default function Usuarios() {
   const [empresasContrato, setEmpresasContrato] = useState<EmpresaContrato[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusUsuario | "todos">(
-    "todos"
+    "todos",
   )
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -170,13 +171,13 @@ export default function Usuarios() {
   const totalUsuarios = usuarios.length
   const totalAtivos = usuarios.filter((u) => u.status === "ativo").length
   const totalAdmins = usuarios.filter(
-    (u) => u.papel === "master" || u.papel === "admin"
+    (u) => u.papel === "master" || u.papel === "admin",
   ).length
   const totalEmpresas = new Set(usuarios.map((u) => u.empresa)).size
 
   const empresasOptions = useMemo(
     () => empresasContrato.map((e) => e.nome),
-    [empresasContrato]
+    [empresasContrato],
   )
 
   const usuariosFiltrados = useMemo(() => {
@@ -208,7 +209,7 @@ export default function Usuarios() {
   }
 
   const verificarLimiteEmpresa = (
-    empresaNome: string
+    empresaNome: string,
   ): { ok: boolean; mensagem?: string } => {
     const contrato = empresasContrato.find((e) => e.nome === empresaNome)
 
@@ -219,7 +220,7 @@ export default function Usuarios() {
 
     // Contabiliza TODOS os cadastros da empresa (ativos + inativos)
     const totalCadastrados = usuarios.filter(
-      (u) => u.empresa === empresaNome
+      (u) => u.empresa === empresaNome,
     ).length
 
     if (totalCadastrados >= contrato.usuariosTotal) {
@@ -294,8 +295,8 @@ export default function Usuarios() {
               ...usuario,
               status: usuario.status === "ativo" ? "inativo" : "ativo",
             }
-          : usuario
-      )
+          : usuario,
+      ),
     )
 
     toast({
@@ -386,7 +387,7 @@ export default function Usuarios() {
             <CardTitle className="text-sm font-medium">
               Usuários ativos
             </CardTitle>
-            <ToggleRight className="h-4 w-4 text-emerald-500" />
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalAtivos}</div>
@@ -401,7 +402,7 @@ export default function Usuarios() {
             <CardTitle className="text-sm font-medium">
               Perfis administrativos
             </CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <Crown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalAdmins}</div>
@@ -421,7 +422,7 @@ export default function Usuarios() {
           <CardContent>
             <div className="text-2xl font-bold">{totalEmpresas}</div>
             <p className="text-xs text-muted-foreground">
-              Empresas diferentes com pelo menos um usuário
+              Empresas vinculadas a cadastros de usuários
             </p>
           </CardContent>
         </Card>
@@ -429,60 +430,55 @@ export default function Usuarios() {
 
       {/* Filtros */}
       <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>
-            Busque usuários por nome, e-mail, empresa ou status.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, e-mail ou empresa"
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+        <CardContent className="pt-4 space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="flex-1 flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, e-mail ou empresa..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) =>
+                  setStatusFilter(value as StatusUsuario | "todos")
+                }
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="ativo">Ativos</SelectItem>
+                  <SelectItem value="inativo">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={statusFilter}
-              onValueChange={(value) =>
-                setStatusFilter(value as StatusUsuario | "todos")
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="ativo">Ativos</SelectItem>
-                <SelectItem value="inativo">Inativos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <Select
+                value={empresaFilter}
+                onValueChange={(value) => setEmpresaFilter(value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas empresas</SelectItem>
+                  {empresasOptions.map((nome) => (
+                    <SelectItem key={nome} value={nome}>
+                      {nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={empresaFilter}
-              onValueChange={(value) => setEmpresaFilter(value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as empresas</SelectItem>
-                {empresasOptions.map((nome) => (
-                  <SelectItem key={nome} value={nome}>
-                    {nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filtros
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -636,12 +632,31 @@ export default function Usuarios() {
               </Select>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateUsuario}>Salvar usuário</Button>
+            <div className="rounded-md border p-3 text-xs text-muted-foreground">
+              <p>
+                Ao salvar, será verificado o limite de{" "}
+                <strong>cadastros de usuários</strong> da empresa selecionada.
+              </p>
+              <p>
+                Mesmo que um usuário seja posteriormente inativado, o cadastro
+                continua contando para o limite. Alterar apenas o nome do
+                usuário preserva o histórico e não cria uma vaga nova; continua
+                sendo o mesmo cadastro.
+              </p>
             </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                resetForm()
+                setIsCreateOpen(false)
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateUsuario}>Salvar</Button>
           </div>
         </DialogContent>
       </Dialog>
