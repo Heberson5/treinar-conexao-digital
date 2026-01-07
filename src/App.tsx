@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { TrainingProvider } from "@/contexts/training-context";
 import { PlansProvider } from "@/contexts/plans-context";
 import { IntegrationProvider } from "@/contexts/integration-context";
+import { DepartmentProvider } from "@/contexts/department-context";
 import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
@@ -83,11 +84,13 @@ const App = () => {
           <BrowserRouter>
             <AuthProvider>
               <PlansProvider>
-                <IntegrationProvider>
-                  <TrainingProvider>
-                    <AppContent />
-                  </TrainingProvider>
-                </IntegrationProvider>
+                <DepartmentProvider>
+                  <IntegrationProvider>
+                    <TrainingProvider>
+                      <AppContent />
+                    </TrainingProvider>
+                  </IntegrationProvider>
+                </DepartmentProvider>
               </PlansProvider>
             </AuthProvider>
           </BrowserRouter>
