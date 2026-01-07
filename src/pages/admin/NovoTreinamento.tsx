@@ -1,39 +1,52 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save } from "lucide-react";
-import { useTraining } from "@/contexts/training-context";
-import { TrainingBlockEditor, type ContentBlock } from "@/components/training/training-block-editor";
-import { useDepartments } from "@/contexts/department-context";
-import { useToast } from "@/hooks/use-toast";
+import { useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info } from "lucide-react"
+import { useTraining } from "@/contexts/training-context"
+import {
+  TrainingBlockEditor,
+  type ContentBlock,
+} from "@/components/training/training-block-editor"
+import { useDepartments } from "@/contexts/department-context"
+import { useToast } from "@/hooks/use-toast"
+import { usePlans } from "@/contexts/plans-context"
+
+type NovoTreinamentoForm = {
+  titulo: string
+  subtitulo: string
+  descricao: string
+  texto: string
+  videoUrl: string
+  categoria: string
+  duracao: string
+  status: "ativo" | "inativo" | "rascunho"
+  instrutor: string
+  departamento: string
+  capa?: string
+  contentBlocks: ContentBlock[]
+}
 
 export default function NovoTreinamento() {
-  const navigate = useNavigate();
-  const { createTraining } = useTraining();
-  const { departments } = useDepartments();
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate()
+  const { trainings, createTraining } = useTraining()
+  const { departments } = useDepartments()
+  const { toast } = useToast()
+  const { planos, getLimiteRecurso } = usePlans()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [formData, setFormData] = useState<{
-    titulo: string;
-    subtitulo: string;
-    descricao: string;
-    texto: string;
-    videoUrl: string;
-    categoria: string;
-    duracao: string;
-    status: "ativo" | "inativo" | "rascunho";
-    instrutor: string;
-    departamento: string;
-    capa?: string;
-    contentBlocks: ContentBlock[];
-  }>({
+  const [formData, setFormData] = useState<NovoTreinamentoForm>({
     titulo: "",
     subtitulo: "",
     descricao: "",
@@ -43,34 +56,65 @@ export default function NovoTreinamento() {
     duracao: "",
     status: "rascunho",
     instrutor: "",
-    departamento: "todos",
+    departamento: "",
     capa: undefined,
-    contentBlocks: []
-  });
+    contentBlocks: [],
+  })
+
+  // Plano do portal para cálculo de limite de treinamentos
+  const planoPortalId =
+    import.meta.env.VITE_PLANO_PORTAL_ID || "premium" // fallback para o plano "premium" se a env não estiver definida
+
+  const planoPortal =
+    planos.find((p) => p.id === planoPortalId) ||
+    planos.find((p) => (p as any).popular) || // se tiver um plano marcado como "mais contratado"
+    planos[0] // fallback total: primeiro plano da lista
+
+  const limiteTreinamentosPlano = planoPortal
+    ? getLimiteRecurso(planoPortal.id, "treinamentos")
+    : undefined
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string;
-        setFormData(prev => ({ ...prev, capa: imageData }));
-      };
-      reader.readAsDataURL(file);
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        capa: reader.result as string,
+      }))
     }
-  };
+    reader.readAsDataURL(file)
+  }
 
   const handleSave = () => {
-    if (!formData.titulo || !formData.descricao) {
+    if (!formData.titulo.trim() || !formData.descricao.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Título e descrição são obrigatórios",
-        variant: "destructive"
-      });
-      return;
+        description: "Preencha pelo menos o título e a descrição do treinamento.",
+        variant: "destructive",
+      })
+      return
     }
 
-    // Persist
+    // Validação de limite de treinamentos ativos
+    if (formData.status === "ativo" && typeof limiteTreinamentosPlano === "number") {
+      const ativos = trainings.filter((t) => t.status === "ativo").length
+
+      if (ativos >= limiteTreinamentosPlano) {
+        toast({
+          title: "Limite de treinamentos atingido",
+          description:
+            `O plano ${planoPortal?.nome ?? ""} permite até ${limiteTreinamentosPlano} ` +
+            `treinamentos ativos simultaneamente. ` +
+            `Desative um treinamento existente ou contrate um plano com mais capacidade.`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     createTraining({
       titulo: formData.titulo,
       subtitulo: formData.subtitulo,
@@ -83,246 +127,344 @@ export default function NovoTreinamento() {
       instrutor: formData.instrutor,
       departamento: formData.departamento,
       capa: formData.capa,
-      // Guardar os blocos dentro de texto em HTML simples para manter compatibilidade,
-      // e também anexar os próprios blocos como JSON em um comentário (não quebra nada).
-      // Em um backend real, você teria um campo separado.
-    } as any);
+    })
 
-    toast({ title: "Treinamento criado!", description: "O treinamento foi criado com sucesso." });
-    navigate("/admin/treinamentos");
-  };
+    toast({
+      title: "Treinamento criado",
+      description: "O treinamento foi criado com sucesso.",
+    })
+
+    navigate("/admin/treinamentos")
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
+    <div className="container max-w-6xl py-8 space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/admin/treinamentos")}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl md:text-3xl font-bold">Criar Novo Treinamento</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Novo treinamento</h1>
+            <p className="text-sm text-muted-foreground">
+              Crie um novo treinamento estruturado com blocos de conteúdo, mídias e materiais
+              de apoio.
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex items-center gap-2">
+          {typeof limiteTreinamentosPlano === "number" && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>
+                Plano {planoPortal?.nome ?? planoPortalId}:{" "}
+                {trainings.filter((t) => t.status === "ativo").length}/
+                {limiteTreinamentosPlano} treinamentos ativos
+              </span>
+            </div>
+          )}
+
           <Button variant="outline" onClick={() => navigate("/admin/treinamentos")}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} className="bg-gradient-primary">
+          <Button onClick={handleSave}>
             <Save className="mr-2 h-4 w-4" />
-            Salvar
+            Salvar treinamento
           </Button>
         </div>
       </div>
 
-      {/* Form */}
-      <Tabs defaultValue="basico" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="basico">Básico</TabsTrigger>
+      <Tabs defaultValue="basico" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="basico">Dados básicos</TabsTrigger>
           <TabsTrigger value="blocos">Blocos</TabsTrigger>
           <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
           <TabsTrigger value="midia">Mídia</TabsTrigger>
           <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
         </TabsList>
 
+        {/* Aba: Dados básicos */}
         <TabsContent value="basico" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="titulo">Título *</Label>
-              <Input
-                id="titulo"
-                value={formData.titulo}
-                onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-                placeholder="Título do treinamento"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subtitulo">Subtítulo</Label>
-              <Input
-                id="subtitulo"
-                value={formData.subtitulo}
-                onChange={(e) => setFormData({...formData, subtitulo: e.target.value})}
-                placeholder="Subtítulo (opcional)"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição *</Label>
-            <Textarea
-              id="descricao"
-              value={formData.descricao}
-              onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-              placeholder="Descrição do treinamento"
-              rows={3}
-            />
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoria</Label>
-              <Select value={formData.categoria} onValueChange={(value) => setFormData({...formData, categoria: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="seguranca">Segurança</SelectItem>
-                  <SelectItem value="vendas">Vendas</SelectItem>
-                  <SelectItem value="desenvolvimento">Desenvolvimento</SelectItem>
-                  <SelectItem value="soft-skills">Soft Skills</SelectItem>
-                  <SelectItem value="lideranca">Liderança</SelectItem>
-                  <SelectItem value="tecnologia">Tecnologia</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="md:col-span-2 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="titulo">Título</Label>
+                <Input
+                  id="titulo"
+                  placeholder="Ex: Introdução à Segurança do Trabalho"
+                  value={formData.titulo}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, titulo: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="subtitulo">Subtítulo (opcional)</Label>
+                <Input
+                  id="subtitulo"
+                  placeholder="Uma visão geral dos principais conceitos de segurança"
+                  value={formData.subtitulo}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, subtitulo: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="descricao">Descrição</Label>
+                <Textarea
+                  id="descricao"
+                  rows={4}
+                  placeholder="Descreva os objetivos gerais do treinamento, principais tópicos e público-alvo."
+                  value={formData.descricao}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, descricao: e.target.value }))
+                  }
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="duracao">Duração</Label>
-              <Input
-                id="duracao"
-                value={formData.duracao}
-                onChange={(e) => setFormData({...formData, duracao: e.target.value})}
-                placeholder="Ex: 2h 30min"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instrutor">Instrutor</Label>
-              <Input
-                id="instrutor"
-                value={formData.instrutor}
-                onChange={(e) => setFormData({...formData, instrutor: e.target.value})}
-                placeholder="Nome do instrutor"
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="departamento">Departamento</Label>
-            <Select value={formData.departamento} onValueChange={(value) => setFormData({...formData, departamento: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o departamento..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Departamentos</SelectItem>
-                {departments.filter(dept => dept.ativo).map((dept) => (
-                  <SelectItem key={dept.id} value={dept.nome}>
-                    {dept.nome} - {dept.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              Selecione "Todos" para disponibilizar o treinamento para todos os departamentos, ou escolha um departamento específico
-            </p>
-          </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Input
+                  id="categoria"
+                  placeholder="Ex: Segurança, Compliance, Integração"
+                  value={formData.categoria}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, categoria: e.target.value }))
+                  }
+                />
+              </div>
 
-          <div className="flex items-center space-x-2">
-            <Switch 
-              checked={formData.status === "ativo"}
-              onCheckedChange={(checked) => setFormData({...formData, status: checked ? "ativo" : "rascunho"})}
-            />
-            <Label>Publicar imediatamente</Label>
-          </div>
-        </TabsContent>
+              <div className="space-y-2">
+                <Label htmlFor="instrutor">Instrutor</Label>
+                <Input
+                  id="instrutor"
+                  placeholder="Nome do instrutor responsável"
+                  value={formData.instrutor}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, instrutor: e.target.value }))
+                  }
+                />
+              </div>
 
-        <TabsContent value="blocos" className="space-y-4">
-          <div className="space-y-2">
-            <Label>Blocos de Conteúdo</Label>
-            <p className="text-sm text-muted-foreground">
-              Organize o conteúdo do treinamento em blocos. Você pode adicionar textos, vídeos, imagens e documentos na ordem desejada.
-            </p>
-          </div>
-          <TrainingBlockEditor
-            blocks={formData.contentBlocks}
-            onBlocksChange={(blocks) => setFormData({...formData, contentBlocks: blocks})}
-          />
-        </TabsContent>
+              <div className="space-y-2">
+                <Label htmlFor="duracao">Duração estimada</Label>
+                <Input
+                  id="duracao"
+                  placeholder="Ex: 1h30, 2 horas, 3 módulos"
+                  value={formData.duracao}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, duracao: e.target.value }))
+                  }
+                />
+              </div>
 
-        <TabsContent value="conteudo" className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="texto">Conteúdo do Treinamento</Label>
-            <Textarea
-              id="texto"
-              value={formData.texto}
-              onChange={(e) => setFormData({...formData, texto: e.target.value})}
-              placeholder="Conteúdo detalhado do treinamento..."
-              rows={12}
-            />
-          </div>
-        </TabsContent>
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select
+                  value={formData.departamento}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, departamento: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos os departamentos</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <TabsContent value="midia" className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="video">Link do Vídeo (YouTube)</Label>
-            <Input
-              id="video"
-              value={formData.videoUrl}
-              onChange={(e) => setFormData({...formData, videoUrl: e.target.value})}
-              placeholder="https://youtube.com/watch?v=..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Capa do Treinamento</Label>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              {formData.capa ? (
-                <div className="space-y-4">
-                  <img 
-                    src={formData.capa} 
-                    alt="Capa do treinamento" 
-                    className="max-w-full h-32 object-cover mx-auto rounded-lg"
-                  />
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Alterar Capa
-                    </Button>
-                    <Button variant="outline" onClick={() => setFormData(prev => ({ ...prev, capa: undefined }))}>
-                      Remover
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <div className="mt-4">
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload de Capa
-                    </Button>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      JPG, JPEG, PNG, GIF até 5MB
-                    </p>
-                  </div>
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="arquivos" className="space-y-4">
-          <div className="space-y-2">
-            <Label>Arquivos de Apoio</Label>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <div className="mt-4">
-                <Button variant="outline">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload de Arquivos
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  PDF, Word, TXT, Excel até 10MB
-                </p>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: "ativo" | "inativo" | "rascunho") =>
+                    setFormData((prev) => ({ ...prev, status: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rascunho">Rascunho</SelectItem>
+                    <SelectItem value="ativo">Ativo (visível para os colaboradores)</SelectItem>
+                    <SelectItem value="inativo">
+                      Inativo (oculto para os colaboradores)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
         </TabsContent>
+
+        {/* Aba: Blocos */}
+        <TabsContent value="blocos" className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">Blocos de conteúdo</h2>
+              <p className="text-sm text-muted-foreground">
+                Estruture o treinamento em blocos (textos, vídeos, perguntas, listas de
+                verificação, etc.).
+              </p>
+            </div>
+          </div>
+
+          <TrainingBlockEditor
+            blocks={formData.contentBlocks}
+            onChange={(blocks) =>
+              setFormData((prev) => ({
+                ...prev,
+                contentBlocks: blocks,
+              }))
+            }
+          />
+        </TabsContent>
+
+        {/* Aba: Conteúdo consolidado */}
+        <TabsContent value="conteudo" className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Conteúdo consolidado</h2>
+            <p className="text-sm text-muted-foreground">
+              Aqui você pode escrever ou revisar o texto completo do treinamento, consolidando
+              os principais pontos dos blocos.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="texto">Texto principal</Label>
+            <Textarea
+              id="texto"
+              rows={10}
+              placeholder="Escreva aqui o conteúdo completo do treinamento..."
+              value={formData.texto}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  texto: e.target.value,
+                }))
+              }
+            />
+          </div>
+        </TabsContent>
+
+        {/* Aba: Mídia */}
+        <TabsContent value="midia" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Imagem de capa</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-40 h-24 rounded-md border border-dashed border-muted-foreground/40 flex items-center justify-center overflow-hidden bg-muted">
+                    {formData.capa ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={formData.capa}
+                        alt="Capa do treinamento"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Enviar imagem
+                    </Button>
+                    {formData.capa && (
+                      <p className="text-xs text-muted-foreground">
+                        Clique novamente para substituir a imagem.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="videoUrl">URL do vídeo (opcional)</Label>
+                <Input
+                  id="videoUrl"
+                  placeholder="Cole aqui a URL de um vídeo (YouTube, Vimeo, etc.)"
+                  value={formData.videoUrl}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      videoUrl: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Resumo para card do catálogo</Label>
+              <Textarea
+                rows={6}
+                placeholder="Este texto aparece nos cards de listagem de treinamentos."
+                value={formData.subtitulo}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    subtitulo: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Aba: Arquivos */}
+        <TabsContent value="arquivos" className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Materiais complementares
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Área reservada para anexar materiais complementares (apostilas, PDFs, slides, etc.).
+              A implementação de upload de arquivos pode ser integrada com seu storage (S3,
+              Supabase Storage, etc.).
+            </p>
+          </div>
+
+          <div className="rounded-md border border-dashed border-muted-foreground/40 p-6 text-sm text-muted-foreground">
+            Funcionalidade de upload de arquivos ainda não implementada neste front-end.
+            Quando o backend/storage estiver disponível, você pode:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Adicionar um input de arquivos múltiplos</li>
+              <li>Enviar para o storage configurado</li>
+              <li>Persistir os links no objeto de treinamento</li>
+            </ul>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }
