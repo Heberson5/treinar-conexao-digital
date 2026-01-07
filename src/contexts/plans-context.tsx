@@ -146,7 +146,8 @@ export function PlansProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("planos")
         .select("*")
-        .eq("ativo", true)
+        // IMPORTANTE: buscamos TODOS os planos e deixamos o filtro de ativos
+        // apenas para a página pública (planosAtivos)
         .order("ordem", { ascending: true })
 
       if (error) {
