@@ -27,14 +27,14 @@ import {
 } from "@/components/ui/select"
 import {
   Building2,
+  Building,
   Users,
-  PlayCircle,
-  PauseCircle,
-  XCircle,
+  TrendingUp,
   Filter,
   Search,
   Plus,
   Settings,
+  Trash2,
   Calendar,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -75,7 +75,7 @@ const LIMITE_USUARIOS_POR_PLANO: Record<PlanoEmpresa, number> = {
   enterprise: 50,
 }
 
-// Cadastros extras por pacote
+// Cadastros extras por pacote (Enterprise)
 const USUARIOS_POR_PACOTE = 5
 
 const calcularUsuariosTotalContrato = (
@@ -90,16 +90,20 @@ const calcularUsuariosTotalContrato = (
 }
 
 const ajustarEmpresaContrato = (empresa: Empresa): Empresa => {
-  const pacotes = typeof empresa.pacotesAdicionais === "number" ? empresa.pacotesAdicionais : 0
-  const usuariosTotal =
-    typeof empresa.usuariosTotal === "number" && empresa.usuariosTotal > 0
-      ? empresa.usuariosTotal
-      : calcularUsuariosTotalContrato(empresa.plano, pacotes)
+  const pacotes =
+    empresa.plano === "enterprise"
+      ? Math.max(0, empresa.pacotesAdicionais ?? 0)
+      : 0
+
+  const usuariosTotal = calcularUsuariosTotalContrato(empresa.plano, pacotes)
 
   return {
     ...empresa,
-    pacotesAdicionais: pacotes,
+    usuariosAtivos: Math.max(0, Math.min(empresa.usuariosAtivos, usuariosTotal)),
     usuariosTotal,
+    pacotesAdicionais: pacotes,
+    tipoFaturamento: empresa.tipoFaturamento ?? "mensal",
+    statusPagamento: empresa.statusPagamento ?? "ativo",
   }
 }
 
@@ -110,79 +114,72 @@ const empresasIniciais: Empresa[] = [
     razaoSocial: "Univida Santa Cruz Assistência Familiar Ltda",
     cnpj: "00.000.000/0001-00",
     email: "contato@unividasantacruz.com.br",
-    telefone: "(65) 0000-0000",
-    endereco: "Rua Exemplo, 123 - Campo Novo do Parecis/MT",
+    telefone: "(66) 0000-0000",
+    endereco: "Avenida Principal, 123 - Centro",
     responsavel: "Angela Maria",
     plano: "premium",
     status: "ativa",
-    usuariosAtivos: 8,
-    pacotesAdicionais: 1,
-    usuariosTotal: calcularUsuariosTotalContrato("premium", 1),
-    treinamentosAtivos: 12,
-    dataContratacao: "2024-01-15",
-    proximoVencimento: "2025-01-15",
+    usuariosAtivos: 5,
+    usuariosTotal: calcularUsuariosTotalContrato("premium"),
+    treinamentosAtivos: 8,
+    dataContratacao: "2024-01-10",
+    proximoVencimento: "2026-02-10",
     logo: "",
-    tipoFaturamento: "anual",
+    pacotesAdicionais: 0,
+    tipoFaturamento: "mensal",
     statusPagamento: "ativo",
   },
   {
     id: 2,
-    nome: "Cliente Plus",
-    razaoSocial: "Cliente Plus Comercial Ltda",
+    nome: "Cliente Plus Exemplo",
+    razaoSocial: "Cliente Plus Exemplo Ltda",
     cnpj: "11.111.111/0001-11",
-    email: "contato@clienteplus.com",
-    telefone: "(11) 1111-1111",
-    endereco: "Av. Central, 456 - São Paulo/SP",
+    email: "contato@clienteplus.com.br",
+    telefone: "(66) 1111-1111",
+    endereco: "Rua Secundária, 456 - Bairro",
     responsavel: "João Silva",
     plano: "plus",
     status: "ativa",
     usuariosAtivos: 3,
-    pacotesAdicionais: 0,
-    usuariosTotal: calcularUsuariosTotalContrato("plus", 0),
-    treinamentosAtivos: 5,
-    dataContratacao: "2024-03-10",
-    proximoVencimento: "2025-03-10",
+    usuariosTotal: calcularUsuariosTotalContrato("plus"),
+    treinamentosAtivos: 4,
+    dataContratacao: "2024-05-15",
+    proximoVencimento: "2026-02-15",
     logo: "",
+    pacotesAdicionais: 0,
     tipoFaturamento: "mensal",
     statusPagamento: "ativo",
   },
   {
     id: 3,
-    nome: "Cliente Básico",
-    razaoSocial: "Cliente Básico Serviços Ltda",
+    nome: "Cliente Básico Exemplo",
+    razaoSocial: "Cliente Básico Exemplo Ltda",
     cnpj: "22.222.222/0001-22",
-    email: "contato@clientebasico.com",
-    telefone: "(21) 2222-2222",
-    endereco: "Rua Secundária, 789 - Rio de Janeiro/RJ",
+    email: "contato@clientebasico.com.br",
+    telefone: "(66) 2222-2222",
+    endereco: "Avenida das Empresas, 789 - Centro",
     responsavel: "Maria Souza",
     plano: "basico",
     status: "inativa",
-    usuariosAtivos: 0,
-    pacotesAdicionais: 0,
-    usuariosTotal: calcularUsuariosTotalContrato("basico", 0),
-    treinamentosAtivos: 0,
-    dataContratacao: "2023-11-05",
-    proximoVencimento: "2024-11-05",
+    usuariosAtivos: 1,
+    usuariosTotal: calcularUsuariosTotalContrato("basico"),
+    treinamentosAtivos: 1,
+    dataContratacao: "2023-11-20",
+    proximoVencimento: "2026-01-20",
     logo: "",
+    pacotesAdicionais: 0,
     tipoFaturamento: "mensal",
     statusPagamento: "pendente",
   },
 ]
 
 const carregarEmpresas = (): Empresa[] => {
-  if (typeof window === "undefined") {
-    return empresasIniciais
-  }
-
+  if (typeof window === "undefined") return empresasIniciais
   try {
     const raw = window.localStorage.getItem(EMPRESAS_STORAGE_KEY)
     if (!raw) return empresasIniciais
-
     const data = JSON.parse(raw) as Empresa[]
-    if (!Array.isArray(data) || data.length === 0) {
-      return empresasIniciais
-    }
-
+    if (!Array.isArray(data) || data.length === 0) return empresasIniciais
     return data.map(ajustarEmpresaContrato)
   } catch {
     return empresasIniciais
@@ -192,7 +189,8 @@ const carregarEmpresas = (): Empresa[] => {
 export default function Empresas() {
   const [empresas, setEmpresas] = useState<Empresa[]>(carregarEmpresas)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<Empresa["status"] | "todas">("todas")
+  const [statusFilter, setStatusFilter] =
+    useState<Empresa["status"] | "todas">("todas")
   const [planoFilter, setPlanoFilter] = useState<PlanoEmpresa | "todos">("todos")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [configEmpresa, setConfigEmpresa] = useState<Empresa | null>(null)
@@ -206,8 +204,9 @@ export default function Empresas() {
   const [novoEndereco, setNovoEndereco] = useState("")
   const [novoResponsavel, setNovoResponsavel] = useState("")
   const [novoPlano, setNovoPlano] = useState<PlanoEmpresa>("basico")
-  const [novoPacotesAdicionais, setNovoPacotesAdicionais] = useState<number>(0)
-  const [novoTipoFaturamento, setNovoTipoFaturamento] = useState<"mensal" | "anual">("mensal")
+  const [novoPacotesAdicionais, setNovoPacotesAdicionais] = useState(0)
+  const [novoTipoFaturamento, setNovoTipoFaturamento] =
+    useState<Empresa["tipoFaturamento"]>("mensal")
 
   const { toast } = useToast()
   const { formatDate } = useBrazilianDate()
@@ -239,9 +238,7 @@ export default function Empresas() {
   const empresasFiltradas = useMemo(() => {
     return empresas.filter((empresa) => {
       const termo =
-        searchTerm.trim().length > 0
-          ? searchTerm.toLowerCase()
-          : ""
+        searchTerm.trim().length > 0 ? searchTerm.toLowerCase() : ""
 
       const matchSearch =
         termo.length === 0 ||
@@ -311,7 +308,8 @@ export default function Empresas() {
       dataContratacao: hoje.toISOString().slice(0, 10),
       proximoVencimento: daquiUmMes.toISOString().slice(0, 10),
       logo: "",
-      pacotesAdicionais: novoPlano === "enterprise" ? novoPacotesAdicionais : 0,
+      pacotesAdicionais:
+        novoPlano === "enterprise" ? novoPacotesAdicionais : 0,
       tipoFaturamento: novoTipoFaturamento,
       statusPagamento: "ativo",
     })
@@ -335,132 +333,138 @@ export default function Empresas() {
     )
   }
 
-  const handleToggleStatus = (empresaId: number, novoStatus: Empresa["status"]) => {
+  const handleToggleStatus = (
+    empresaId: number,
+    novoStatus: Empresa["status"]
+  ) => {
     setEmpresas((prev) =>
       prev.map((empresa) =>
-        empresa.id === empresaId
-          ? { ...empresa, status: novoStatus }
-          : empresa
+        empresa.id === empresaId ? { ...empresa, status: novoStatus } : empresa
       )
     )
+
     toast({
       title: "Status atualizado",
-      description: "O status da empresa foi atualizado.",
+      description:
+        novoStatus === "ativa"
+          ? "Empresa reativada com sucesso."
+          : "Empresa atualizada para o novo status.",
     })
   }
 
   const handleDelete = (empresaId: number) => {
     setEmpresas((prev) => prev.filter((empresa) => empresa.id !== empresaId))
+
     toast({
       title: "Empresa removida",
-      description: "A empresa foi removida da gestão.",
+      description: "A empresa foi removida da sua base de clientes.",
     })
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            Gestão de Empresas
-          </h1>
-          <p className="text-muted-foreground">
-            Cadastre e gerencie as empresas contratantes, planos, limites e
-            status de utilização da plataforma.
+          <h1 className="text-3xl font-bold">Gestão de Empresas</h1>
+          <p className="text-muted-foreground mt-2">
+            Gerencie empresas clientes e seus planos de assinatura
           </p>
         </div>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nova empresa
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Nova empresa
+          </Button>
+        </div>
       </div>
 
-      {/* Cards de métricas */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Resumo geral */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Empresas ativas
-            </CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAtivas}</div>
-            <p className="text-xs text-muted-foreground">
-              De {totalEmpresas} empresas cadastradas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Usuários ativos
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalUsuariosAtivos}</div>
-            <p className="text-xs text-muted-foreground">
-              Soma dos usuários ativos em todas as empresas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Treinamentos ativos
-            </CardTitle>
-            <PlayCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalTreinamentos}</div>
-            <p className="text-xs text-muted-foreground">
-              Total de treinamentos publicados pelas empresas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Contratos ativos
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {
-                empresas.filter(
-                  (e) => e.statusPagamento === "ativo" && e.status === "ativa"
-                ).length
-              }
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Building2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total de empresas
+                </p>
+                <p className="text-2xl font-bold">{totalEmpresas}</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Considerando status da empresa e do pagamento
-            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <Building className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Empresas ativas
+                </p>
+                <p className="text-2xl font-bold">{totalAtivas}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Users className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Usuários ativos</p>
+                <p className="text-2xl font-bold">{totalUsuariosAtivos}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Treinamentos ativos
+                </p>
+                <p className="text-2xl font-bold">{totalTreinamentos}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filtros */}
       <Card>
-        <CardContent className="pt-4 space-y-4">
-          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-            <div className="flex-1 flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, razão social ou CNPJ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="relative w-full">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, razão social ou CNPJ..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
+
             <div className="flex flex-wrap gap-2">
               <Select
                 value={statusFilter}
@@ -523,7 +527,9 @@ export default function Empresas() {
                     </Badge>
                   )}
                   {empresa.status === "suspensa" && (
-                    <Badge className="bg-amber-500 text-white">Suspensa</Badge>
+                    <Badge className="bg-amber-500 text-white">
+                      Suspensa
+                    </Badge>
                   )}
                 </CardTitle>
                 <CardDescription className="mt-1">
@@ -569,44 +575,47 @@ export default function Empresas() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t mt-2">
+              {/* Rodapé com contatos e ações – ícones ajustados */}
+              <div className="pt-2 mt-2 border-t space-y-2">
                 <div className="flex flex-col text-xs text-muted-foreground">
                   <span>{empresa.email}</span>
                   <span>
                     {empresa.telefone} • Resp.: {empresa.responsavel}
                   </span>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleToggleStatus(
+                          empresa.id,
+                          empresa.status === "ativa" ? "inativa" : "ativa"
+                        )
+                      }
+                    >
+                      {empresa.status === "ativa" ? "Suspender" : "Ativar"}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfigEmpresa(empresa)}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Configurar
+                    </Button>
+                  </div>
+
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setConfigEmpresa(empresa)}
-                  >
-                    <Settings className="h-4 w-4 mr-1" />
-                    Configurar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      handleToggleStatus(
-                        empresa.id,
-                        empresa.status === "ativa" ? "inativa" : "ativa"
-                      )
-                    }
-                  >
-                    {empresa.status === "ativa" ? (
-                      <PauseCircle className="h-4 w-4 text-amber-600" />
-                    ) : (
-                      <PlayCircle className="h-4 w-4 text-emerald-600" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
                     onClick={() => handleDelete(empresa.id)}
+                    className="text-destructive hover:text-destructive"
                   >
-                    <XCircle className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -615,41 +624,41 @@ export default function Empresas() {
         ))}
       </div>
 
-      {/* Modal de criação de empresa */}
+      {/* Modal de criação */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nova empresa</DialogTitle>
+            <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
             <DialogDescription>
-              Cadastre uma nova empresa cliente e defina o plano e o limite
-              inicial de cadastros de usuários.
+              Preencha os dados da nova empresa cliente.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome fantasia</Label>
+                <Label htmlFor="nome">Nome Fantasia *</Label>
                 <Input
                   id="nome"
                   value={novoNome}
                   onChange={(e) => setNovoNome(e.target.value)}
-                  placeholder="Ex.: Univida Santa Cruz"
+                  placeholder="Nome da empresa"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="razaoSocial">Razão social</Label>
+                <Label htmlFor="razaoSocial">Razão Social</Label>
                 <Input
                   id="razaoSocial"
                   value={novoRazaoSocial}
                   onChange={(e) => setNovoRazaoSocial(e.target.value)}
-                  placeholder="Razão social da empresa"
+                  placeholder="Razão social completa"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ</Label>
+                <Label htmlFor="cnpj">CNPJ *</Label>
                 <Input
                   id="cnpj"
                   value={novoCnpj}
@@ -658,7 +667,7 @@ export default function Empresas() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -669,14 +678,14 @@ export default function Empresas() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>
                 <Input
                   id="telefone"
                   value={novoTelefone}
                   onChange={(e) => setNovoTelefone(e.target.value)}
-                  placeholder="(65) 0000-0000"
+                  placeholder="(66) 0000-0000"
                 />
               </div>
               <div className="space-y-2">
@@ -700,9 +709,9 @@ export default function Empresas() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Plano</Label>
+                <Label htmlFor="plano">Plano de Assinatura</Label>
                 <Select
                   value={novoPlano}
                   onValueChange={(value) =>
