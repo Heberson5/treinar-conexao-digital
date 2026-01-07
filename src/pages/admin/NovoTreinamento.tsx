@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info } from "lucide-react"
 import { useTraining } from "@/contexts/training-context"
@@ -98,17 +97,24 @@ export default function NovoTreinamento() {
       return
     }
 
-    // Validação de limite de treinamentos ativos
-    if (formData.status === "ativo" && typeof limiteTreinamentosPlano === "number") {
-      const ativos = trainings.filter((t) => t.status === "ativo").length
+    // Validação de limite de treinamentos cadastrados (ativos + inativos)
+    const statusContaParaLimite =
+      formData.status === "ativo" || formData.status === "inativo"
 
-      if (ativos >= limiteTreinamentosPlano) {
+    if (statusContaParaLimite && typeof limiteTreinamentosPlano === "number") {
+      const cadastrados = trainings.filter(
+        (t) => t.status === "ativo" || t.status === "inativo",
+      ).length
+
+      const totalAposCriacao = cadastrados + 1
+
+      if (totalAposCriacao > limiteTreinamentosPlano) {
         toast({
           title: "Limite de treinamentos atingido",
           description:
             `O plano ${planoPortal?.nome ?? ""} permite até ${limiteTreinamentosPlano} ` +
-            `treinamentos ativos simultaneamente. ` +
-            `Desative um treinamento existente ou contrate um plano com mais capacidade.`,
+            `treinamentos cadastrados (ativos + inativos). ` +
+            `Rascunhos continuam permitidos, mas não poderão ser ativados enquanto o limite estiver cheio.`,
           variant: "destructive",
         })
         return
@@ -163,8 +169,10 @@ export default function NovoTreinamento() {
               <Info className="h-3 w-3" />
               <span>
                 Plano {planoPortal?.nome ?? planoPortalId}:{" "}
-                {trainings.filter((t) => t.status === "ativo").length}/
-                {limiteTreinamentosPlano} treinamentos ativos
+                {trainings.filter(
+                  (t) => t.status === "ativo" || t.status === "inativo",
+                ).length}
+                /{limiteTreinamentosPlano} treinamentos cadastrados (ativos + inativos)
               </span>
             </div>
           )}
