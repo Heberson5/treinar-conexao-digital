@@ -1,25 +1,45 @@
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Users, 
-  Building2, 
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  Users,
+  Building2,
   UserCheck,
   UserX,
   Crown,
-  User
+  User as UserIcon,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 
 interface Usuario {
@@ -29,66 +49,109 @@ interface Usuario {
   empresa: string
   departamento: string
   cargo: string
-  status: "ativo" | "inativo"
   papel: "master" | "admin" | "usuario"
+  status: "ativo" | "inativo"
   ultimoAcesso: string
   treinamentosConcluidos: number
 }
 
-// Dados mocados para Cargos e Departamentos
-const cargosDisponiveis = [
-  "Administrador Master", "Analista de RH", "Vendedor", "Gerente de Vendas", 
-  "Analista Financeiro", "Coordenador de TI", "Assistente Administrativo"
-]
+// Limites de usuários por EMPRESA (ativos + inativos contam)
+// Ajuste estes valores conforme os planos/empresas reais
+const LIMITE_USUARIOS_POR_EMPRESA: Record<string, number> = {
+  "Portal Treinamentos": 50, // Ex.: Enterprise base
+  "TechCorp Soluções": 15,   // Ex.: Premium
+  "Indústria ABC": 3,        // Ex.: Básico
+}
 
 const departamentosDisponiveis = [
-  "TI", "RH", "Vendas", "Financeiro", "Marketing", "Operações", "Qualidade"
+  "RH",
+  "Financeiro",
+  "Comercial",
+  "Operações",
+  "TI",
+  "Outros",
+]
+
+const cargosDisponiveis = [
+  "Administrador Master",
+  "Administrador",
+  "Gestor",
+  "Colaborador",
+]
+
+const papeisDisponiveis: { value: Usuario["papel"]; label: string; description: string }[] = [
+  {
+    value: "master",
+    label: "Master",
+    description: "Acesso total ao sistema e configurações",
+  },
+  {
+    value: "admin",
+    label: "Administrador",
+    description: "Gerencia usuários e treinamentos da empresa",
+  },
+  {
+    value: "usuario",
+    label: "Usuário",
+    description: "Acessa e realiza treinamentos",
+  },
+]
+
+const usuariosIniciais: Usuario[] = [
+  {
+    id: 1,
+    nome: "Administrador Master",
+    email: "admin@portal.com",
+    empresa: "Portal Treinamentos",
+    departamento: "TI",
+    cargo: "Administrador Master",
+    papel: "master",
+    status: "ativo",
+    ultimoAcesso: "Hoje, 08:30",
+    treinamentosConcluidos: 12,
+  },
+  {
+    id: 2,
+    nome: "Maria Souza",
+    email: "maria.souza@empresa.com",
+    empresa: "Portal Treinamentos",
+    departamento: "RH",
+    cargo: "Gestor",
+    papel: "admin",
+    status: "ativo",
+    ultimoAcesso: "Ontem, 17:10",
+    treinamentosConcluidos: 7,
+  },
+  {
+    id: 3,
+    nome: "João Oliveira",
+    email: "joao.oliveira@empresa.com",
+    empresa: "Portal Treinamentos",
+    departamento: "Operações",
+    cargo: "Colaborador",
+    papel: "usuario",
+    status: "ativo",
+    ultimoAcesso: "Há 3 dias",
+    treinamentosConcluidos: 3,
+  },
+  {
+    id: 4,
+    nome: "Usuário Inativo",
+    email: "inativo@empresa.com",
+    empresa: "Portal Treinamentos",
+    departamento: "Comercial",
+    cargo: "Colaborador",
+    papel: "usuario",
+    status: "inativo",
+    ultimoAcesso: "Há 30 dias",
+    treinamentosConcluidos: 1,
+  },
 ]
 
 export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([
-    {
-      id: 1,
-      nome: "Heber Sohas",
-      email: "hebersohas@hotmail.com",
-      empresa: "Portal Treinamentos",
-      departamento: "TI",
-      cargo: "Administrador Master",
-      status: "ativo",
-      papel: "master",
-      ultimoAcesso: "Agora",
-      treinamentosConcluidos: 0
-    },
-    {
-      id: 2,
-      nome: "Maria Silva",
-      email: "maria.silva@empresa.com",
-      empresa: "Empresa Demo",
-      departamento: "RH",
-      cargo: "Analista de RH",
-      status: "ativo",
-      papel: "admin",
-      ultimoAcesso: "Há 2 horas",
-      treinamentosConcluidos: 5
-    },
-    {
-      id: 3,
-      nome: "João Santos",
-      email: "joao.santos@empresa.com",
-      empresa: "Empresa Demo",
-      departamento: "Vendas",
-      cargo: "Vendedor",
-      status: "ativo",
-      papel: "usuario",
-      ultimoAcesso: "Ontem",
-      treinamentosConcluidos: 3
-    }
-  ])
-
+  const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciais)
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const { toast } = useToast()
-  const { canCreateMaster, canCreateAdmin, canCreateUser, user } = useAuth()
 
   const [newUser, setNewUser] = useState<{
     nome: string
@@ -97,7 +160,8 @@ export default function Usuarios() {
     empresa: string
     departamento: string
     cargo: string
-    papel: "master" | "admin" | "usuario"
+    papel: Usuario["papel"]
+    status: Usuario["status"]
   }>({
     nome: "",
     email: "",
@@ -105,8 +169,12 @@ export default function Usuarios() {
     empresa: "",
     departamento: "",
     cargo: "",
-    papel: "usuario"
+    papel: "usuario",
+    status: "ativo",
   })
+
+  const { toast } = useToast()
+  const { canCreateMaster, canCreateAdmin, canCreateUser } = useAuth() as any
 
   const resetForm = () => {
     setNewUser({
@@ -116,274 +184,422 @@ export default function Usuarios() {
       empresa: "",
       departamento: "",
       cargo: "",
-      papel: "usuario"
+      papel: "usuario",
+      status: "ativo",
     })
   }
 
-  const validatePassword = (password: string): boolean => {
-    // Mínimo 8 caracteres, pelo menos 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial
-    const minLength = password.length >= 8
-    const hasUpperCase = /[A-Z]/.test(password)
-    const hasLowerCase = /[a-z]/.test(password)
-    const hasNumbers = /\d/.test(password)
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-    
-    return minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
+  const validatePassword = (senha: string) => {
+    // Pelo menos 8 caracteres, 1 maiúscula, 1 minúscula e 1 número
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+    return regex.test(senha)
+  }
+
+  const getLimiteUsuariosEmpresa = (empresaNome: string | undefined) => {
+    if (!empresaNome) return undefined
+    return LIMITE_USUARIOS_POR_EMPRESA[empresaNome] ?? undefined
   }
 
   const handleCreate = () => {
-    if (!newUser.nome || !newUser.email || !newUser.senha) {
+    if (!newUser.nome || !newUser.email || !newUser.senha || !newUser.empresa) {
       toast({
         title: "Campos obrigatórios",
-        description: "Nome, email e senha são obrigatórios",
-        variant: "destructive"
+        description: "Nome, email, senha e empresa são obrigatórios.",
+        variant: "destructive",
       })
       return
     }
 
     if (!validatePassword(newUser.senha)) {
       toast({
-        title: "Senha inválida",
-        description: "A senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial",
-        variant: "destructive"
+        title: "Senha fraca",
+        description:
+          "A senha deve ter pelo menos 8 caracteres, incluindo letra maiúscula, minúscula e número.",
+        variant: "destructive",
       })
       return
     }
 
-    // Verificar permissões para criar o tipo de usuário
-    if (newUser.papel === "master" && !canCreateMaster()) {
+    // Regras de permissão de criação por papel
+    if (newUser.papel === "master" && typeof canCreateMaster === "function" && !canCreateMaster()) {
       toast({
-        title: "Permissão negada",
-        description: "Apenas Masters podem criar outros Masters",
-        variant: "destructive"
+        title: "Permissão insuficiente",
+        description: "Apenas administradores master podem criar novos usuários master.",
+        variant: "destructive",
       })
       return
     }
 
-    if (newUser.papel === "admin" && !canCreateAdmin()) {
+    if (newUser.papel === "admin" && typeof canCreateAdmin === "function" && !canCreateAdmin()) {
       toast({
-        title: "Permissão negada", 
-        description: "Apenas Masters e Administradores podem criar Administradores",
-        variant: "destructive"
+        title: "Permissão insuficiente",
+        description: "Você não tem permissão para criar novos administradores.",
+        variant: "destructive",
       })
       return
     }
 
-    if (!canCreateUser()) {
+    if (newUser.papel === "usuario" && typeof canCreateUser === "function" && !canCreateUser()) {
       toast({
-        title: "Permissão negada",
-        description: "Você não tem permissão para criar usuários",
-        variant: "destructive"
+        title: "Permissão insuficiente",
+        description: "Você não tem permissão para criar novos usuários.",
+        variant: "destructive",
       })
       return
     }
 
-    const usuario: Usuario = {
-      id: Date.now(),
-      ...newUser,
-      status: "ativo",
-      ultimoAcesso: "Nunca",
-      treinamentosConcluidos: 0
+    // CONTROLE DE LIMITE POR EMPRESA (conta ativos + inativos)
+    const limiteEmpresa = getLimiteUsuariosEmpresa(newUser.empresa)
+    if (limiteEmpresa !== undefined) {
+      const totalEmpresa = usuarios.filter(
+        (u) => u.empresa === newUser.empresa
+      ).length
+
+      if (totalEmpresa >= limiteEmpresa) {
+        toast({
+          title: "Limite de usuários atingido",
+          description: `O plano da empresa "${newUser.empresa}" permite até ${limiteEmpresa} cadastros de usuários (ativos ou inativos). 
+Para cadastrar um novo usuário, é necessário contratar um plano com mais usuários ou reutilizar um cadastro existente (alterando os dados do usuário atual, mantendo o histórico).`,
+          variant: "destructive",
+        })
+        return
+      }
     }
 
-    setUsuarios([...usuarios, usuario])
+    const novoUsuario: Usuario = {
+      id: usuarios.length ? Math.max(...usuarios.map((u) => u.id)) + 1 : 1,
+      nome: newUser.nome,
+      email: newUser.email,
+      empresa: newUser.empresa,
+      departamento: newUser.departamento || "Não informado",
+      cargo: newUser.cargo || "Colaborador",
+      papel: newUser.papel,
+      status: newUser.status,
+      ultimoAcesso: "Nunca acessou",
+      treinamentosConcluidos: 0,
+    }
+
+    setUsuarios([...usuarios, novoUsuario])
     setIsCreateOpen(false)
     resetForm()
-    
+
     toast({
-      title: "Usuário criado!",
-      description: "O usuário foi criado com sucesso."
+      title: "Usuário cadastrado!",
+      description: "O usuário foi cadastrado com sucesso.",
     })
   }
 
   const handleDelete = (id: number) => {
-    const usuario = usuarios.find(u => u.id === id)
-    
-    // Não permitir deletar o próprio usuário
-    if (usuario?.email === user?.email) {
+    const usuario = usuarios.find((u) => u.id === id)
+    if (!usuario) return
+
+    // Proteção simples para não remover o master inicial
+    if (usuario.id === 1 && usuario.papel === "master") {
       toast({
-        title: "Ação não permitida",
-        description: "Você não pode excluir seu próprio usuário",
-        variant: "destructive"
+        title: "Operação não permitida",
+        description: "O usuário master principal não pode ser excluído.",
+        variant: "destructive",
       })
       return
     }
 
-    setUsuarios(usuarios.filter(u => u.id !== id))
+    setUsuarios(usuarios.filter((u) => u.id !== id))
+
     toast({
-      title: "Usuário excluído",
-      description: "O usuário foi removido com sucesso."
+      title: "Usuário removido",
+      description: `O usuário ${usuario.nome} foi removido.`,
     })
   }
 
   const toggleStatus = (id: number) => {
-    setUsuarios(usuarios.map(user => 
-      user.id === id 
-        ? { ...user, status: user.status === "ativo" ? "inativo" : "ativo" }
-        : user
-    ))
+    setUsuarios((prev) =>
+      prev.map((u) =>
+        u.id === id
+          ? {
+              ...u,
+              status: u.status === "ativo" ? "inativo" : "ativo",
+            }
+          : u
+      )
+    )
   }
 
-  const getPapelIcon = (papel: string) => {
+  const getPapelIcon = (papel: Usuario["papel"]) => {
     switch (papel) {
-      case "master": return <Crown className="h-4 w-4 text-yellow-500" />
-      case "admin": return <UserCheck className="h-4 w-4 text-blue-500" />
-      case "usuario": return <User className="h-4 w-4 text-gray-500" />
-      default: return <User className="h-4 w-4" />
+      case "master":
+        return <Crown className="h-3 w-3" />
+      case "admin":
+        return <UserCheck className="h-3 w-3" />
+      default:
+        return <UserIcon className="h-3 w-3" />
     }
   }
 
-  const getPapelColor = (papel: string) => {
+  const getPapelColor = (papel: Usuario["papel"]) => {
     switch (papel) {
-      case "master": return "bg-yellow-500"
-      case "admin": return "bg-blue-500"
-      case "usuario": return "bg-gray-500"
-      default: return "bg-gray-500"
+      case "master":
+        return "bg-purple-100 text-purple-700 border-purple-200"
+      case "admin":
+        return "bg-blue-100 text-blue-700 border-blue-200"
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200"
     }
   }
 
   const getInitials = (nome: string) => {
-    return nome.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    const partes = nome.trim().split(" ")
+    if (partes.length === 1) return partes[0].charAt(0).toUpperCase()
+    return `${partes[0].charAt(0)}${partes[partes.length - 1].charAt(0)}`.toUpperCase()
   }
 
-  const filteredUsers = usuarios.filter(user =>
-    user.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.departamento.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = usuarios.filter((user) => {
+    const term = searchTerm.toLowerCase()
+    return (
+      user.nome.toLowerCase().includes(term) ||
+      user.email.toLowerCase().includes(term) ||
+      user.empresa.toLowerCase().includes(term)
+    )
+  })
+
+  const totalUsuarios = usuarios.length
+  const usuariosAtivos = usuarios.filter((u) => u.status === "ativo").length
+  const totalAdmins = usuarios.filter((u) => u.papel !== "usuario").length
+  const totalEmpresas = new Set(usuarios.map((u) => u.empresa)).size
+
+  const empresaSelecionada = newUser.empresa.trim()
+  const limiteEmpresaSelecionada = getLimiteUsuariosEmpresa(empresaSelecionada)
+  const totalEmpresaSelecionada = empresaSelecionada
+    ? usuarios.filter((u) => u.empresa === empresaSelecionada).length
+    : 0
+  const vagasRestantes =
+    limiteEmpresaSelecionada !== undefined
+      ? Math.max(limiteEmpresaSelecionada - totalEmpresaSelecionada, 0)
+      : undefined
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="space-y-6">
+      {/* Header e botão Novo Usuário */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie usuários, permissões e acessos do sistema
+          <h1 className="text-2xl font-bold">Gestão de Usuários</h1>
+          <p className="text-muted-foreground">
+            Gerencie os acessos ao portal de treinamentos da sua empresa.
           </p>
         </div>
-        
+
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4 mr-2" />
               Novo Usuário
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Criar Novo Usuário</DialogTitle>
+              <DialogTitle>Novo Usuário</DialogTitle>
               <DialogDescription>
-                Preencha as informações do usuário para dar acesso ao sistema.
+                Cadastre um novo acesso ao portal. Lembre-se: o limite é por
+                cadastro, incluindo usuários inativos.
               </DialogDescription>
             </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+
+            <div className="space-y-4 pt-4">
+              <div className="grid grid-cols-[auto,1fr] gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback>
+                    {newUser.nome ? getInitials(newUser.nome) : <UserIcon className="h-6 w-6" />}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="space-y-2">
-                  <Label htmlFor="nome">Nome Completo *</Label>
+                  <Label htmlFor="nome">Nome completo *</Label>
                   <Input
                     id="nome"
                     value={newUser.nome}
-                    onChange={(e) => setNewUser({...newUser, nome: e.target.value})}
-                    placeholder="Nome do usuário"
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, nome: e.target.value })
+                    }
+                    placeholder="Nome do colaborador"
                   />
                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="email">Email *</Label>
-                   <Input
-                     id="email"
-                     type="email"
-                     value={newUser.email}
-                     onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                     placeholder="email@empresa.com"
-                   />
-                 </div>
-               </div>
-               
-               <div className="space-y-2">
-                 <Label htmlFor="senha">Senha *</Label>
-                 <Input
-                   id="senha"
-                   type="password"
-                   value={newUser.senha}
-                   onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
-                   placeholder="Mínimo 8 caracteres"
-                 />
-                 <p className="text-xs text-muted-foreground">
-                   A senha deve conter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial
-                 </p>
-               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="empresa">Empresa</Label>
+                  <Label htmlFor="email">Email corporativo *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
+                    placeholder="usuario@empresa.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="senha">Senha inicial *</Label>
+                  <Input
+                    id="senha"
+                    type="password"
+                    value={newUser.senha}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, senha: e.target.value })
+                    }
+                    placeholder="Defina uma senha forte"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo 8 caracteres, com letra maiúscula, minúscula e número.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="empresa">Empresa *</Label>
                   <Input
                     id="empresa"
                     value={newUser.empresa}
-                    onChange={(e) => setNewUser({...newUser, empresa: e.target.value})}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, empresa: e.target.value })
+                    }
                     placeholder="Nome da empresa"
                   />
+                  {empresaSelecionada && limiteEmpresaSelecionada !== undefined && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {totalEmpresaSelecionada} de {limiteEmpresaSelecionada} cadastros utilizados
+                      para <span className="font-medium">{empresaSelecionada}</span>.{" "}
+                      Usuários inativos também contam para o limite.
+                      {vagasRestantes !== undefined && vagasRestantes <= 0 && (
+                        <>
+                          <br />
+                          <span className="text-red-600">
+                            Nenhuma vaga disponível para novos usuários neste plano.
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  )}
+                  {empresaSelecionada && limiteEmpresaSelecionada === undefined && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Esta empresa ainda não tem limite configurado. Ajuste o plano na
+                      Gestão de Empresas para ativar o controle de usuários.
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="departamento">Departamento</Label>
-                  <Select value={newUser.departamento} onValueChange={(value) => setNewUser({...newUser, departamento: value})}>
+                  <Select
+                    value={newUser.departamento}
+                    onValueChange={(value) =>
+                      setNewUser({ ...newUser, departamento: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departamentosDisponiveis.map((dept) => (
-                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      {departamentosDisponiveis.map((dep) => (
+                        <SelectItem key={dep} value={dep}>
+                          {dep}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cargo">Cargo</Label>
-                  <Select value={newUser.cargo} onValueChange={(value) => setNewUser({...newUser, cargo: value})}>
+                  <Select
+                    value={newUser.cargo}
+                    onValueChange={(value) =>
+                      setNewUser({ ...newUser, cargo: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o cargo" />
                     </SelectTrigger>
                     <SelectContent>
                       {cargosDisponiveis.map((cargo) => (
-                        <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>
+                        <SelectItem key={cargo} value={cargo}>
+                          {cargo}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="papel">Papel no Sistema</Label>
-                  <Select value={newUser.papel} onValueChange={(value: any) => setNewUser({...newUser, papel: value})}>
+                  <Label>Papel no sistema</Label>
+                  <Select
+                    value={newUser.papel}
+                    onValueChange={(value) =>
+                      setNewUser({
+                        ...newUser,
+                        papel: value as Usuario["papel"],
+                      })
+                    }
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="usuario">Usuário</SelectItem>
-                      {canCreateAdmin() && <SelectItem value="admin">Administrador</SelectItem>}
-                      {canCreateMaster() && <SelectItem value="master">Master</SelectItem>}
+                      {papeisDisponiveis.map((papel) => (
+                        <SelectItem key={papel.value} value={papel.value}>
+                          <div className="flex flex-col">
+                            <span>{papel.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {papel.description}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Status inicial</Label>
+                  <Select
+                    value={newUser.status}
+                    onValueChange={(value) =>
+                      setNewUser({
+                        ...newUser,
+                        status: value as Usuario["status"],
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Mesmo inativos, os usuários continuam contando no limite do plano.
+                  </p>
+                </div>
               </div>
             </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
+
+            <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancelar
               </Button>
               <Button onClick={handleCreate} className="bg-gradient-primary">
-                Criar Usuário
+                Cadastrar Usuário
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats */}
+      {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -392,12 +608,13 @@ export default function Usuarios() {
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{usuarios.length}</p>
+                <p className="text-sm text-muted-foreground">Total de usuários</p>
+                <p className="text-2xl font-bold">{totalUsuarios}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -406,126 +623,165 @@ export default function Usuarios() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ativos</p>
-                <p className="text-2xl font-bold">{usuarios.filter(u => u.status === "ativo").length}</p>
+                <p className="text-2xl font-bold">{usuariosAtivos}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                <Crown className="h-5 w-5 text-yellow-600" />
+              <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                <Crown className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold">{usuarios.filter(u => u.papel === "admin" || u.papel === "master").length}</p>
+                <p className="text-sm text-muted-foreground">Admins / Master</p>
+                <p className="text-2xl font-bold">{totalAdmins}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Building2 className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                <Building2 className="h-5 w-5 text-slate-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Empresas</p>
-                <p className="text-2xl font-bold">{new Set(usuarios.map(u => u.empresa)).size}</p>
+                <p className="text-2xl font-bold">{totalEmpresas}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar usuários..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      {/* Filtro de busca */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative w-full md:w-80">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome, email ou empresa..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Usuários</CardTitle>
-          <CardDescription>
-            Gerencie todos os usuários cadastrados no sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      {/* Lista de usuários */}
+      <div className="space-y-2">
+        {filteredUsers.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Nenhum usuário encontrado com o filtro informado.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
             {filteredUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src="" alt={user.nome} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(user.nome)}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium">{user.nome}</h4>
-                      {getPapelIcon(user.papel)}
-                      <Badge 
-                        className={`${getPapelColor(user.papel)} text-white text-xs`}
-                      >
-                        {user.papel}
-                      </Badge>
-                      <Badge 
-                        variant={user.status === "ativo" ? "default" : "secondary"}
-                      >
-                        {user.status}
-                      </Badge>
+              <Card
+                key={user.id}
+                className="hover:border-primary/40 transition-colors"
+              >
+                <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{user.nome}</span>
+                        <Badge
+                          variant="outline"
+                          className={getPapelColor(user.papel)}
+                        >
+                          {getPapelIcon(user.papel)}
+                          <span className="ml-1">
+                            {user.papel === "master"
+                              ? "Master"
+                              : user.papel === "admin"
+                              ? "Administrador"
+                              : "Usuário"}
+                          </span>
+                        </Badge>
+                        <Badge
+                          variant={user.status === "ativo" ? "default" : "outline"}
+                          className={
+                            user.status === "ativo"
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                          }
+                        >
+                          {user.status === "ativo" ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {user.empresa} • {user.departamento} • {user.cargo}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {user.empresa} • {user.departamento} • {user.cargo}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <div className="text-sm">
+                      <span className="font-medium">
+                        {user.treinamentosConcluidos}
+                      </span>
+                      <span className="text-muted-foreground ml-1">
+                        treinamentos concluídos
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Último acesso: {user.ultimoAcesso}
                     </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{user.treinamentosConcluidos} treinamentos</p>
-                    <p className="text-xs text-muted-foreground">Último acesso: {user.ultimoAcesso}</p>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => toggleStatus(user.id)}
-                    >
-                      {user.status === "ativo" ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    {user.papel !== "master" && user.id !== 1 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
+                    <div className="flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => toggleStatus(user.id)}
+                        disabled={user.id === 1 && user.papel === "master"}
+                        title={
+                          user.status === "ativo"
+                            ? "Inativar usuário"
+                            : "Reativar usuário"
+                        }
+                      >
+                        {user.status === "ativo" ? (
+                          <UserX className="h-4 w-4" />
+                        ) : (
+                          <UserCheck className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        title="Editar (em breve)"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="text-destructive border-destructive/40 hover:bg-destructive/10"
                         onClick={() => handleDelete(user.id)}
-                        className="text-destructive hover:text-destructive"
+                        disabled={user.id === 1 && user.papel === "master"}
+                        title="Excluir usuário"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   )
 }
