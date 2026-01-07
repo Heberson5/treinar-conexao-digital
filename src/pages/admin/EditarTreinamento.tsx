@@ -7,18 +7,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save } from "lucide-react";
-import { useTraining, Training } from "@/contexts/training-context";
+import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info } from "lucide-react";
+import { useTraining } from "@/contexts/training-context";
 import { TrainingBlockEditor, type ContentBlock } from "@/components/training/training-block-editor";
 import { useDepartments } from "@/contexts/department-context";
 import { useToast } from "@/hooks/use-toast";
+import { usePlans } from "@/contexts/plans-context";
 
 export default function EditarTreinamento() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { getTrainingById, updateTraining } = useTraining();
+  const trainingId = id ? Number(id) : undefined;
+  const { trainings, getTrainingById, updateTraining } = useTraining();
   const { departments } = useDepartments();
   const { toast } = useToast();
+  const { planos, getLimiteRecurso } = usePlans();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<{
@@ -46,14 +49,26 @@ export default function EditarTreinamento() {
     instrutor: "",
     departamento: "todos",
     capa: undefined,
-    contentBlocks: []
+    contentBlocks: [],
   });
 
   const [loading, setLoading] = useState(true);
 
+  // Plano do portal para cálculo de limite de treinamentos
+  const planoPortalId =
+    import.meta.env.VITE_PLANO_PORTAL_ID || "premium";
+
+  const planoPortal =
+    planos.find((p) => p.id === planoPortalId) ||
+    planos.find((p) => (p as any).popular) ||
+    planos[0];
+
+  const limiteTreinamentosPlano = planoPortal
+    ? getLimiteRecurso(planoPortal.id, "treinamentos")
+    : undefined;
+
   useEffect(() => {
-    if (id) {
-      const trainingId = Number(id);
+    if (trainingId) {
       const training = getTrainingById(trainingId);
       if (training) {
         setFormData({
@@ -68,12 +83,12 @@ export default function EditarTreinamento() {
           instrutor: training.instrutor || "",
           departamento: training.departamento || "todos",
           capa: training.capa,
-          contentBlocks: []
+          contentBlocks: [],
         });
       }
     }
     setLoading(false);
-  }, [id, getTrainingById]);
+  }, [trainingId, getTrainingById]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -81,7 +96,7 @@ export default function EditarTreinamento() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const imageData = e.target?.result as string;
-        setFormData(prev => ({ ...prev, capa: imageData }));
+        setFormData((prev) => ({ ...prev, capa: imageData }));
       };
       reader.readAsDataURL(file);
     }
@@ -92,29 +107,65 @@ export default function EditarTreinamento() {
       toast({
         title: "Campos obrigatórios",
         description: "Título e descrição são obrigatórios",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    if (id) {
-      updateTraining(Number(id), {
-        titulo: formData.titulo,
-        subtitulo: formData.subtitulo,
-        descricao: formData.descricao,
-        texto: formData.texto,
-        videoUrl: formData.videoUrl,
-        categoria: formData.categoria,
-        duracao: formData.duracao,
-        status: formData.status,
-        instrutor: formData.instrutor,
-        departamento: formData.departamento,
-        capa: formData.capa,
+    if (!trainingId) {
+      toast({
+        title: "Treinamento não encontrado",
+        description: "Não foi possível identificar o treinamento para edição.",
+        variant: "destructive",
       });
-
-      toast({ title: "Treinamento atualizado!", description: "As alterações foram salvas com sucesso." });
-      navigate("/admin/treinamentos");
+      return;
     }
+
+    // Validação de limite de treinamentos cadastrados (ativos + inativos)
+    const statusContaParaLimite =
+      formData.status === "ativo" || formData.status === "inativo";
+
+    if (statusContaParaLimite && typeof limiteTreinamentosPlano === "number") {
+      const cadastradosSemAtual = trainings.filter(
+        (t) =>
+          (t.status === "ativo" || t.status === "inativo") &&
+          t.id !== trainingId,
+      ).length;
+
+      const totalAposEdicao = cadastradosSemAtual + 1;
+
+      if (totalAposEdicao > limiteTreinamentosPlano) {
+        toast({
+          title: "Limite de treinamentos atingido",
+          description:
+            `O plano ${planoPortal?.nome ?? ""} permite até ${limiteTreinamentosPlano} ` +
+            `treinamentos cadastrados (ativos + inativos). ` +
+            `Rascunhos continuam permitidos, mas não poderão ser ativados enquanto o limite estiver cheio.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    updateTraining(trainingId, {
+      titulo: formData.titulo,
+      subtitulo: formData.subtitulo,
+      descricao: formData.descricao,
+      texto: formData.texto,
+      videoUrl: formData.videoUrl,
+      categoria: formData.categoria,
+      duracao: formData.duracao,
+      status: formData.status,
+      instrutor: formData.instrutor,
+      departamento: formData.departamento,
+      capa: formData.capa,
+    });
+
+    toast({
+      title: "Treinamento atualizado!",
+      description: "As alterações foram salvas com sucesso.",
+    });
+    navigate("/admin/treinamentos");
   };
 
   if (loading) {
@@ -136,14 +187,30 @@ export default function EditarTreinamento() {
           </Button>
           <h1 className="text-2xl md:text-3xl font-bold">Editar Treinamento</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/admin/treinamentos")}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} className="bg-gradient-primary">
-            <Save className="mr-2 h-4 w-4" />
-            Salvar
-          </Button>
+
+        <div className="flex items-center gap-4">
+          {typeof limiteTreinamentosPlano === "number" && (
+            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>
+                Plano {planoPortal?.nome ?? planoPortalId}:{" "}
+                {trainings.filter(
+                  (t) => t.status === "ativo" || t.status === "inativo",
+                ).length}
+                /{limiteTreinamentosPlano} treinamentos cadastrados (ativos + inativos)
+              </span>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/admin/treinamentos")}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} className="bg-gradient-primary">
+              <Save className="mr-2 h-4 w-4" />
+              Salvar
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -164,7 +231,9 @@ export default function EditarTreinamento() {
               <Input
                 id="titulo"
                 value={formData.titulo}
-                onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, titulo: e.target.value })
+                }
                 placeholder="Título do treinamento"
               />
             </div>
@@ -173,7 +242,9 @@ export default function EditarTreinamento() {
               <Input
                 id="subtitulo"
                 value={formData.subtitulo}
-                onChange={(e) => setFormData({...formData, subtitulo: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, subtitulo: e.target.value })
+                }
                 placeholder="Subtítulo (opcional)"
               />
             </div>
@@ -184,7 +255,9 @@ export default function EditarTreinamento() {
             <Textarea
               id="descricao"
               value={formData.descricao}
-              onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, descricao: e.target.value })
+              }
               placeholder="Descrição do treinamento"
               rows={3}
             />
@@ -193,7 +266,12 @@ export default function EditarTreinamento() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoria</Label>
-              <Select value={formData.categoria} onValueChange={(value) => setFormData({...formData, categoria: value})}>
+              <Select
+                value={formData.categoria}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, categoria: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
@@ -212,7 +290,9 @@ export default function EditarTreinamento() {
               <Input
                 id="duracao"
                 value={formData.duracao}
-                onChange={(e) => setFormData({...formData, duracao: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, duracao: e.target.value })
+                }
                 placeholder="Ex: 2h 30min"
               />
             </div>
@@ -221,7 +301,9 @@ export default function EditarTreinamento() {
               <Input
                 id="instrutor"
                 value={formData.instrutor}
-                onChange={(e) => setFormData({...formData, instrutor: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, instrutor: e.target.value })
+                }
                 placeholder="Nome do instrutor"
               />
             </div>
@@ -229,28 +311,41 @@ export default function EditarTreinamento() {
 
           <div className="space-y-2">
             <Label htmlFor="departamento">Departamento</Label>
-            <Select value={formData.departamento} onValueChange={(value) => setFormData({...formData, departamento: value})}>
+            <Select
+              value={formData.departamento}
+              onValueChange={(value) =>
+                setFormData({ ...formData, departamento: value })
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o departamento..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Departamentos</SelectItem>
-                {departments.filter(dept => dept.ativo).map((dept) => (
-                  <SelectItem key={dept.id} value={dept.nome}>
-                    {dept.nome} - {dept.descricao}
-                  </SelectItem>
-                ))}
+                {departments
+                  .filter((dept) => dept.ativo)
+                  .map((dept) => (
+                    <SelectItem key={dept.id} value={dept.nome}>
+                      {dept.nome} - {dept.descricao}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Selecione "Todos" para disponibilizar o treinamento para todos os departamentos, ou escolha um departamento específico
+              Selecione "Todos" para disponibilizar o treinamento para todos os departamentos, ou
+              escolha um departamento específico
             </p>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch 
+            <Switch
               checked={formData.status === "ativo"}
-              onCheckedChange={(checked) => setFormData({...formData, status: checked ? "ativo" : "rascunho"})}
+              onCheckedChange={(checked) =>
+                setFormData({
+                  ...formData,
+                  status: checked ? "ativo" : "rascunho",
+                })
+              }
             />
             <Label>Publicar imediatamente</Label>
           </div>
@@ -260,12 +355,15 @@ export default function EditarTreinamento() {
           <div className="space-y-2">
             <Label>Blocos de Conteúdo</Label>
             <p className="text-sm text-muted-foreground">
-              Organize o conteúdo do treinamento em blocos. Você pode adicionar textos, vídeos, imagens e documentos na ordem desejada.
+              Organize o conteúdo do treinamento em blocos. Você pode adicionar textos, vídeos,
+              imagens e documentos na ordem desejada.
             </p>
           </div>
           <TrainingBlockEditor
             blocks={formData.contentBlocks}
-            onBlocksChange={(blocks) => setFormData({...formData, contentBlocks: blocks})}
+            onBlocksChange={(blocks) =>
+              setFormData({ ...formData, contentBlocks: blocks })
+            }
           />
         </TabsContent>
 
@@ -275,7 +373,9 @@ export default function EditarTreinamento() {
             <Textarea
               id="texto"
               value={formData.texto}
-              onChange={(e) => setFormData({...formData, texto: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, texto: e.target.value })
+              }
               placeholder="Conteúdo detalhado do treinamento..."
               rows={12}
             />
@@ -288,7 +388,9 @@ export default function EditarTreinamento() {
             <Input
               id="video"
               value={formData.videoUrl}
-              onChange={(e) => setFormData({...formData, videoUrl: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, videoUrl: e.target.value })
+              }
               placeholder="https://youtube.com/watch?v=..."
             />
           </div>
@@ -298,17 +400,25 @@ export default function EditarTreinamento() {
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
               {formData.capa ? (
                 <div className="space-y-4">
-                  <img 
-                    src={formData.capa} 
-                    alt="Capa do treinamento" 
+                  <img
+                    src={formData.capa}
+                    alt="Capa do treinamento"
                     className="max-w-full h-32 object-cover mx-auto rounded-lg"
                   />
                   <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       <Upload className="mr-2 h-4 w-4" />
                       Alterar Capa
                     </Button>
-                    <Button variant="outline" onClick={() => setFormData(prev => ({ ...prev, capa: undefined }))}>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, capa: undefined }))
+                      }
+                    >
                       Remover
                     </Button>
                   </div>
@@ -317,7 +427,10 @@ export default function EditarTreinamento() {
                 <div>
                   <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground" />
                   <div className="mt-4">
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       <Upload className="mr-2 h-4 w-4" />
                       Upload de Capa
                     </Button>
