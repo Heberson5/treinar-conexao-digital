@@ -259,7 +259,7 @@ export default function Dashboard() {
     if (role === "master") {
       return filters.companyId 
         ? "Dashboard - Empresa Selecionada" 
-        : "Dashboard - Todas as Empresas";
+        : "Dashboard";
     }
     return "Dashboard";
   };
