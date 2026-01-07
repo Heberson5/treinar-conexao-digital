@@ -1,25 +1,41 @@
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+// src/pages/admin/Empresas.tsx
+import { useEffect, useMemo, useState } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Building2, 
-  Users, 
-  UserCheck,
-  Building,
-  Calendar,
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Building2,
+  Users,
+  PlayCircle,
+  PauseCircle,
+  XCircle,
+  Filter,
+  Search,
+  Plus,
   Settings,
-  TrendingUp
+  Calendar,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
@@ -43,598 +59,554 @@ interface Empresa {
   proximoVencimento: string
   logo?: string
   pacotesAdicionais?: number
+  tipoFaturamento?: "mensal" | "anual"
+  statusPagamento?: "ativo" | "pendente" | "cancelado"
 }
 
-const LIMITE_USUARIOS_POR_PLANO = {
+type PlanoEmpresa = Empresa["plano"]
+
+const EMPRESAS_STORAGE_KEY = "portal_treinamentos_empresas"
+
+// Limites base por plano
+const LIMITE_USUARIOS_POR_PLANO: Record<PlanoEmpresa, number> = {
   basico: 3,
   plus: 5,
   premium: 15,
-  enterprise: 50
+  enterprise: 50,
 }
 
+// Cadastros extras por pacote
 const USUARIOS_POR_PACOTE = 5
+
+const calcularUsuariosTotalContrato = (
+  plano: PlanoEmpresa,
+  pacotesAdicionais?: number
+): number => {
+  const base = LIMITE_USUARIOS_POR_PLANO[plano] ?? 0
+  const adicionais =
+    plano === "enterprise" ? (pacotesAdicionais || 0) * USUARIOS_POR_PACOTE : 0
+
+  return base + adicionais
+}
+
+const ajustarEmpresaContrato = (empresa: Empresa): Empresa => {
+  const pacotes = typeof empresa.pacotesAdicionais === "number" ? empresa.pacotesAdicionais : 0
+  const usuariosTotal =
+    typeof empresa.usuariosTotal === "number" && empresa.usuariosTotal > 0
+      ? empresa.usuariosTotal
+      : calcularUsuariosTotalContrato(empresa.plano, pacotes)
+
+  return {
+    ...empresa,
+    pacotesAdicionais: pacotes,
+    usuariosTotal,
+  }
+}
 
 const empresasIniciais: Empresa[] = [
   {
     id: 1,
-    nome: "Portal Treinamentos",
-    razaoSocial: "Portal Treinamentos LTDA",
-    cnpj: "12.345.678/0001-90",
-    email: "contato@portaltreinamentos.com",
-    telefone: "(11) 99999-9999",
-    endereco: "Rua Principal, 123 - São Paulo/SP",
-    responsavel: "Heber Sohas",
-    plano: "enterprise",
+    nome: "Univida Santa Cruz",
+    razaoSocial: "Univida Santa Cruz Assistência Familiar Ltda",
+    cnpj: "00.000.000/0001-00",
+    email: "contato@unividasantacruz.com.br",
+    telefone: "(65) 0000-0000",
+    endereco: "Rua Exemplo, 123 - Campo Novo do Parecis/MT",
+    responsavel: "Angela Maria",
+    plano: "premium",
     status: "ativa",
-    usuariosAtivos: 1,
-    usuariosTotal: 50,
-    treinamentosAtivos: 15,
-    dataContratacao: "2024-01-01",
-    proximoVencimento: "2025-01-01",
-    pacotesAdicionais: 2
+    usuariosAtivos: 8,
+    pacotesAdicionais: 1,
+    usuariosTotal: calcularUsuariosTotalContrato("premium", 1),
+    treinamentosAtivos: 12,
+    dataContratacao: "2024-01-15",
+    proximoVencimento: "2025-01-15",
+    logo: "",
+    tipoFaturamento: "anual",
+    statusPagamento: "ativo",
   },
   {
     id: 2,
-    nome: "TechCorp Soluções",
-    razaoSocial: "TechCorp Soluções em TI LTDA",
-    cnpj: "98.765.432/0001-10",
-    email: "admin@techcorp.com.br",
-    telefone: "(11) 88888-8888",
-    endereco: "Av. Paulista, 1000 - São Paulo/SP",
-    responsavel: "Maria Silva",
-    plano: "premium",
+    nome: "Cliente Plus",
+    razaoSocial: "Cliente Plus Comercial Ltda",
+    cnpj: "11.111.111/0001-11",
+    email: "contato@clienteplus.com",
+    telefone: "(11) 1111-1111",
+    endereco: "Av. Central, 456 - São Paulo/SP",
+    responsavel: "João Silva",
+    plano: "plus",
     status: "ativa",
-    usuariosAtivos: 12,
-    usuariosTotal: 15,
-    treinamentosAtivos: 8,
-    dataContratacao: "2023-06-15",
-    proximoVencimento: "2024-06-15"
+    usuariosAtivos: 3,
+    pacotesAdicionais: 0,
+    usuariosTotal: calcularUsuariosTotalContrato("plus", 0),
+    treinamentosAtivos: 5,
+    dataContratacao: "2024-03-10",
+    proximoVencimento: "2025-03-10",
+    logo: "",
+    tipoFaturamento: "mensal",
+    statusPagamento: "ativo",
   },
   {
     id: 3,
-    nome: "Indústria ABC",
-    razaoSocial: "ABC Indústria e Comércio S.A.",
-    cnpj: "11.222.333/0001-44",
-    email: "rh@industriaabc.com",
-    telefone: "(11) 77777-7777",
-    endereco: "Distrito Industrial, 500 - São Bernardo/SP",
-    responsavel: "Carlos Santos",
+    nome: "Cliente Básico",
+    razaoSocial: "Cliente Básico Serviços Ltda",
+    cnpj: "22.222.222/0001-22",
+    email: "contato@clientebasico.com",
+    telefone: "(21) 2222-2222",
+    endereco: "Rua Secundária, 789 - Rio de Janeiro/RJ",
+    responsavel: "Maria Souza",
     plano: "basico",
-    status: "ativa",
-    usuariosAtivos: 2,
-    usuariosTotal: 3,
-    treinamentosAtivos: 3,
-    dataContratacao: "2023-12-01",
-    proximoVencimento: "2024-12-01"
-  }
+    status: "inativa",
+    usuariosAtivos: 0,
+    pacotesAdicionais: 0,
+    usuariosTotal: calcularUsuariosTotalContrato("basico", 0),
+    treinamentosAtivos: 0,
+    dataContratacao: "2023-11-05",
+    proximoVencimento: "2024-11-05",
+    logo: "",
+    tipoFaturamento: "mensal",
+    statusPagamento: "pendente",
+  },
 ]
 
+const carregarEmpresas = (): Empresa[] => {
+  if (typeof window === "undefined") {
+    return empresasIniciais
+  }
+
+  try {
+    const raw = window.localStorage.getItem(EMPRESAS_STORAGE_KEY)
+    if (!raw) return empresasIniciais
+
+    const data = JSON.parse(raw) as Empresa[]
+    if (!Array.isArray(data) || data.length === 0) {
+      return empresasIniciais
+    }
+
+    return data.map(ajustarEmpresaContrato)
+  } catch {
+    return empresasIniciais
+  }
+}
+
 export default function Empresas() {
-  const [empresas, setEmpresas] = useState<Empresa[]>(empresasIniciais)
+  const [empresas, setEmpresas] = useState<Empresa[]>(carregarEmpresas)
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<Empresa["status"] | "todas">("todas")
+  const [planoFilter, setPlanoFilter] = useState<PlanoEmpresa | "todos">("todos")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null)
   const [configEmpresa, setConfigEmpresa] = useState<Empresa | null>(null)
+
+  // Campos do formulário de criação
+  const [novoNome, setNovoNome] = useState("")
+  const [novoRazaoSocial, setNovoRazaoSocial] = useState("")
+  const [novoCnpj, setNovoCnpj] = useState("")
+  const [novoEmail, setNovoEmail] = useState("")
+  const [novoTelefone, setNovoTelefone] = useState("")
+  const [novoEndereco, setNovoEndereco] = useState("")
+  const [novoResponsavel, setNovoResponsavel] = useState("")
+  const [novoPlano, setNovoPlano] = useState<PlanoEmpresa>("basico")
+  const [novoPacotesAdicionais, setNovoPacotesAdicionais] = useState<number>(0)
+  const [novoTipoFaturamento, setNovoTipoFaturamento] = useState<"mensal" | "anual">("mensal")
+
   const { toast } = useToast()
   const { formatDate } = useBrazilianDate()
 
-  const [newEmpresa, setNewEmpresa] = useState<{
-    nome: string
-    razaoSocial: string
-    cnpj: string
-    email: string
-    telefone: string
-    endereco: string
-    responsavel: string
-    plano: "basico" | "plus" | "premium" | "enterprise"
-    pacotesAdicionais: number
-  }>({
-    nome: "",
-    razaoSocial: "",
-    cnpj: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    responsavel: "",
-    plano: "basico",
-    pacotesAdicionais: 0
-  })
-
-  const getLimiteUsuarios = (plano: string, pacotes: number = 0) => {
-    const limiteBase = LIMITE_USUARIOS_POR_PLANO[plano as keyof typeof LIMITE_USUARIOS_POR_PLANO] || 3
-    if (plano === "enterprise") {
-      return limiteBase + (pacotes * USUARIOS_POR_PACOTE)
+  // Persistência em localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(
+        EMPRESAS_STORAGE_KEY,
+        JSON.stringify(empresas.map(ajustarEmpresaContrato))
+      )
+    } catch (error) {
+      console.error("Erro ao salvar empresas no localStorage", error)
     }
-    return limiteBase
-  }
+  }, [empresas])
+
+  const totalEmpresas = empresas.length
+  const totalAtivas = empresas.filter((e) => e.status === "ativa").length
+  const totalUsuariosAtivos = empresas.reduce(
+    (acc, e) => acc + e.usuariosAtivos,
+    0
+  )
+  const totalTreinamentos = empresas.reduce(
+    (acc, e) => acc + e.treinamentosAtivos,
+    0
+  )
+
+  const empresasFiltradas = useMemo(() => {
+    return empresas.filter((empresa) => {
+      const termo =
+        searchTerm.trim().length > 0
+          ? searchTerm.toLowerCase()
+          : ""
+
+      const matchSearch =
+        termo.length === 0 ||
+        empresa.nome.toLowerCase().includes(termo) ||
+        empresa.razaoSocial.toLowerCase().includes(termo) ||
+        empresa.cnpj.toLowerCase().includes(termo)
+
+      const matchStatus =
+        statusFilter === "todas" || empresa.status === statusFilter
+
+      const matchPlano =
+        planoFilter === "todos" || empresa.plano === planoFilter
+
+      return matchSearch && matchStatus && matchPlano
+    })
+  }, [empresas, searchTerm, statusFilter, planoFilter])
 
   const resetForm = () => {
-    setNewEmpresa({
-      nome: "",
-      razaoSocial: "",
-      cnpj: "",
-      email: "",
-      telefone: "",
-      endereco: "",
-      responsavel: "",
-      plano: "basico",
-      pacotesAdicionais: 0
-    })
-    setEditingEmpresa(null)
+    setNovoNome("")
+    setNovoRazaoSocial("")
+    setNovoCnpj("")
+    setNovoEmail("")
+    setNovoTelefone("")
+    setNovoEndereco("")
+    setNovoResponsavel("")
+    setNovoPlano("basico")
+    setNovoPacotesAdicionais(0)
+    setNovoTipoFaturamento("mensal")
   }
 
-  const handleCreate = () => {
-    if (!newEmpresa.nome || !newEmpresa.email || !newEmpresa.cnpj) {
+  const handleCreateEmpresa = () => {
+    if (!novoNome.trim() || !novoCnpj.trim() || !novoEmail.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Nome, email e CNPJ são obrigatórios",
-        variant: "destructive"
+        title: "Dados obrigatórios",
+        description: "Nome, CNPJ e e-mail são obrigatórios.",
+        variant: "destructive",
       })
       return
     }
 
-    const limiteUsuarios = getLimiteUsuarios(newEmpresa.plano, newEmpresa.pacotesAdicionais)
-    
-    const empresa: Empresa = {
-      id: Date.now(),
-      ...newEmpresa,
+    const usuariosTotal = calcularUsuariosTotalContrato(
+      novoPlano,
+      novoPlano === "enterprise" ? novoPacotesAdicionais : 0
+    )
+
+    const novoId =
+      empresas.length > 0 ? Math.max(...empresas.map((e) => e.id)) + 1 : 1
+
+    const hoje = new Date()
+    const daquiUmMes = new Date()
+    daquiUmMes.setMonth(daquiUmMes.getMonth() + 1)
+
+    const novaEmpresa: Empresa = ajustarEmpresaContrato({
+      id: novoId,
+      nome: novoNome.trim(),
+      razaoSocial: novoRazaoSocial.trim() || novoNome.trim(),
+      cnpj: novoCnpj.trim(),
+      email: novoEmail.trim(),
+      telefone: novoTelefone.trim(),
+      endereco: novoEndereco.trim(),
+      responsavel: novoResponsavel.trim() || "Responsável não informado",
+      plano: novoPlano,
       status: "ativa",
       usuariosAtivos: 0,
-      usuariosTotal: limiteUsuarios,
+      usuariosTotal,
       treinamentosAtivos: 0,
-      dataContratacao: new Date().toISOString().split('T')[0],
-      proximoVencimento: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      pacotesAdicionais: newEmpresa.plano === "enterprise" ? newEmpresa.pacotesAdicionais : undefined
-    }
+      dataContratacao: hoje.toISOString().slice(0, 10),
+      proximoVencimento: daquiUmMes.toISOString().slice(0, 10),
+      logo: "",
+      pacotesAdicionais: novoPlano === "enterprise" ? novoPacotesAdicionais : 0,
+      tipoFaturamento: novoTipoFaturamento,
+      statusPagamento: "ativo",
+    })
 
-    setEmpresas([...empresas, empresa])
-    setIsCreateOpen(false)
+    setEmpresas((prev) => [...prev, novaEmpresa])
+    toast({
+      title: "Empresa cadastrada",
+      description: "A empresa foi cadastrada com sucesso.",
+    })
     resetForm()
-    
-    toast({
-      title: "Empresa cadastrada!",
-      description: "A empresa foi cadastrada com sucesso."
-    })
-  }
-
-  const handleEdit = (empresa: Empresa) => {
-    setEditingEmpresa(empresa)
-    setNewEmpresa({
-      nome: empresa.nome,
-      razaoSocial: empresa.razaoSocial,
-      cnpj: empresa.cnpj,
-      email: empresa.email,
-      telefone: empresa.telefone,
-      endereco: empresa.endereco,
-      responsavel: empresa.responsavel,
-      plano: empresa.plano,
-      pacotesAdicionais: empresa.pacotesAdicionais || 0
-    })
-    setIsCreateOpen(true)
-  }
-
-  const handleUpdate = () => {
-    if (!editingEmpresa) return
-
-    const limiteUsuarios = getLimiteUsuarios(newEmpresa.plano, newEmpresa.pacotesAdicionais)
-
-    setEmpresas(empresas.map(e => 
-      e.id === editingEmpresa.id 
-        ? { 
-            ...editingEmpresa, 
-            ...newEmpresa,
-            usuariosTotal: limiteUsuarios,
-            pacotesAdicionais: newEmpresa.plano === "enterprise" ? newEmpresa.pacotesAdicionais : undefined
-          }
-        : e
-    ))
-    
     setIsCreateOpen(false)
-    resetForm()
-    
+  }
+
+  const atualizarEmpresa = (empresaAtualizada: Empresa) => {
+    setEmpresas((prev) =>
+      prev.map((e) =>
+        e.id === empresaAtualizada.id
+          ? ajustarEmpresaContrato(empresaAtualizada)
+          : e
+      )
+    )
+  }
+
+  const handleToggleStatus = (empresaId: number, novoStatus: Empresa["status"]) => {
+    setEmpresas((prev) =>
+      prev.map((empresa) =>
+        empresa.id === empresaId
+          ? { ...empresa, status: novoStatus }
+          : empresa
+      )
+    )
     toast({
-      title: "Empresa atualizada!",
-      description: "A empresa foi atualizada com sucesso."
+      title: "Status atualizado",
+      description: "O status da empresa foi atualizado.",
     })
   }
 
-  const handleDelete = (id: number) => {
-    setEmpresas(empresas.filter(e => e.id !== id))
+  const handleDelete = (empresaId: number) => {
+    setEmpresas((prev) => prev.filter((empresa) => empresa.id !== empresaId))
     toast({
-      title: "Empresa excluída",
-      description: "A empresa foi removida com sucesso."
+      title: "Empresa removida",
+      description: "A empresa foi removida da gestão.",
     })
   }
-
-  const toggleStatus = (id: number) => {
-    setEmpresas(empresas.map(empresa => 
-      empresa.id === id 
-        ? { 
-            ...empresa, 
-            status: empresa.status === "ativa" ? "inativa" : "ativa"
-          }
-        : empresa
-    ))
-  }
-
-  const getPlanoColor = (plano: string) => {
-    switch (plano) {
-      case "basico": return "bg-slate-500"
-      case "plus": return "bg-blue-500"
-      case "premium": return "bg-purple-500"
-      case "enterprise": return "bg-amber-500"
-      default: return "bg-slate-500"
-    }
-  }
-
-  const getPlanoLabel = (plano: string) => {
-    switch (plano) {
-      case "basico": return "Básico"
-      case "plus": return "Plus"
-      case "premium": return "Premium"
-      case "enterprise": return "Enterprise"
-      default: return "Básico"
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "ativa": return "bg-green-500"
-      case "inativa": return "bg-gray-500"
-      case "suspensa": return "bg-red-500"
-      default: return "bg-gray-500"
-    }
-  }
-
-  const getInitials = (nome: string) => {
-    return nome.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  const filteredEmpresas = empresas.filter(empresa =>
-    empresa.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    empresa.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    empresa.cnpj.includes(searchTerm) ||
-    empresa.responsavel.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Empresas</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie empresas clientes e seus planos de assinatura
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-primary" />
+            Gestão de Empresas
+          </h1>
+          <p className="text-muted-foreground">
+            Cadastre e gerencie as empresas contratantes, planos, limites e
+            status de utilização da plataforma.
           </p>
         </div>
-        
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open)
-          if (!open) resetForm()
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Empresa
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingEmpresa ? "Editar Empresa" : "Cadastrar Nova Empresa"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingEmpresa ? "Atualize as informações da empresa." : "Preencha os dados da nova empresa cliente."}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome Fantasia *</Label>
-                  <Input
-                    id="nome"
-                    value={newEmpresa.nome}
-                    onChange={(e) => setNewEmpresa({...newEmpresa, nome: e.target.value})}
-                    placeholder="Nome da empresa"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="razaoSocial">Razão Social</Label>
-                  <Input
-                    id="razaoSocial"
-                    value={newEmpresa.razaoSocial}
-                    onChange={(e) => setNewEmpresa({...newEmpresa, razaoSocial: e.target.value})}
-                    placeholder="Razão social completa"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ *</Label>
-                  <Input
-                    id="cnpj"
-                    value={newEmpresa.cnpj}
-                    onChange={(e) => setNewEmpresa({...newEmpresa, cnpj: e.target.value})}
-                    placeholder="00.000.000/0000-00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="plano">Plano de Assinatura</Label>
-                  <Select value={newEmpresa.plano} onValueChange={(value: any) => setNewEmpresa({...newEmpresa, plano: value, pacotesAdicionais: value === "enterprise" ? newEmpresa.pacotesAdicionais : 0})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basico">Básico (até 3 usuários)</SelectItem>
-                      <SelectItem value="plus">Plus (até 5 usuários)</SelectItem>
-                      <SelectItem value="premium">Premium (até 15 usuários)</SelectItem>
-                      <SelectItem value="enterprise">Enterprise (50 usuários + pacotes)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              {/* Campo de pacotes adicionais - só aparece para Enterprise */}
-              {newEmpresa.plano === "enterprise" && (
-                <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <Label htmlFor="pacotesAdicionais" className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Pacotes Adicionais de Usuários
-                  </Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Cada pacote contém 5 usuários. O plano Enterprise inclui 50 usuários base.
-                  </p>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      id="pacotesAdicionais"
-                      type="number"
-                      min={0}
-                      value={newEmpresa.pacotesAdicionais}
-                      onChange={(e) => setNewEmpresa({...newEmpresa, pacotesAdicionais: Math.max(0, parseInt(e.target.value) || 0)})}
-                      className="w-24"
-                    />
-                    <div className="text-sm">
-                      <span className="font-medium">
-                        Total de usuários: {getLimiteUsuarios("enterprise", newEmpresa.pacotesAdicionais)}
-                      </span>
-                      <span className="text-muted-foreground ml-2">
-                        (50 base + {newEmpresa.pacotesAdicionais * 5} adicionais)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Mostrar limite de usuários para outros planos */}
-              {newEmpresa.plano !== "enterprise" && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>Limite de usuários para o plano {getPlanoLabel(newEmpresa.plano)}: </span>
-                    <strong>{getLimiteUsuarios(newEmpresa.plano)} usuários</strong>
-                    <span className="text-muted-foreground">(incluindo o administrador)</span>
-                  </p>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newEmpresa.email}
-                    onChange={(e) => setNewEmpresa({...newEmpresa, email: e.target.value})}
-                    placeholder="contato@empresa.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <Input
-                    id="telefone"
-                    value={newEmpresa.telefone}
-                    onChange={(e) => setNewEmpresa({...newEmpresa, telefone: e.target.value})}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço</Label>
-                <Textarea
-                  id="endereco"
-                  value={newEmpresa.endereco}
-                  onChange={(e) => setNewEmpresa({...newEmpresa, endereco: e.target.value})}
-                  placeholder="Endereço completo da empresa"
-                  rows={2}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="responsavel">Responsável</Label>
-                <Input
-                  id="responsavel"
-                  value={newEmpresa.responsavel}
-                  onChange={(e) => setNewEmpresa({...newEmpresa, responsavel: e.target.value})}
-                  placeholder="Nome do responsável técnico"
-                />
-              </div>
+        <Button
+          onClick={() => setIsCreateOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Nova empresa
+        </Button>
+      </div>
+
+      {/* Cards de métricas */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Empresas ativas
+            </CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalAtivas}</div>
+            <p className="text-xs text-muted-foreground">
+              De {totalEmpresas} empresas cadastradas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Usuários ativos
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalUsuariosAtivos}</div>
+            <p className="text-xs text-muted-foreground">
+              Soma dos usuários ativos em todas as empresas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Treinamentos ativos
+            </CardTitle>
+            <PlayCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalTreinamentos}</div>
+            <p className="text-xs text-muted-foreground">
+              Total de treinamentos publicados pelas empresas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Contratos ativos
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {
+                empresas.filter(
+                  (e) => e.statusPagamento === "ativo" && e.status === "ativa"
+                ).length
+              }
             </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={editingEmpresa ? handleUpdate : handleCreate} className="bg-gradient-primary">
-                {editingEmpresa ? "Atualizar" : "Cadastrar Empresa"}
+            <p className="text-xs text-muted-foreground">
+              Considerando status da empresa e do pagamento
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4 space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="flex-1 flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, razão social ou CNPJ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) =>
+                  setStatusFilter(value as Empresa["status"] | "todas")
+                }
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="inativa">Inativas</SelectItem>
+                  <SelectItem value="suspensa">Suspensas</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={planoFilter}
+                onValueChange={(value) =>
+                  setPlanoFilter(value as PlanoEmpresa | "todos")
+                }
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos planos</SelectItem>
+                  <SelectItem value="basico">Básico</SelectItem>
+                  <SelectItem value="plus">Plus</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filtros
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Building2 className="h-5 w-5 text-blue-600" />
-              </div>
+      {/* Lista de Empresas */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {empresasFiltradas.map((empresa) => (
+          <Card key={empresa.id}>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2">
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{empresas.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Building className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ativas</p>
-                <p className="text-2xl font-bold">{empresas.filter(e => e.status === "ativa").length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Users className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Usuários</p>
-                <p className="text-2xl font-bold">{empresas.reduce((acc, e) => acc + e.usuariosTotal, 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Revenue MRR</p>
-                <p className="text-2xl font-bold">R$ 12,5k</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar empresas..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Empresas List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredEmpresas.map((empresa) => (
-          <Card key={empresa.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={empresa.logo} alt={empresa.nome} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(empresa.nome)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-lg">{empresa.nome}</CardTitle>
-                    <CardDescription>{empresa.razaoSocial}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Badge className={`${getPlanoColor(empresa.plano)} text-white`}>
-                    {getPlanoLabel(empresa.plano)}
-                  </Badge>
-                  <Badge className={`${getStatusColor(empresa.status)} text-white`}>
-                    {empresa.status}
-                  </Badge>
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  {empresa.nome}
+                  {empresa.status === "ativa" && (
+                    <Badge className="bg-emerald-500 text-white">Ativa</Badge>
+                  )}
+                  {empresa.status === "inativa" && (
+                    <Badge variant="outline" className="border-slate-300">
+                      Inativa
+                    </Badge>
+                  )}
+                  {empresa.status === "suspensa" && (
+                    <Badge className="bg-amber-500 text-white">Suspensa</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {empresa.razaoSocial} • CNPJ: {empresa.cnpj}
+                </CardDescription>
               </div>
             </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground">CNPJ:</p>
-                  <p className="font-medium">{empresa.cnpj}</p>
+                  <p className="text-xs text-muted-foreground">Plano</p>
+                  <p className="font-medium capitalize">{empresa.plano}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tipo de faturamento:{" "}
+                    {empresa.tipoFaturamento === "anual" ? "Anual" : "Mensal"}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Responsável:</p>
-                  <p className="font-medium">{empresa.responsavel || "Não informado"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Limite de cadastros
+                  </p>
+                  <p className="font-medium">
+                    {empresa.usuariosAtivos}/{empresa.usuariosTotal} usuários
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Limite considera todos os cadastros (ativos + inativos).
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Treinamentos</p>
+                  <p className="font-medium">
+                    {empresa.treinamentosAtivos} ativos
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Contrato</p>
+                  <p className="font-medium">
+                    Desde {formatDate(empresa.dataContratacao)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Próx. vencimento: {formatDate(empresa.proximoVencimento)}
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{empresa.usuariosAtivos}/{empresa.usuariosTotal} usuários</span>
+
+              <div className="flex items-center justify-between pt-2 border-t mt-2">
+                <div className="flex flex-col text-xs text-muted-foreground">
+                  <span>{empresa.email}</span>
+                  <span>
+                    {empresa.telefone} • Resp.: {empresa.responsavel}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-muted-foreground" />
-                  <span>{empresa.treinamentosAtivos} treinamentos</span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                <div>
-                  <p>Contratação:</p>
-                  <p>{formatDate(empresa.dataContratacao)}</p>
-                </div>
-                <div>
-                  <p>Vencimento:</p>
-                  <p>{formatDate(empresa.proximoVencimento)}</p>
-                </div>
-              </div>
-              
-              <div className="flex justify-between pt-2">
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
-                    onClick={() => toggleStatus(empresa.id)}
+                    onClick={() => setConfigEmpresa(empresa)}
                   >
-                    {empresa.status === "ativa" ? "Suspender" : "Ativar"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleEdit(empresa)}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setConfigEmpresa(empresa)}>
-                    <Settings className="h-4 w-4 mr-2" />
+                    <Settings className="h-4 w-4 mr-1" />
                     Configurar
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(empresa.id)}
-                    className="text-destructive hover:text-destructive"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      handleToggleStatus(
+                        empresa.id,
+                        empresa.status === "ativa" ? "inativa" : "ativa"
+                      )
+                    }
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {empresa.status === "ativa" ? (
+                      <PauseCircle className="h-4 w-4 text-amber-600" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4 text-emerald-600" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(empresa.id)}
+                  >
+                    <XCircle className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               </div>
@@ -643,14 +615,193 @@ export default function Empresas() {
         ))}
       </div>
 
-      {/* Modal de Configuração */}
+      {/* Modal de criação de empresa */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nova empresa</DialogTitle>
+            <DialogDescription>
+              Cadastre uma nova empresa cliente e defina o plano e o limite
+              inicial de cadastros de usuários.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome fantasia</Label>
+                <Input
+                  id="nome"
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  placeholder="Ex.: Univida Santa Cruz"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="razaoSocial">Razão social</Label>
+                <Input
+                  id="razaoSocial"
+                  value={novoRazaoSocial}
+                  onChange={(e) => setNovoRazaoSocial(e.target.value)}
+                  placeholder="Razão social da empresa"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">CNPJ</Label>
+                <Input
+                  id="cnpj"
+                  value={novoCnpj}
+                  onChange={(e) => setNovoCnpj(e.target.value)}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={novoEmail}
+                  onChange={(e) => setNovoEmail(e.target.value)}
+                  placeholder="contato@empresa.com.br"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input
+                  id="telefone"
+                  value={novoTelefone}
+                  onChange={(e) => setNovoTelefone(e.target.value)}
+                  placeholder="(65) 0000-0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="responsavel">Responsável</Label>
+                <Input
+                  id="responsavel"
+                  value={novoResponsavel}
+                  onChange={(e) => setNovoResponsavel(e.target.value)}
+                  placeholder="Nome do responsável"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="endereco">Endereço</Label>
+              <Input
+                id="endereco"
+                value={novoEndereco}
+                onChange={(e) => setNovoEndereco(e.target.value)}
+                placeholder="Endereço completo"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Plano</Label>
+                <Select
+                  value={novoPlano}
+                  onValueChange={(value) =>
+                    setNovoPlano(value as PlanoEmpresa)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basico">Básico</SelectItem>
+                    <SelectItem value="plus">Plus</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tipoFaturamento">Faturamento</Label>
+                <Select
+                  value={novoTipoFaturamento}
+                  onValueChange={(value) =>
+                    setNovoTipoFaturamento(value as "mensal" | "anual")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de faturamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pacotesAdicionais">
+                  Pacotes adicionais (Enterprise)
+                </Label>
+                <Input
+                  id="pacotesAdicionais"
+                  type="number"
+                  min={0}
+                  disabled={novoPlano !== "enterprise"}
+                  value={novoPacotesAdicionais}
+                  onChange={(e) =>
+                    setNovoPacotesAdicionais(
+                      Math.max(0, Number(e.target.value) || 0)
+                    )
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cada pacote adiciona {USUARIOS_POR_PACOTE} cadastros.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 text-xs text-muted-foreground">
+              <p>
+                Limite estimado de cadastros de usuários para esta empresa:{" "}
+                <strong>
+                  {calcularUsuariosTotalContrato(
+                    novoPlano,
+                    novoPlano === "enterprise" ? novoPacotesAdicionais : 0
+                  )}
+                </strong>{" "}
+                (contando usuários ativos e inativos).
+              </p>
+              <p className="mt-1">
+                Alterações futuras nos planos mestres não alterarão
+                automaticamente os limites já contratados pelas empresas.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                resetForm()
+                setIsCreateOpen(false)
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateEmpresa}>Salvar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de configuração da empresa */}
       <EmpresaConfigModal
         empresa={configEmpresa}
         open={configEmpresa !== null}
-        onOpenChange={(open) => !open && setConfigEmpresa(null)}
-        onUpdate={(empresaAtualizada) => {
-          setEmpresas(empresas.map(e => e.id === empresaAtualizada.id ? empresaAtualizada : e))
+        onOpenChange={(open) => {
+          if (!open) setConfigEmpresa(null)
         }}
+        onUpdate={atualizarEmpresa}
       />
     </div>
   )
