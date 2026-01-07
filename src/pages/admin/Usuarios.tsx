@@ -1,18 +1,23 @@
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+// src/pages/admin/Usuarios.tsx
+import { useEffect, useMemo, useState } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -20,679 +25,626 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/contexts/auth-context"
-
 import {
-  Plus,
-  Search,
-  Edit3,
-  Trash2,
   Users,
+  Shield,
   Building2,
-  UserCheck,
-  UserX,
-  Crown,
+  Search,
+  Filter,
+  UserPlus,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-type PapelUsuario = "master" | "admin" | "instrutor" | "colaborador"
+type PapelUsuario = "master" | "admin" | "gestor" | "usuario"
+type StatusUsuario = "ativo" | "inativo"
 
 interface Usuario {
   id: number
   nome: string
   email: string
   empresa: string
-  departamento: string
-  cargo: string
+  departamento?: string
+  cargo?: string
   papel: PapelUsuario
-  status: "ativo" | "inativo"
-  ultimoAcesso: string
-  treinamentosConcluidos: number
+  status: StatusUsuario
 }
 
-const LIMITE_USUARIOS_POR_EMPRESA: Record<string, number> = {
-  "UNIVIDA Santa Cruz": 10,
-  "UNIVIDA Campo Novo": 5,
-  "Empresa Demo": 15,
-  "Indústria ABC": 3,
+type PlanoEmpresa = "basico" | "plus" | "premium" | "enterprise"
+
+interface EmpresaContrato {
+  id: number
+  nome: string
+  plano: PlanoEmpresa
+  usuariosTotal: number
+  pacotesAdicionais?: number
 }
 
-const USUARIOS_INICIAIS: Usuario[] = [
+const EMPRESAS_STORAGE_KEY = "portal_treinamentos_empresas"
+
+// Estes valores são os mesmos usados na tela de empresas
+const LIMITE_USUARIOS_POR_PLANO: Record<PlanoEmpresa, number> = {
+  basico: 3,
+  plus: 5,
+  premium: 15,
+  enterprise: 50,
+}
+
+const USUARIOS_POR_PACOTE = 5
+
+const calcularUsuariosTotalContrato = (
+  plano: PlanoEmpresa,
+  pacotesAdicionais?: number
+): number => {
+  const base = LIMITE_USUARIOS_POR_PLANO[plano] ?? 0
+  const adicionais =
+    plano === "enterprise" ? (pacotesAdicionais || 0) * USUARIOS_POR_PACOTE : 0
+
+  return base + adicionais
+}
+
+const carregarEmpresasContratos = (): EmpresaContrato[] => {
+  if (typeof window === "undefined") return []
+
+  try {
+    const raw = window.localStorage.getItem(EMPRESAS_STORAGE_KEY)
+    if (!raw) return []
+
+    const data = JSON.parse(raw) as any[]
+    if (!Array.isArray(data)) return []
+
+    return data.map((item, index) => {
+      const plano = (item.plano || "basico") as PlanoEmpresa
+      const pacotes =
+        typeof item.pacotesAdicionais === "number" ? item.pacotesAdicionais : 0
+
+      const usuariosTotal =
+        typeof item.usuariosTotal === "number" && item.usuariosTotal > 0
+          ? item.usuariosTotal
+          : calcularUsuariosTotalContrato(plano, pacotes)
+
+      return {
+        id: typeof item.id === "number" ? item.id : index + 1,
+        nome: String(item.nome || "Empresa sem nome"),
+        plano,
+        usuariosTotal,
+        pacotesAdicionais: pacotes,
+      }
+    })
+  } catch (error) {
+    console.error("Erro ao carregar empresas do storage em Usuários", error)
+    return []
+  }
+}
+
+const usuariosIniciais: Usuario[] = [
   {
     id: 1,
-    nome: "Angela Maria",
-    email: "angela.maria@unividasantacruz.com.br",
-    empresa: "UNIVIDA Santa Cruz",
-    departamento: "Comercial",
-    cargo: "Coordenadora Comercial",
+    nome: "Administrador Geral",
+    email: "admin@unividasantacruz.com.br",
+    empresa: "Univida Santa Cruz",
     papel: "master",
     status: "ativo",
-    ultimoAcesso: "Hoje às 09:12",
-    treinamentosConcluidos: 18,
   },
   {
     id: 2,
-    nome: "João Silva",
-    email: "joao.silva@unividasantacruz.com.br",
-    empresa: "UNIVIDA Santa Cruz",
-    departamento: "Atendimento",
-    cargo: "Assistente",
-    papel: "colaborador",
+    nome: "Gestor RH",
+    email: "gestor.rh@clienteplus.com",
+    empresa: "Cliente Plus",
+    papel: "gestor",
     status: "ativo",
-    ultimoAcesso: "Ontem às 17:40",
-    treinamentosConcluidos: 6,
   },
   {
     id: 3,
-    nome: "Maria Santos",
-    email: "maria.santos@unividacamponovo.com.br",
-    empresa: "UNIVIDA Campo Novo",
-    departamento: "Administrativo",
-    cargo: "Assistente",
-    papel: "admin",
+    nome: "Colaborador Básico",
+    email: "colaborador@clientebasico.com",
+    empresa: "Cliente Básico",
+    papel: "usuario",
     status: "inativo",
-    ultimoAcesso: "Há 7 dias",
-    treinamentosConcluidos: 9,
   },
 ]
 
-const validarSenhaForte = (senha: string) => {
-  if (senha.length < 8) return false
-  if (!/[A-Z]/.test(senha)) return false
-  if (!/[a-z]/.test(senha)) return false
-  if (!/[0-9]/.test(senha)) return false
-  if (!/[^A-Za-z0-9]/.test(senha)) return false
-  return true
-}
-
-const getPapelClasses = (papel: PapelUsuario) => {
-  switch (papel) {
-    case "master":
-      return "bg-purple-100 text-purple-700 border border-purple-200"
-    case "admin":
-      return "bg-blue-100 text-blue-700 border border-blue-200"
-    case "instrutor":
-      return "bg-emerald-100 text-emerald-700 border border-emerald-200"
-    case "colaborador":
-    default:
-      return "bg-slate-100 text-slate-700 border border-slate-200"
-  }
-}
-
-const getPapelIcon = (papel: PapelUsuario) => {
-  switch (papel) {
-    case "master":
-      return <Crown className="h-3 w-3 text-purple-600" />
-    case "admin":
-      return <UserCheck className="h-3 w-3 text-blue-600" />
-    case "instrutor":
-      return <UserCheck className="h-3 w-3 text-emerald-600" />
-    case "colaborador":
-    default:
-      return <Users className="h-3 w-3 text-slate-600" />
-  }
-}
-
-const getStatusClasses = (status: Usuario["status"]) => {
-  if (status === "ativo") {
-    return "bg-green-100 text-green-700 border border-green-200"
-  }
-  return "bg-red-100 text-red-700 border border-red-200"
-}
-
 export default function Usuarios() {
-  const { user: currentUser } = useAuth()
-  const { toast } = useToast()
-
-  const [usuarios, setUsuarios] = useState<Usuario[]>(USUARIOS_INICIAIS)
-
+  const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciais)
+  const [empresasContrato, setEmpresasContrato] = useState<EmpresaContrato[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filtroPapel, setFiltroPapel] = useState<string>("todos")
-  const [filtroStatus, setFiltroStatus] = useState<string>("todos")
-  const [filtroEmpresa, setFiltroEmpresa] = useState<string>("todas")
+  const [statusFilter, setStatusFilter] = useState<StatusUsuario | "todos">(
+    "todos"
+  )
+  const [empresaFilter, setEmpresaFilter] = useState<string>("todas")
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
-  const [modalAberto, setModalAberto] = useState(false)
   const [novoNome, setNovoNome] = useState("")
   const [novoEmail, setNovoEmail] = useState("")
-  const [novoEmpresa, setNovoEmpresa] = useState("")
-  const [novoPapel, setNovoPapel] = useState<PapelUsuario>("colaborador")
-  const [novaSenha, setNovaSenha] = useState("")
-  const [novaSenhaConfirmacao, setNovaSenhaConfirmacao] = useState("")
+  const [novaEmpresa, setNovaEmpresa] = useState("")
+  const [novoPapel, setNovoPapel] = useState<PapelUsuario>("usuario")
 
-  const papelAtual = (currentUser?.role?.toLowerCase() as PapelUsuario) ?? "master"
+  const { toast } = useToast()
 
-  const mapaPermissoes: Record<PapelUsuario, PapelUsuario[]> = {
-    master: ["master", "admin", "instrutor", "colaborador"],
-    admin: ["instrutor", "colaborador"],
-    instrutor: ["colaborador"],
-    colaborador: [],
-  }
-
-  const podeCriarPapel = (papel: PapelUsuario) => {
-    const permitidos = mapaPermissoes[papelAtual] ?? []
-    return permitidos.includes(papel)
-  }
-
-  const getLimiteEmpresa = (empresa: string) => {
-    const limite = LIMITE_USUARIOS_POR_EMPRESA[empresa]
-    if (!limite || limite <= 0) {
-      // se não houver configuração, tratamos como ilimitado por enquanto
-      return Infinity
-    }
-    return limite
-  }
+  useEffect(() => {
+    setEmpresasContrato(carregarEmpresasContratos())
+  }, [])
 
   const totalUsuarios = usuarios.length
-  const usuariosAtivos = usuarios.filter((u) => u.status === "ativo").length
-  const mastersAdmins = usuarios.filter((u) => u.papel === "master" || u.papel === "admin").length
-  const empresasAtendidas = new Set(usuarios.map((u) => u.empresa)).size
+  const totalAtivos = usuarios.filter((u) => u.status === "ativo").length
+  const totalAdmins = usuarios.filter(
+    (u) => u.papel === "master" || u.papel === "admin"
+  ).length
+  const totalEmpresas = new Set(usuarios.map((u) => u.empresa)).size
 
-  const empresasDisponiveis = Array.from(new Set(usuarios.map((u) => u.empresa))).sort()
+  const empresasOptions = useMemo(
+    () => empresasContrato.map((e) => e.nome),
+    [empresasContrato]
+  )
 
-  const usuariosFiltrados = usuarios.filter((u) => {
-    if (searchTerm) {
-      const termo = searchTerm.toLowerCase()
-      if (
-        !u.nome.toLowerCase().includes(termo) &&
-        !u.email.toLowerCase().includes(termo) &&
-        !u.empresa.toLowerCase().includes(termo)
-      ) {
-        return false
+  const usuariosFiltrados = useMemo(() => {
+    return usuarios.filter((usuario) => {
+      const termo =
+        searchTerm.trim().length > 0 ? searchTerm.toLowerCase() : ""
+
+      const matchSearch =
+        termo.length === 0 ||
+        usuario.nome.toLowerCase().includes(termo) ||
+        usuario.email.toLowerCase().includes(termo) ||
+        usuario.empresa.toLowerCase().includes(termo)
+
+      const matchStatus =
+        statusFilter === "todos" || usuario.status === statusFilter
+
+      const matchEmpresa =
+        empresaFilter === "todas" || usuario.empresa === empresaFilter
+
+      return matchSearch && matchStatus && matchEmpresa
+    })
+  }, [usuarios, searchTerm, statusFilter, empresaFilter])
+
+  const resetForm = () => {
+    setNovoNome("")
+    setNovoEmail("")
+    setNovaEmpresa("")
+    setNovoPapel("usuario")
+  }
+
+  const verificarLimiteEmpresa = (
+    empresaNome: string
+  ): { ok: boolean; mensagem?: string } => {
+    const contrato = empresasContrato.find((e) => e.nome === empresaNome)
+
+    // Se não existir contrato, por enquanto não bloqueamos
+    if (!contrato) {
+      return { ok: true }
+    }
+
+    // Contabiliza TODOS os cadastros da empresa (ativos + inativos)
+    const totalCadastrados = usuarios.filter(
+      (u) => u.empresa === empresaNome
+    ).length
+
+    if (totalCadastrados >= contrato.usuariosTotal) {
+      return {
+        ok: false,
+        mensagem: `A empresa "${empresaNome}" atingiu o limite de ${contrato.usuariosTotal} cadastros de usuários (ativos e inativos). Para cadastrar novos usuários, é necessário contratar um plano com mais vagas ou adicionar pacotes.`,
       }
     }
 
-    if (filtroPapel !== "todos" && u.papel !== filtroPapel) {
-      return false
-    }
-
-    if (filtroStatus !== "todos" && u.status !== filtroStatus) {
-      return false
-    }
-
-    if (filtroEmpresa !== "todas" && u.empresa !== filtroEmpresa) {
-      return false
-    }
-
-    return true
-  })
-
-  const limparFormulario = () => {
-    setNovoNome("")
-    setNovoEmail("")
-    setNovoEmpresa("")
-    setNovoPapel("colaborador")
-    setNovaSenha("")
-    setNovaSenhaConfirmacao("")
+    return { ok: true }
   }
 
-  const handleCriarUsuario = () => {
-    if (!novoNome.trim() || !novoEmail.trim() || !novoEmpresa.trim()) {
+  const handleCreateUsuario = () => {
+    if (!novoNome.trim() || !novoEmail.trim() || !novaEmpresa.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha nome, e-mail e empresa para criar o usuário.",
+        description: "Nome, e-mail e empresa são obrigatórios.",
         variant: "destructive",
       })
       return
     }
 
-    if (!validarSenhaForte(novaSenha)) {
+    const emailRegex = /\S+@\S+\.\S+/
+    if (!emailRegex.test(novoEmail.trim())) {
       toast({
-        title: "Senha fraca",
-        description:
-          "A senha deve ter pelo menos 8 caracteres, com letra maiúscula, minúscula, número e caractere especial.",
+        title: "E-mail inválido",
+        description: "Informe um e-mail válido para o usuário.",
         variant: "destructive",
       })
       return
     }
 
-    if (novaSenha !== novaSenhaConfirmacao) {
-      toast({
-        title: "Confirmação de senha inválida",
-        description: "A confirmação de senha deve ser igual à senha informada.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!podeCriarPapel(novoPapel)) {
-      toast({
-        title: "Permissão insuficiente",
-        description:
-          "Seu papel atual não permite criar usuários com este nível de acesso. Ajuste o papel ou solicite a um usuário master.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const limite = getLimiteEmpresa(novoEmpresa)
-    const usuariosDaEmpresa = usuarios.filter((u) => u.empresa === novoEmpresa).length
-
-    if (usuariosDaEmpresa >= limite && limite !== Infinity) {
+    const resultadoLimite = verificarLimiteEmpresa(novaEmpresa)
+    if (!resultadoLimite.ok) {
       toast({
         title: "Limite de usuários atingido",
-        description:
-          "O plano contratado para esta empresa já atingiu o limite de cadastros. Para cadastrar novos usuários, será necessário contratar um plano com capacidade maior.",
+        description: resultadoLimite.mensagem,
         variant: "destructive",
       })
       return
     }
 
-    const novoId = usuarios.length > 0 ? Math.max(...usuarios.map((u) => u.id)) + 1 : 1
+    const novoId =
+      usuarios.length > 0 ? Math.max(...usuarios.map((u) => u.id)) + 1 : 1
 
     const novoUsuario: Usuario = {
       id: novoId,
       nome: novoNome.trim(),
       email: novoEmail.trim(),
-      empresa: novoEmpresa.trim(),
-      departamento: "-",
-      cargo: "-",
+      empresa: novaEmpresa,
       papel: novoPapel,
       status: "ativo",
-      ultimoAcesso: "Criado agora",
-      treinamentosConcluidos: 0,
     }
 
     setUsuarios((prev) => [...prev, novoUsuario])
 
     toast({
-      title: "Usuário criado com sucesso",
-      description: `O usuário ${novoUsuario.nome} foi cadastrado e já conta para o limite do plano.`,
-    })
-
-    limparFormulario()
-    setModalAberto(false)
-  }
-
-  const handleDelete = (id: number) => {
-    const usuario = usuarios.find((u) => u.id === id)
-    if (!usuario) return
-
-    // impede excluir a si mesmo (padrão de segurança mínimo)
-    if (currentUser?.email && currentUser.email === usuario.email) {
-      toast({
-        title: "Ação não permitida",
-        description: "Você não pode excluir seu próprio usuário.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // NÃO remove o registro para não liberar vaga de plano
-    toast({
-      title: "Exclusão não permitida",
+      title: "Usuário cadastrado",
       description:
-        "Cadastros de usuários não podem ser excluídos. Use a opção de inativar para bloquear o acesso, mantendo o histórico e o consumo do limite do plano.",
-      variant: "destructive",
+        "O usuário foi cadastrado com sucesso. O limite é contado por cadastro (ativos + inativos).",
+    })
+
+    resetForm()
+    setIsCreateOpen(false)
+  }
+
+  const handleToggleStatus = (id: number) => {
+    setUsuarios((prev) =>
+      prev.map((usuario) =>
+        usuario.id === id
+          ? {
+              ...usuario,
+              status: usuario.status === "ativo" ? "inativo" : "ativo",
+            }
+          : usuario
+      )
+    )
+
+    toast({
+      title: "Status atualizado",
+      description:
+        "O status do usuário foi alterado. Lembre-se: mesmo inativo, ele continua contando no limite de cadastros da empresa.",
     })
   }
 
-  const toggleStatus = (id: number) => {
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? {
-              ...u,
-              status: u.status === "ativo" ? "inativo" : "ativo",
-            }
-          : u,
-      ),
-    )
+  const handleDeleteUsuario = (id: number) => {
+    setUsuarios((prev) => prev.filter((usuario) => usuario.id !== id))
+    toast({
+      title: "Usuário removido",
+      description:
+        "O cadastro foi removido. (Na prática, você pode optar por nunca excluir usuários em produção, apenas inativar.)",
+    })
+  }
+
+  const getPapelLabel = (papel: PapelUsuario) => {
+    switch (papel) {
+      case "master":
+        return "Master"
+      case "admin":
+        return "Admin"
+      case "gestor":
+        return "Gestor"
+      default:
+        return "Usuário"
+    }
+  }
+
+  const getPapelVariant = (papel: PapelUsuario) => {
+    switch (papel) {
+      case "master":
+        return "bg-amber-500 text-white"
+      case "admin":
+        return "bg-blue-500 text-white"
+      case "gestor":
+        return "bg-emerald-500 text-white"
+      default:
+        return "bg-slate-500 text-white"
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gestão de Usuários</h1>
-          <p className="text-sm text-muted-foreground">
-            Controle de acessos e permissões por empresa, alinhado ao plano contratado.
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6 text-primary" />
+            Gestão de Usuários
+          </h1>
+          <p className="text-muted-foreground">
+            Cadastre, visualize e controle os usuários da plataforma por
+            empresa. O limite é contabilizado por cadastro (ativos + inativos).
           </p>
         </div>
 
-        <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo usuário
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Novo usuário</DialogTitle>
-              <DialogDescription>
-                Cadastre um novo usuário. Este cadastro passa a contar imediatamente no limite do plano da empresa.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2">
-              <div className="space-y-1">
-                <Label>Nome completo</Label>
-                <Input
-                  value={novoNome}
-                  onChange={(e) => setNovoNome(e.target.value)}
-                  placeholder="Nome do usuário"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>E-mail</Label>
-                <Input
-                  type="email"
-                  value={novoEmail}
-                  onChange={(e) => setNovoEmail(e.target.value)}
-                  placeholder="email@empresa.com.br"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>Empresa</Label>
-                <Input
-                  value={novoEmpresa}
-                  onChange={(e) => setNovoEmpresa(e.target.value)}
-                  placeholder="Nome da empresa"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label>Papel</Label>
-                  <Select
-                    value={novoPapel}
-                    onValueChange={(v) => setNovoPapel(v as PapelUsuario)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o papel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="master">Master</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="instrutor">Instrutor</SelectItem>
-                      <SelectItem value="colaborador">Colaborador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {!podeCriarPapel(novoPapel) && (
-                    <p className="text-xs text-destructive">
-                      Seu papel atual não permite criar este tipo de usuário.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <Label>Senha</Label>
-                  <Input
-                    type="password"
-                    value={novaSenha}
-                    onChange={(e) => setNovaSenha(e.target.value)}
-                    placeholder="Senha forte"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Confirmar senha</Label>
-                <Input
-                  type="password"
-                  value={novaSenhaConfirmacao}
-                  onChange={(e) => setNovaSenhaConfirmacao(e.target.value)}
-                  placeholder="Repita a senha"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setModalAberto(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCriarUsuario}>Salvar usuário</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button
+          className="flex items-center gap-2"
+          onClick={() => setIsCreateOpen(true)}
+        >
+          <UserPlus className="h-4 w-4" />
+          Novo usuário
+        </Button>
       </div>
 
-      {/* Cards de estatísticas */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Métricas */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuários cadastrados</CardTitle>
-            <div className="rounded-full bg-blue-50 p-2 text-blue-600">
-              <Users className="h-4 w-4" />
-            </div>
+            <CardTitle className="text-sm font-medium">
+              Usuários cadastrados
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalUsuarios}</div>
             <p className="text-xs text-muted-foreground">
-              Todos os usuários que contam para o limite dos planos.
+              Inclui ativos e inativos (todos contam para o limite)
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ativos</CardTitle>
-            <div className="rounded-full bg-green-50 p-2 text-green-600">
-              <UserCheck className="h-4 w-4" />
-            </div>
+            <CardTitle className="text-sm font-medium">
+              Usuários ativos
+            </CardTitle>
+            <ToggleRight className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{usuariosAtivos}</div>
+            <div className="text-2xl font-bold">{totalAtivos}</div>
             <p className="text-xs text-muted-foreground">
-              Usuários com acesso liberado no momento.
+              Usuários atualmente com acesso à plataforma
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Master / Admin</CardTitle>
-            <div className="rounded-full bg-purple-50 p-2 text-purple-600">
-              <Crown className="h-4 w-4" />
-            </div>
+            <CardTitle className="text-sm font-medium">
+              Perfis administrativos
+            </CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mastersAdmins}</div>
+            <div className="text-2xl font-bold">{totalAdmins}</div>
             <p className="text-xs text-muted-foreground">
-              Usuários com poder de gestão e configuração.
+              Masters e admins cadastrados
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Empresas atendidas</CardTitle>
-            <div className="rounded-full bg-slate-50 p-2 text-slate-600">
-              <Building2 className="h-4 w-4" />
-            </div>
+            <CardTitle className="text-sm font-medium">
+              Empresas com usuários
+            </CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{empresasAtendidas}</div>
+            <div className="text-2xl font-bold">{totalEmpresas}</div>
             <p className="text-xs text-muted-foreground">
-              Empresas com pelo menos um usuário cadastrado.
+              Empresas diferentes com pelo menos um usuário
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtros e busca */}
+      {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de usuários</CardTitle>
+          <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            Pesquise, filtre por empresa, papel e status. Lembre-se: inativos continuam contando para o limite.
+            Busque usuários por nome, e-mail, empresa ou status.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full md:w-72">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, e-mail ou empresa"
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as StatusUsuario | "todos")
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="ativo">Ativos</SelectItem>
+                <SelectItem value="inativo">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={empresaFilter}
+              onValueChange={(value) => setEmpresaFilter(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as empresas</SelectItem>
+                {empresasOptions.map((nome) => (
+                  <SelectItem key={nome} value={nome}>
+                    {nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lista de usuários */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Usuários</CardTitle>
+          <CardDescription>
+            Controle centralizado de cadastros por empresa. Mesmo usuários
+            inativos permanecem contando para o limite contratado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {usuariosFiltrados.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum usuário encontrado com os filtros atuais.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {usuariosFiltrados.map((usuario) => (
+                <div
+                  key={usuario.id}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{usuario.nome}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {usuario.email} • {usuario.empresa}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getPapelVariant(usuario.papel)}>
+                      {getPapelLabel(usuario.papel)}
+                    </Badge>
+                    <Badge
+                      variant={
+                        usuario.status === "ativo" ? "default" : "secondary"
+                      }
+                    >
+                      {usuario.status === "ativo" ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggleStatus(usuario.id)}
+                      title="Ativar / inativar"
+                    >
+                      {usuario.status === "ativo" ? (
+                        <ToggleLeft className="h-4 w-4 text-amber-600" />
+                      ) : (
+                        <ToggleRight className="h-4 w-4 text-emerald-600" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteUsuario(usuario.id)}
+                      title="Excluir cadastro"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de criação de usuário */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Novo usuário</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo usuário vinculado a uma empresa. O limite de
+              usuários é controlado por empresa, contando todos os cadastros
+              (ativos + inativos).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome</Label>
               <Input
-                className="pl-9"
-                placeholder="Buscar por nome, e-mail ou empresa..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                id="nome"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Nome completo do usuário"
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={novoEmail}
+                onChange={(e) => setNovoEmail(e.target.value)}
+                placeholder="usuario@empresa.com.br"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Empresa</Label>
               <Select
-                value={filtroEmpresa}
-                onValueChange={setFiltroEmpresa}
+                value={novaEmpresa}
+                onValueChange={(value) => setNovaEmpresa(value)}
+                disabled={empresasOptions.length === 0}
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Empresa" />
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      empresasOptions.length === 0
+                        ? "Cadastre empresas primeiro"
+                        : "Selecione a empresa"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todas as empresas</SelectItem>
-                  {empresasDisponiveis.map((empresa) => (
-                    <SelectItem key={empresa} value={empresa}>
-                      {empresa}
+                  {empresasOptions.map((nome) => (
+                    <SelectItem key={nome} value={nome}>
+                      {nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Apenas empresas configuradas na tela de{" "}
+                <strong>Gestão de Empresas</strong> aparecem aqui. O limite de
+                cadastros é lido diretamente do contrato de cada empresa.
+              </p>
+            </div>
 
+            <div className="space-y-2">
+              <Label>Perfil de acesso</Label>
               <Select
-                value={filtroPapel}
-                onValueChange={setFiltroPapel}
+                value={novoPapel}
+                onValueChange={(value) => setNovoPapel(value as PapelUsuario)}
               >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Papel" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o perfil" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos os papéis</SelectItem>
-                  <SelectItem value="master">Master</SelectItem>
+                  <SelectItem value="usuario">Usuário</SelectItem>
+                  <SelectItem value="gestor">Gestor</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="instrutor">Instrutor</SelectItem>
-                  <SelectItem value="colaborador">Colaborador</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filtroStatus}
-                onValueChange={setFiltroStatus}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="ativo">Ativos</SelectItem>
-                  <SelectItem value="inativo">Inativos</SelectItem>
+                  <SelectItem value="master">Master</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateUsuario}>Salvar usuário</Button>
+            </div>
           </div>
-
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p>
-              • O limite é por <strong>cadastro</strong>. Mesmo inativos continuam contando para o plano.
-            </p>
-            <p>
-              • Para reaproveitar uma vaga, altere os dados do usuário existente (nome, e-mail), preservando o histórico.
-            </p>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            {usuariosFiltrados.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhum usuário encontrado com os filtros atuais.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {usuariosFiltrados.map((u) => (
-                  <Card key={u.id} className="border border-slate-100">
-                    <CardContent className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
-                      <div className="flex flex-1 items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback>
-                            {u.nome
-                              .split(" ")
-                              .map((p) => p[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium leading-none">{u.nome}</span>
-                            <Badge
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold ${getPapelClasses(
-                                u.papel,
-                              )}`}
-                            >
-                              {getPapelIcon(u.papel)}
-                              <span className="capitalize">{u.papel}</span>
-                            </Badge>
-                            <Badge
-                              className={`px-2 py-0.5 text-[11px] font-semibold ${getStatusClasses(
-                                u.status,
-                              )}`}
-                            >
-                              {u.status === "ativo" ? "Ativo" : "Inativo"}
-                            </Badge>
-                          </div>
-
-                          <p className="text-xs text-muted-foreground">{u.email}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {u.empresa} • {u.departamento || "-"} • {u.cargo || "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 md:w-[280px] md:justify-end">
-                        <div className="text-right text-xs text-muted-foreground">
-                          <p>Último acesso: {u.ultimoAcesso}</p>
-                          <p>Treinamentos concluídos: {u.treinamentosConcluidos}</p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleStatus(u.id)}
-                            title={u.status === "ativo" ? "Inativar usuário" : "Reativar usuário"}
-                          >
-                            {u.status === "ativo" ? (
-                              <UserX className="h-4 w-4" />
-                            ) : (
-                              <UserCheck className="h-4 w-4" />
-                            )}
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            title="Editar (em breve)"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-
-                          {u.id !== 1 && u.papel !== "master" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(u.id)}
-                              className="text-destructive hover:text-destructive"
-                              title="Exclusão bloqueada – use inativação"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
