@@ -289,7 +289,7 @@ export default function NovoTreinamento() {
                   <SelectContent>
                     <SelectItem value="">Todos os departamentos</SelectItem>
                     {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
+                      <SelectItem key={dept.id} value={String(dept.id)}>
                         {dept.nome}
                       </SelectItem>
                     ))}
@@ -335,7 +335,7 @@ export default function NovoTreinamento() {
 
           <TrainingBlockEditor
             blocks={formData.contentBlocks}
-            onChange={(blocks) =>
+            onBlocksChange={(blocks) =>
               setFormData((prev) => ({
                 ...prev,
                 contentBlocks: blocks,
