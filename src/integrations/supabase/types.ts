@@ -41,6 +41,41 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_ia_empresa: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          empresa_id: string
+          habilitado: boolean | null
+          id: string
+          provedor_ia: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          empresa_id: string
+          habilitado?: boolean | null
+          id?: string
+          provedor_ia?: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          empresa_id?: string
+          habilitado?: boolean | null
+          id?: string
+          provedor_ia?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_ia_empresa_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departamentos: {
         Row: {
           ativo: boolean | null

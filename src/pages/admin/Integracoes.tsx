@@ -2,7 +2,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIntegrationCard } from "@/components/integrations/calendar-integration-card"
 import { PaymentIntegrationCard } from "@/components/integrations/payment-integration-card"
 import { NotificationSettingsCard } from "@/components/integrations/notification-settings-card"
-import { Calendar, CreditCard, Bell, Zap } from "lucide-react"
+import { AIIntegrationCard } from "@/components/integrations/ai-integration-card"
+import { Calendar, CreditCard, Bell, Zap, Sparkles } from "lucide-react"
 
 export default function Integracoes() {
   return (
@@ -11,12 +12,12 @@ export default function Integracoes() {
       <div>
         <h1 className="text-3xl font-bold">Integrações</h1>
         <p className="text-muted-foreground mt-2">
-          Configure integrações com calendários, pagamentos e notificações automáticas
+          Configure integrações com calendários, pagamentos, notificações e recursos de IA
         </p>
       </div>
 
       {/* Status Geral */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="p-4 border rounded-lg bg-card">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -53,7 +54,18 @@ export default function Integracoes() {
         <div className="p-4 border rounded-lg bg-card">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
-              <Zap className="h-5 w-5 text-purple-600" />
+              <Sparkles className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">IA</p>
+              <p className="font-medium">Configurável</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Zap className="h-5 w-5 text-orange-600" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Automações</p>
@@ -65,7 +77,7 @@ export default function Integracoes() {
 
       {/* Tabs de Integrações */}
       <Tabs defaultValue="calendar" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Calendário
@@ -77,6 +89,10 @@ export default function Integracoes() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            IA
           </TabsTrigger>
         </TabsList>
 
@@ -90,6 +106,10 @@ export default function Integracoes() {
 
         <TabsContent value="notifications">
           <NotificationSettingsCard />
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AIIntegrationCard />
         </TabsContent>
       </Tabs>
     </div>

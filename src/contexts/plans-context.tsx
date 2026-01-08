@@ -21,6 +21,12 @@ export type RecursoId =
   | "sla_garantido"
   | "customizacoes"
   | "pacotes_adicionais"
+  | "integracao_ia"
+  | "gestao_departamentos"
+  | "white_label"
+  | "sla_garantido"
+  | "customizacoes"
+  | "pacotes_adicionais"
 
 export interface RecursoSistema {
   id: RecursoId
@@ -47,7 +53,8 @@ export const RECURSOS_SISTEMA: RecursoSistema[] = [
   { id: "white_label", nome: "White Label", descricao: "Personalização completa da marca", categoria: "enterprise" },
   { id: "sla_garantido", nome: "SLA Garantido", descricao: "Acordo de nível de serviço", categoria: "enterprise" },
   { id: "customizacoes", nome: "Customizações sob Demanda", descricao: "Desenvolvimento personalizado", categoria: "enterprise" },
-  { id: "pacotes_adicionais", nome: "Pacotes de Usuários Adicionais", descricao: "Contratação de pacotes extras", categoria: "enterprise" }
+  { id: "pacotes_adicionais", nome: "Pacotes de Usuários Adicionais", descricao: "Contratação de pacotes extras", categoria: "enterprise" },
+  { id: "integracao_ia", nome: "Integração com IA", descricao: "Reescrever textos e recursos inteligentes", categoria: "integracao" }
 ]
 
 // Configuração de recurso por plano
