@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,12 @@ import {
   Edit3,
   Upload,
   Play,
-  Trash2
+  Trash2,
+  Sparkles,
+  Loader2
 } from "lucide-react";
+import { useAIRewrite } from "@/hooks/use-ai-rewrite";
+import { useAuth } from "@/contexts/auth-context";
 
 export interface ContentBlock {
   id: string;
@@ -46,6 +50,13 @@ interface TrainingBlockEditorProps {
 }
 
 export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEditorProps) {
+  const { user } = useAuth();
+  const { rewriteText, isLoading: isAILoading, checkAIAccess } = useAIRewrite();
+  
+  // Estado para verificar se o botão de IA deve aparecer
+  const [showAIButton, setShowAIButton] = useState(false);
+  const [rewritingBlockId, setRewritingBlockId] = useState<string | null>(null);
+  
   // Estado para bloco expandido (mostrar/ocultar conteúdo)
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
@@ -55,6 +66,31 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
   const [showAddMenu, setShowAddMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<"image" | "document" | null>(null);
+
+  // Verificar acesso à IA quando o componente carrega
+  useEffect(() => {
+    const checkAccess = async () => {
+      // Apenas admin e instrutor podem usar IA
+      if (user?.role === "admin" || user?.role === "master" || user?.role === "instrutor") {
+        const { enabled } = await checkAIAccess();
+        setShowAIButton(enabled);
+      }
+    };
+    checkAccess();
+  }, [user]);
+
+  // Função para reescrever conteúdo de um bloco com IA
+  const handleAIRewrite = async (blockId: string, content: string) => {
+    setRewritingBlockId(blockId);
+    const rewrittenText = await rewriteText(content);
+    if (rewrittenText) {
+      const updatedBlocks = blocks.map(block =>
+        block.id === blockId ? { ...block, content: rewrittenText } : block
+      );
+      onBlocksChange(updatedBlocks);
+    }
+    setRewritingBlockId(null);
+  };
 
   const sortedBlocks = [...blocks].sort((a, b) => a.order - b.order);
 
@@ -378,7 +414,31 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
 
                           {block.type === "text" && (
                             <div className="space-y-2">
-                              <Label htmlFor={`text-content-${block.id}`}>Conteúdo</Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={`text-content-${block.id}`}>Conteúdo</Label>
+                                {showAIButton && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAIRewrite(block.id, block.content || "")}
+                                    disabled={rewritingBlockId === block.id || !block.content?.trim()}
+                                    className="gap-2"
+                                  >
+                                    {rewritingBlockId === block.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Reescrevendo...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="h-4 w-4" />
+                                        Reescrever com IA
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
                               <Textarea
                                 id={`text-content-${block.id}`}
                                 value={block.content || ""}
@@ -389,6 +449,7 @@ export function TrainingBlockEditor({ blocks, onBlocksChange }: TrainingBlockEdi
                               />
                               <p className="text-xs text-muted-foreground">
                                 Você pode usar HTML básico para formatação (h3, p, strong, em)
+                                {showAIButton && " • Clique em 'Reescrever com IA' para melhorar o texto automaticamente"}
                               </p>
                             </div>
                           )}

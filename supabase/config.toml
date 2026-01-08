@@ -1,1 +1,7 @@
 project_id = "ykdakgchrjhtzynrbadx"
+
+[functions.rewrite-with-ai]
+verify_jwt = false
+
+[functions.setup-master]
+verify_jwt = false
