@@ -336,7 +336,7 @@ export default function Usuarios() {
     if (!resultadoLimite.ok) {
       toast({
         title: "Limite de usuários atingido",
-        description: resultadoLimite.mensagem,
+        description: "mensagem" in resultadoLimite ? resultadoLimite.mensagem : "Limite de usuários atingido",
         variant: "destructive",
       })
       return
