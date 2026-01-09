@@ -12,6 +12,7 @@ import { TrainingProvider } from "@/contexts/training-context";
 import { PlansProvider } from "@/contexts/plans-context";
 import { IntegrationProvider } from "@/contexts/integration-context";
 import { DepartmentProvider } from "@/contexts/department-context";
+import { EmpresaFilterProvider } from "@/contexts/empresa-filter-context";
 import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
@@ -83,15 +84,17 @@ const App = () => {
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <PlansProvider>
-                <DepartmentProvider>
-                  <IntegrationProvider>
-                    <TrainingProvider>
-                      <AppContent />
-                    </TrainingProvider>
-                  </IntegrationProvider>
-                </DepartmentProvider>
-              </PlansProvider>
+              <EmpresaFilterProvider>
+                <PlansProvider>
+                  <DepartmentProvider>
+                    <IntegrationProvider>
+                      <TrainingProvider>
+                        <AppContent />
+                      </TrainingProvider>
+                    </IntegrationProvider>
+                  </DepartmentProvider>
+                </PlansProvider>
+              </EmpresaFilterProvider>
             </AuthProvider>
           </BrowserRouter>
           <Toaster />

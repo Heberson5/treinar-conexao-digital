@@ -10,19 +10,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LogOut, Settings, User } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Bell, LogOut, Settings, User, Building2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/auth-context"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 
 interface HeaderProps {
   onLogout?: () => void
 }
 
 export function Header({ onLogout }: HeaderProps) {
+  const { user } = useAuth()
+  const { empresas, empresaSelecionada, setEmpresaSelecionada, isMaster, isLoading } = useEmpresaFilter()
+
   const currentUser = {
-    name: "Heber Sohas",
-    email: "hebersohas@gmail.com",
-    role: "Master",
-    avatar: "HS"
+    name: user?.nome || "Usuário",
+    email: user?.email || "",
+    role: user?.role === "master" ? "Master" : 
+          user?.role === "admin" ? "Administrador" : 
+          user?.role === "instrutor" ? "Instrutor" : "Usuário",
+    avatar: user?.nome?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "US"
   }
 
   return (
@@ -36,6 +50,32 @@ export function Header({ onLogout }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Filtro de Empresa (apenas para Master) */}
+        {isMaster && (
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={empresaSelecionada || "todas"}
+              onValueChange={(value) => setEmpresaSelecionada(value === "todas" ? null : value)}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione a empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">
+                  <span className="font-medium">Todas as empresas</span>
+                </SelectItem>
+                {empresas.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Notificações */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -52,7 +92,7 @@ export function Header({ onLogout }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-10 w-10 rounded-full">
               <Avatar className="h-10 w-10">
-                <AvatarImage src="" alt={currentUser.name} />
+                <AvatarImage src={user?.avatar_url || ""} alt={currentUser.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {currentUser.avatar}
                 </AvatarFallback>

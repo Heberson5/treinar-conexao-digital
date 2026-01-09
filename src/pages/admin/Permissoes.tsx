@@ -46,38 +46,67 @@ interface Role {
 
 const permissoesDisponiveis: Permission[] = [
   // Treinamentos
-  { id: "trainings.view", nome: "Visualizar Treinamentos", descricao: "Pode visualizar lista de treinamentos", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.create", nome: "Criar Treinamentos", descricao: "Pode criar novos treinamentos", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.edit", nome: "Editar Treinamentos", descricao: "Pode editar treinamentos existentes", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.delete", nome: "Excluir Treinamentos", descricao: "Pode excluir treinamentos", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso total aos treinamentos", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.view", nome: "Visualizar Treinamentos", descricao: "Acesso para visualizar a lista de treinamentos disponíveis, incluindo detalhes, descrições e materiais de apoio", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.create", nome: "Criar Treinamentos", descricao: "Permite criar novos treinamentos, adicionar conteúdo, vídeos, blocos de texto e materiais complementares", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.edit", nome: "Editar Treinamentos", descricao: "Autoriza a edição de treinamentos existentes, incluindo alteração de título, descrição, conteúdo e status", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.delete", nome: "Excluir Treinamentos", descricao: "Permite remover treinamentos permanentemente do sistema (ação irreversível)", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso completo para gerenciar todos os aspectos dos treinamentos, incluindo publicação e atribuição a departamentos", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.assign", nome: "Atribuir Treinamentos", descricao: "Permite atribuir treinamentos obrigatórios a usuários ou departamentos específicos", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.certificates", nome: "Gerenciar Certificados", descricao: "Acesso para visualizar, emitir e invalidar certificados de conclusão de treinamentos", categoria: "Treinamentos", ativo: true },
   
   // Usuários
-  { id: "users.view", nome: "Visualizar Usuários", descricao: "Pode visualizar lista de usuários", categoria: "Usuários", ativo: true },
-  { id: "users.create", nome: "Criar Usuários", descricao: "Pode criar novos usuários", categoria: "Usuários", ativo: true },
-  { id: "users.edit", nome: "Editar Usuários", descricao: "Pode editar dados de usuários", categoria: "Usuários", ativo: true },
-  { id: "users.delete", nome: "Excluir Usuários", descricao: "Pode excluir usuários", categoria: "Usuários", ativo: true },
+  { id: "users.view", nome: "Visualizar Usuários", descricao: "Permite visualizar a lista de usuários cadastrados, incluindo dados básicos e status", categoria: "Usuários", ativo: true },
+  { id: "users.create", nome: "Criar Usuários", descricao: "Autoriza a criação de novos usuários no sistema, definindo perfil, departamento e permissões iniciais", categoria: "Usuários", ativo: true },
+  { id: "users.edit", nome: "Editar Usuários", descricao: "Permite alterar dados de usuários existentes, incluindo nome, email, departamento e cargo", categoria: "Usuários", ativo: true },
+  { id: "users.delete", nome: "Excluir Usuários", descricao: "Autoriza a remoção ou desativação de usuários do sistema", categoria: "Usuários", ativo: true },
+  { id: "users.roles", nome: "Gerenciar Papéis", descricao: "Permite alterar o papel/função de usuários (ex: de usuário para instrutor)", categoria: "Usuários", ativo: true },
+  { id: "users.import", nome: "Importar Usuários", descricao: "Permite importar usuários em massa via arquivo CSV ou integração", categoria: "Usuários", ativo: true },
+  { id: "users.progress", nome: "Ver Progresso de Usuários", descricao: "Acesso para visualizar o progresso individual de cada usuário nos treinamentos", categoria: "Usuários", ativo: true },
   
   // Relatórios
-  { id: "reports.view", nome: "Visualizar Relatórios", descricao: "Pode acessar relatórios", categoria: "Relatórios", ativo: true },
-  { id: "reports.export", nome: "Exportar Relatórios", descricao: "Pode exportar dados", categoria: "Relatórios", ativo: true },
-  { id: "reports.advanced", nome: "Relatórios Avançados", descricao: "Acesso a relatórios completos", categoria: "Relatórios", ativo: true },
+  { id: "reports.view", nome: "Visualizar Relatórios", descricao: "Acesso para visualizar relatórios básicos de progresso e conclusão de treinamentos", categoria: "Relatórios", ativo: true },
+  { id: "reports.export", nome: "Exportar Relatórios", descricao: "Permite exportar dados e relatórios em formatos como PDF, Excel e CSV", categoria: "Relatórios", ativo: true },
+  { id: "reports.advanced", nome: "Relatórios Avançados", descricao: "Acesso a relatórios completos com análises de desempenho, tendências e métricas detalhadas", categoria: "Relatórios", ativo: true },
+  { id: "reports.department", nome: "Relatórios por Departamento", descricao: "Visualização de relatórios filtrados por departamento específico", categoria: "Relatórios", ativo: true },
+  { id: "reports.compliance", nome: "Relatórios de Conformidade", descricao: "Acesso a relatórios de conformidade e treinamentos obrigatórios pendentes", categoria: "Relatórios", ativo: true },
+  
+  // Departamentos
+  { id: "departments.view", nome: "Visualizar Departamentos", descricao: "Permite visualizar a lista de departamentos e suas informações", categoria: "Departamentos", ativo: true },
+  { id: "departments.create", nome: "Criar Departamentos", descricao: "Autoriza a criação de novos departamentos na estrutura organizacional", categoria: "Departamentos", ativo: true },
+  { id: "departments.edit", nome: "Editar Departamentos", descricao: "Permite alterar dados de departamentos existentes", categoria: "Departamentos", ativo: true },
+  { id: "departments.delete", nome: "Excluir Departamentos", descricao: "Autoriza a remoção de departamentos (requer que não haja usuários vinculados)", categoria: "Departamentos", ativo: true },
+  
+  // Empresas (para Master)
+  { id: "companies.view", nome: "Visualizar Empresas", descricao: "Acesso para visualizar todas as empresas cadastradas no sistema", categoria: "Empresas", ativo: true },
+  { id: "companies.create", nome: "Criar Empresas", descricao: "Permite cadastrar novas empresas/clientes no sistema", categoria: "Empresas", ativo: true },
+  { id: "companies.edit", nome: "Editar Empresas", descricao: "Autoriza a edição de dados das empresas, incluindo plano e limites", categoria: "Empresas", ativo: true },
+  { id: "companies.delete", nome: "Excluir Empresas", descricao: "Permite remover empresas do sistema (ação crítica)", categoria: "Empresas", ativo: true },
+  { id: "companies.switch", nome: "Alternar entre Empresas", descricao: "Permite visualizar e gerenciar dados de diferentes empresas", categoria: "Empresas", ativo: true },
+  
+  // Integrações
+  { id: "integrations.view", nome: "Visualizar Integrações", descricao: "Acesso para visualizar as integrações configuradas (calendário, IA, etc.)", categoria: "Integrações", ativo: true },
+  { id: "integrations.configure", nome: "Configurar Integrações", descricao: "Permite configurar e alterar integrações com serviços externos", categoria: "Integrações", ativo: true },
+  { id: "integrations.ai", nome: "Usar Recursos de IA", descricao: "Autoriza o uso de funcionalidades de IA como reescrita de textos", categoria: "Integrações", ativo: true },
   
   // Sistema
-  { id: "system.settings", nome: "Configurações do Sistema", descricao: "Pode alterar configurações", categoria: "Sistema", ativo: true },
-  { id: "system.backup", nome: "Backup/Restore", descricao: "Pode fazer backup e restore", categoria: "Sistema", ativo: true },
-  { id: "system.logs", nome: "Ver Logs do Sistema", descricao: "Pode visualizar logs", categoria: "Sistema", ativo: true },
+  { id: "system.settings", nome: "Configurações Gerais", descricao: "Acesso às configurações gerais do sistema como tema, idioma e preferências", categoria: "Sistema", ativo: true },
+  { id: "system.backup", nome: "Backup e Restore", descricao: "Permite realizar backup dos dados e restaurar versões anteriores", categoria: "Sistema", ativo: true },
+  { id: "system.logs", nome: "Visualizar Logs", descricao: "Acesso aos logs de atividades e auditoria do sistema", categoria: "Sistema", ativo: true },
+  { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança, senhas e autenticação", categoria: "Sistema", ativo: true },
+  { id: "system.notifications", nome: "Gerenciar Notificações", descricao: "Configurar templates e regras de notificações automáticas", categoria: "Sistema", ativo: true },
   
   // Financeiro
-  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Pode ver dados financeiros", categoria: "Financeiro", ativo: true },
-  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Pode gerenciar cobranças", categoria: "Financeiro", ativo: true }
+  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros, faturas e cobranças", categoria: "Financeiro", ativo: true },
+  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças, alterar planos e processar pagamentos", categoria: "Financeiro", ativo: true },
+  { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir, cancelar e reenviar faturas", categoria: "Financeiro", ativo: true },
+  { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar, editar e atribuir planos de assinatura às empresas", categoria: "Financeiro", ativo: true }
 ]
 
 const rolesIniciais: Role[] = [
   {
     id: 1,
     nome: "Master",
-    descricao: "Acesso total ao sistema",
+    descricao: "Acesso total ao sistema - gerencia todas as empresas e configurações críticas",
     cor: "bg-yellow-500",
     permissoes: permissoesDisponiveis.map(p => p.id),
     usuariosCount: 1,
@@ -86,12 +115,15 @@ const rolesIniciais: Role[] = [
   {
     id: 2,
     nome: "Administrador",
-    descricao: "Acesso administrativo completo exceto configurações críticas",
+    descricao: "Gestão completa da empresa - usuários, treinamentos, relatórios e configurações",
     cor: "bg-blue-500",
     permissoes: [
-      "trainings.view", "trainings.create", "trainings.edit", "trainings.delete", "trainings.manage",
-      "users.view", "users.create", "users.edit", "users.delete",
-      "reports.view", "reports.export", "reports.advanced"
+      "trainings.view", "trainings.create", "trainings.edit", "trainings.delete", "trainings.manage", "trainings.assign", "trainings.certificates",
+      "users.view", "users.create", "users.edit", "users.delete", "users.roles", "users.import", "users.progress",
+      "reports.view", "reports.export", "reports.advanced", "reports.department", "reports.compliance",
+      "departments.view", "departments.create", "departments.edit", "departments.delete",
+      "integrations.view", "integrations.configure", "integrations.ai",
+      "system.settings", "system.notifications"
     ],
     usuariosCount: 3,
     ativo: true
@@ -99,12 +131,14 @@ const rolesIniciais: Role[] = [
   {
     id: 3,
     nome: "Instrutor",
-    descricao: "Pode criar e gerenciar treinamentos",
+    descricao: "Criação e gestão de treinamentos - pode criar conteúdo e acompanhar progresso dos alunos",
     cor: "bg-green-500",
     permissoes: [
-      "trainings.view", "trainings.create", "trainings.edit",
-      "users.view",
-      "reports.view"
+      "trainings.view", "trainings.create", "trainings.edit", "trainings.assign", "trainings.certificates",
+      "users.view", "users.progress",
+      "reports.view", "reports.export", "reports.department",
+      "departments.view",
+      "integrations.ai"
     ],
     usuariosCount: 8,
     ativo: true
@@ -112,7 +146,7 @@ const rolesIniciais: Role[] = [
   {
     id: 4,
     nome: "Usuário",
-    descricao: "Acesso básico aos treinamentos",
+    descricao: "Acesso para realizar treinamentos - visualiza conteúdos e certificados próprios",
     cor: "bg-gray-500",
     permissoes: [
       "trainings.view"
@@ -333,9 +367,9 @@ export default function Permissoes() {
               <div className="space-y-4">
                 <Label>Permissões</Label>
                 <Tabs defaultValue={categorias[0]} className="w-full">
-                  <TabsList className="grid grid-cols-5 w-full">
+                  <TabsList className="grid grid-cols-8 w-full">
                     {categorias.map((categoria) => (
-                      <TabsTrigger key={categoria} value={categoria}>
+                      <TabsTrigger key={categoria} value={categoria} className="text-xs">
                         {categoria}
                       </TabsTrigger>
                     ))}

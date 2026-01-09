@@ -22,12 +22,20 @@ import { useAuth } from "@/contexts/auth-context";
 
 type ProvedorIA = "gemini" | "chatgpt" | "deepseek";
 
+interface AIModel {
+  id: string;
+  nome: string;
+  descricao: string;
+  tipo: "gratis" | "pago";
+}
+
 interface AIProviderOption {
   id: ProvedorIA;
   nome: string;
   descricao: string;
   icon: React.ReactNode;
   disponivel: boolean;
+  modelos: AIModel[];
 }
 
 const provedoresIA: AIProviderOption[] = [
@@ -36,21 +44,42 @@ const provedoresIA: AIProviderOption[] = [
     nome: "Google Gemini",
     descricao: "IA do Google com alta capacidade de compreensão e geração de texto",
     icon: <Sparkles className="h-5 w-5" />,
-    disponivel: true
+    disponivel: true,
+    modelos: [
+      { id: "gemini-2.5-flash", nome: "Gemini 2.5 Flash", descricao: "Rápido e eficiente para tarefas gerais", tipo: "gratis" },
+      { id: "gemini-2.5-flash-lite", nome: "Gemini 2.5 Flash Lite", descricao: "Versão leve e econômica", tipo: "gratis" },
+      { id: "gemini-2.5-pro", nome: "Gemini 2.5 Pro", descricao: "Alta performance para tarefas complexas", tipo: "pago" },
+      { id: "gemini-3-pro", nome: "Gemini 3 Pro", descricao: "Última geração com raciocínio avançado", tipo: "pago" },
+      { id: "gemini-3-flash", nome: "Gemini 3 Flash", descricao: "Versão rápida da geração 3", tipo: "pago" },
+    ]
   },
   {
     id: "chatgpt",
-    nome: "ChatGPT",
+    nome: "OpenAI ChatGPT",
     descricao: "IA da OpenAI conhecida pela qualidade das respostas",
     icon: <Brain className="h-5 w-5" />,
-    disponivel: true
+    disponivel: true,
+    modelos: [
+      { id: "gpt-4o-mini", nome: "GPT-4o Mini", descricao: "Versão econômica do GPT-4o", tipo: "pago" },
+      { id: "gpt-4o", nome: "GPT-4o", descricao: "Modelo multimodal otimizado", tipo: "pago" },
+      { id: "gpt-4-turbo", nome: "GPT-4 Turbo", descricao: "GPT-4 com maior contexto", tipo: "pago" },
+      { id: "gpt-5", nome: "GPT-5", descricao: "Última geração com raciocínio avançado", tipo: "pago" },
+      { id: "gpt-5-mini", nome: "GPT-5 Mini", descricao: "Versão otimizada do GPT-5", tipo: "pago" },
+      { id: "o3", nome: "O3", descricao: "Modelo de raciocínio profundo", tipo: "pago" },
+      { id: "o4-mini", nome: "O4 Mini", descricao: "Modelo de raciocínio rápido", tipo: "pago" },
+    ]
   },
   {
     id: "deepseek",
     nome: "DeepSeek",
     descricao: "IA alternativa com bom custo-benefício",
     icon: <Zap className="h-5 w-5" />,
-    disponivel: true
+    disponivel: true,
+    modelos: [
+      { id: "deepseek-v3", nome: "DeepSeek V3", descricao: "Modelo principal de última geração", tipo: "gratis" },
+      { id: "deepseek-r1", nome: "DeepSeek R1", descricao: "Modelo de raciocínio", tipo: "gratis" },
+      { id: "deepseek-coder", nome: "DeepSeek Coder", descricao: "Especializado em código", tipo: "gratis" },
+    ]
   }
 ];
 
@@ -58,6 +87,7 @@ interface ConfiguracaoIA {
   id?: string;
   empresa_id: string;
   provedor_ia: ProvedorIA;
+  modelo_ia?: string;
   habilitado: boolean;
 }
 
@@ -68,9 +98,12 @@ export function AIIntegrationCard() {
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<ConfiguracaoIA | null>(null);
   const [provedorSelecionado, setProvedorSelecionado] = useState<ProvedorIA>("gemini");
+  const [modeloSelecionado, setModeloSelecionado] = useState<string>("gemini-2.5-flash");
   const [habilitado, setHabilitado] = useState(true);
   const [planoPermiteIA, setPlanoPermiteIA] = useState(false);
   const [planoNome, setPlanoNome] = useState("");
+
+  const provedorAtual = provedoresIA.find(p => p.id === provedorSelecionado);
 
   useEffect(() => {
     verificarPlanoEmpresa();
@@ -276,48 +309,93 @@ export function AIIntegrationCard() {
                 
                 <RadioGroup
                   value={provedorSelecionado}
-                  onValueChange={(value) => setProvedorSelecionado(value as ProvedorIA)}
+                  onValueChange={(value) => {
+                    setProvedorSelecionado(value as ProvedorIA);
+                    // Seleciona o primeiro modelo do novo provedor
+                    const novoProvedor = provedoresIA.find(p => p.id === value);
+                    if (novoProvedor && novoProvedor.modelos.length > 0) {
+                      setModeloSelecionado(novoProvedor.modelos[0].id);
+                    }
+                  }}
                   className="grid gap-4"
                   disabled={!habilitado}
                 >
                   {provedoresIA.map((provedor) => (
                     <div
                       key={provedor.id}
-                      className={`flex items-center space-x-4 rounded-lg border p-4 transition-colors ${
+                      className={`rounded-lg border p-4 transition-colors ${
                         provedorSelecionado === provedor.id 
                           ? "border-primary bg-primary/5" 
                           : "border-border"
                       } ${!habilitado ? "opacity-50" : ""}`}
                     >
-                      <RadioGroupItem value={provedor.id} id={provedor.id} />
-                      <div className="flex-1 flex items-start gap-3">
-                        <div className={`p-2 rounded-lg ${
-                          provedor.id === "gemini" ? "bg-blue-100 text-blue-600" :
-                          provedor.id === "chatgpt" ? "bg-green-100 text-green-600" :
-                          "bg-orange-100 text-orange-600"
-                        }`}>
-                          {provedor.icon}
+                      <div className="flex items-center space-x-4">
+                        <RadioGroupItem value={provedor.id} id={provedor.id} />
+                        <div className="flex-1 flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            provedor.id === "gemini" ? "bg-blue-100 text-blue-600" :
+                            provedor.id === "chatgpt" ? "bg-green-100 text-green-600" :
+                            "bg-orange-100 text-orange-600"
+                          }`}>
+                            {provedor.icon}
+                          </div>
+                          <div className="flex-1">
+                            <Label htmlFor={provedor.id} className="font-medium cursor-pointer">
+                              {provedor.nome}
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              {provedor.descricao}
+                            </p>
+                          </div>
+                          {provedor.disponivel ? (
+                            <Badge variant="outline" className="text-green-600 border-green-200">
+                              <Check className="h-3 w-3 mr-1" />
+                              Disponível
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              <X className="h-3 w-3 mr-1" />
+                              Em breve
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <Label htmlFor={provedor.id} className="font-medium cursor-pointer">
-                            {provedor.nome}
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            {provedor.descricao}
-                          </p>
-                        </div>
-                        {provedor.disponivel ? (
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            <Check className="h-3 w-3 mr-1" />
-                            Disponível
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            <X className="h-3 w-3 mr-1" />
-                            Em breve
-                          </Badge>
-                        )}
                       </div>
+                      
+                      {/* Modelos do provedor selecionado */}
+                      {provedorSelecionado === provedor.id && (
+                        <div className="mt-4 ml-8 space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">Modelos disponíveis:</Label>
+                          <div className="grid gap-2">
+                            {provedor.modelos.map((modelo) => (
+                              <div
+                                key={modelo.id}
+                                className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors ${
+                                  modeloSelecionado === modelo.id 
+                                    ? "border-primary bg-primary/10" 
+                                    : "border-border hover:bg-muted/50"
+                                }`}
+                                onClick={() => setModeloSelecionado(modelo.id)}
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm">{modelo.nome}</span>
+                                    <Badge 
+                                      variant={modelo.tipo === "gratis" ? "default" : "secondary"}
+                                      className={`text-xs ${modelo.tipo === "gratis" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
+                                    >
+                                      {modelo.tipo === "gratis" ? "Gratuito" : "Pago"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{modelo.descricao}</p>
+                                </div>
+                                {modeloSelecionado === modelo.id && (
+                                  <Check className="h-4 w-4 text-primary" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </RadioGroup>

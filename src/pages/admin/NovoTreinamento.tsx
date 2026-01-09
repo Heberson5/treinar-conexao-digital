@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info } from "lucide-react"
+import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info, Sparkles, Loader2 } from "lucide-react"
 import { useTraining } from "@/contexts/training-context"
 import {
   TrainingBlockEditor,
@@ -21,6 +21,8 @@ import {
 import { useDepartments } from "@/contexts/department-context"
 import { useToast } from "@/hooks/use-toast"
 import { usePlans } from "@/contexts/plans-context"
+import { useAIRewrite } from "@/hooks/use-ai-rewrite"
+import { useAuth } from "@/contexts/auth-context"
 
 type NovoTreinamentoForm = {
   titulo: string
@@ -43,7 +45,12 @@ export default function NovoTreinamento() {
   const { departments } = useDepartments()
   const { toast } = useToast()
   const { planos, getLimiteRecurso } = usePlans()
+  const { user } = useAuth()
+  const { rewriteText, isLoading: isAILoading, checkAIAccess } = useAIRewrite()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [showAIButton, setShowAIButton] = useState(false)
+  const [isRewriting, setIsRewriting] = useState(false)
 
   const [formData, setFormData] = useState<NovoTreinamentoForm>({
     titulo: "",
@@ -59,6 +66,36 @@ export default function NovoTreinamento() {
     capa: undefined,
     contentBlocks: [],
   })
+
+  // Verificar acesso à IA quando o componente carrega
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user?.role === "admin" || user?.role === "master" || user?.role === "instrutor") {
+        const { enabled } = await checkAIAccess()
+        setShowAIButton(enabled)
+      }
+    }
+    checkAccess()
+  }, [user])
+
+  // Função para reescrever texto com IA
+  const handleAIRewrite = async () => {
+    if (!formData.texto?.trim()) {
+      toast({
+        title: "Texto vazio",
+        description: "Escreva algum conteúdo antes de usar a IA para reescrever.",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    setIsRewriting(true)
+    const rewrittenText = await rewriteText(formData.texto)
+    if (rewrittenText) {
+      setFormData(prev => ({ ...prev, texto: rewrittenText }))
+    }
+    setIsRewriting(false)
+  }
 
   // Plano do portal para cálculo de limite de treinamentos
   const planoPortalId =
@@ -346,12 +383,35 @@ export default function NovoTreinamento() {
 
         {/* Aba: Conteúdo consolidado */}
         <TabsContent value="conteudo" className="space-y-4">
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Conteúdo consolidado</h2>
-            <p className="text-sm text-muted-foreground">
-              Aqui você pode escrever ou revisar o texto completo do treinamento, consolidando
-              os principais pontos dos blocos.
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">Conteúdo consolidado</h2>
+              <p className="text-sm text-muted-foreground">
+                Aqui você pode escrever ou revisar o texto completo do treinamento, consolidando
+                os principais pontos dos blocos.
+              </p>
+            </div>
+            {showAIButton && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAIRewrite}
+                disabled={isRewriting || !formData.texto?.trim()}
+                className="gap-2"
+              >
+                {isRewriting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Reescrevendo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Reescrever com IA
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -368,6 +428,11 @@ export default function NovoTreinamento() {
                 }))
               }
             />
+            {showAIButton && (
+              <p className="text-xs text-muted-foreground">
+                Clique em "Reescrever com IA" para melhorar a clareza e legibilidade do texto automaticamente
+              </p>
+            )}
           </div>
         </TabsContent>
 
