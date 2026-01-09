@@ -708,7 +708,7 @@ export default function Usuarios() {
                   </SelectTrigger>
                   <SelectContent>
                     {empresasOptions.length === 0 && (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="none" disabled>
                         Nenhuma empresa configurada
                       </SelectItem>
                     )}
