@@ -22,6 +22,13 @@ export function useAIRewrite(options?: UseAIRewriteOptions) {
 
   // Verificar se a empresa tem acesso à IA
   const checkAIAccess = async (): Promise<{ enabled: boolean; provedor: string }> => {
+    // Master sempre tem acesso
+    if (user?.role === "master") {
+      setIsEnabled(true);
+      setHasChecked(true);
+      return { enabled: true, provedor: "gemini" };
+    }
+
     if (!user?.empresa_id) {
       return { enabled: false, provedor: "gemini" };
     }
