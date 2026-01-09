@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context";
 
 type ProvedorIA = "gemini" | "chatgpt" | "deepseek";
 
@@ -94,6 +95,7 @@ interface ConfiguracaoIA {
 export function AIIntegrationCard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { empresaSelecionada, isMaster } = useEmpresaFilter();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<ConfiguracaoIA | null>(null);
@@ -105,48 +107,76 @@ export function AIIntegrationCard() {
 
   const provedorAtual = provedoresIA.find(p => p.id === provedorSelecionado);
 
+  // Empresa ativa: para master usa a selecionada, senão usa a do usuário
+  const empresaAtiva = isMaster ? empresaSelecionada : user?.empresa_id;
+
   useEffect(() => {
-    verificarPlanoEmpresa();
-    carregarConfiguracao();
-  }, [user]);
+    if (empresaAtiva) {
+      verificarPlanoEmpresa();
+      carregarConfiguracao();
+    } else if (isMaster && !empresaSelecionada) {
+      // Master sem empresa selecionada - permite configurar (modo global)
+      setPlanoPermiteIA(true);
+      setLoading(false);
+    }
+  }, [user, empresaAtiva, isMaster]);
 
   const verificarPlanoEmpresa = async () => {
-    if (!user?.empresa_id) return;
+    if (!empresaAtiva) {
+      // Master sem empresa = acesso total
+      if (isMaster) {
+        setPlanoPermiteIA(true);
+      }
+      return;
+    }
 
     try {
       // Buscar contrato ativo da empresa
       const { data: contrato, error } = await supabase
         .from("plano_contratos")
         .select("*")
-        .eq("empresa_id", user.empresa_id)
+        .eq("empresa_id", empresaAtiva)
         .eq("ativo", true)
         .single();
 
       if (error && error.code !== "PGRST116") {
         console.error("Erro ao verificar plano:", error);
+        // Master sempre tem acesso
+        if (isMaster) {
+          setPlanoPermiteIA(true);
+        }
         return;
       }
 
       if (contrato) {
         setPlanoNome(contrato.nome_plano);
-        // Premium e Enterprise têm acesso à IA
+        // Premium e Enterprise têm acesso à IA, ou Master sempre tem
         const planosComIA = ["Premium", "Enterprise"];
-        setPlanoPermiteIA(planosComIA.includes(contrato.nome_plano));
+        setPlanoPermiteIA(isMaster || planosComIA.includes(contrato.nome_plano));
+      } else if (isMaster) {
+        // Master sem contrato também pode configurar
+        setPlanoPermiteIA(true);
       }
     } catch (error) {
       console.error("Erro ao verificar plano:", error);
+      if (isMaster) {
+        setPlanoPermiteIA(true);
+      }
     }
   };
 
   const carregarConfiguracao = async () => {
-    if (!user?.empresa_id) return;
+    if (!empresaAtiva) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     try {
       const { data, error } = await supabase
         .from("configuracoes_ia_empresa")
         .select("*")
-        .eq("empresa_id", user.empresa_id)
+        .eq("empresa_id", empresaAtiva)
         .single();
 
       if (error && error.code !== "PGRST116") {
@@ -157,6 +187,12 @@ export function AIIntegrationCard() {
         setConfig(data as ConfiguracaoIA);
         setProvedorSelecionado(data.provedor_ia as ProvedorIA);
         setHabilitado(data.habilitado);
+      } else {
+        // Reset para valores padrão se não houver configuração
+        setConfig(null);
+        setProvedorSelecionado("gemini");
+        setModeloSelecionado("gemini-2.5-flash");
+        setHabilitado(true);
       }
     } catch (error) {
       console.error("Erro ao carregar configuração:", error);
@@ -166,10 +202,12 @@ export function AIIntegrationCard() {
   };
 
   const salvarConfiguracao = async () => {
-    if (!user?.empresa_id) {
+    const empresaParaSalvar = empresaAtiva;
+    
+    if (!empresaParaSalvar) {
       toast({
-        title: "Erro",
-        description: "Você precisa estar vinculado a uma empresa para configurar a IA.",
+        title: "Selecione uma empresa",
+        description: "Selecione uma empresa específica para configurar a IA.",
         variant: "destructive"
       });
       return;
@@ -203,7 +241,7 @@ export function AIIntegrationCard() {
         const { error } = await supabase
           .from("configuracoes_ia_empresa")
           .insert({
-            empresa_id: user.empresa_id,
+            empresa_id: empresaParaSalvar,
             provedor_ia: provedorSelecionado,
             habilitado
           });

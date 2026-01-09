@@ -68,9 +68,13 @@ export default function NovoTreinamento() {
   })
 
   // Verificar acesso à IA quando o componente carrega
+  // Para master, admin e instrutor, sempre mostra o botão (a verificação de plano é feita ao clicar)
   useEffect(() => {
     const checkAccess = async () => {
-      if (user?.role === "admin" || user?.role === "master" || user?.role === "instrutor") {
+      if (user?.role === "master") {
+        // Master sempre tem acesso ao botão de IA
+        setShowAIButton(true)
+      } else if (user?.role === "admin" || user?.role === "instrutor") {
         const { enabled } = await checkAIAccess()
         setShowAIButton(enabled)
       }

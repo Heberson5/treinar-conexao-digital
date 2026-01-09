@@ -3,17 +3,58 @@ import { CalendarIntegrationCard } from "@/components/integrations/calendar-inte
 import { PaymentIntegrationCard } from "@/components/integrations/payment-integration-card"
 import { NotificationSettingsCard } from "@/components/integrations/notification-settings-card"
 import { AIIntegrationCard } from "@/components/integrations/ai-integration-card"
-import { Calendar, CreditCard, Bell, Zap, Sparkles } from "lucide-react"
+import { Calendar, CreditCard, Bell, Zap, Sparkles, Building2 } from "lucide-react"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 
 export default function Integracoes() {
+  const { empresas, empresaSelecionada, setEmpresaSelecionada, empresaSelecionadaNome, isMaster, isLoading } = useEmpresaFilter()
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Integrações</h1>
-        <p className="text-muted-foreground mt-2">
-          Configure integrações com calendários, pagamentos, notificações e recursos de IA
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Integrações</h1>
+          <p className="text-muted-foreground mt-2">
+            Configure integrações com calendários, pagamentos, notificações e recursos de IA
+          </p>
+        </div>
+        
+        {/* Filtro de Empresa para Master */}
+        {isMaster && (
+          <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg border">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Empresa:</span>
+            <Select
+              value={empresaSelecionada || "todas"}
+              onValueChange={(value) => setEmpresaSelecionada(value === "todas" ? null : value)}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione a empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">
+                  <span className="font-medium">Todas as empresas</span>
+                </SelectItem>
+                {empresas.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="ml-2">Master</Badge>
+          </div>
+        )}
       </div>
 
       {/* Status Geral */}
