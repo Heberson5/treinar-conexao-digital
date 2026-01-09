@@ -287,7 +287,7 @@ export default function NovoTreinamento() {
                     <SelectValue placeholder="Selecione um departamento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os departamentos</SelectItem>
+                    <SelectItem value="todos">Todos os departamentos</SelectItem>
                     {departments.map((dept) => (
                       <SelectItem key={dept.id} value={String(dept.id)}>
                         {dept.nome}
