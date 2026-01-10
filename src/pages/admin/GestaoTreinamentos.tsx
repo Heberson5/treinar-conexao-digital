@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Plus, 
   Search, 
@@ -15,7 +14,6 @@ import {
   Users, 
   Clock,
   Video,
-  Building2,
   Sparkles
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -30,7 +28,7 @@ export default function GestaoTreinamentos() {
   const { trainings: treinamentos, deleteTraining: removeTraining } = useTraining()
   const { departments } = useDepartments()
   const { formatDate } = useBrazilianDate()
-  const { empresas, empresaSelecionada, setEmpresaSelecionada, isMaster } = useEmpresaFilter()
+  const { isMaster } = useEmpresaFilter()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -74,28 +72,7 @@ export default function GestaoTreinamentos() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Filtro de empresa para Master */}
-          {isMaster && (
-            <Select
-              value={empresaSelecionada || "todas"}
-              onValueChange={(value) => setEmpresaSelecionada(value === "todas" ? null : value)}
-            >
-              <SelectTrigger className="w-[220px]">
-                <Building2 className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filtrar por empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as empresas</SelectItem>
-                {empresas.map((empresa) => (
-                  <SelectItem key={empresa.id} value={empresa.id}>
-                    {empresa.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Botão Reescrever com IA para Master */}
+          {/* Botão IA Disponível para Master */}
           {isMaster && (
             <Button variant="outline" className="gap-2">
               <Sparkles className="h-4 w-4 text-purple-600" />
