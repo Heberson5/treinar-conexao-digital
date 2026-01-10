@@ -44,6 +44,9 @@ export type Database = {
       configuracoes_ia_empresa: {
         Row: {
           api_key: string | null
+          api_key_chatgpt: string | null
+          api_key_deepseek: string | null
+          api_key_gemini: string | null
           atualizado_em: string | null
           criado_em: string | null
           empresa_id: string
@@ -54,6 +57,9 @@ export type Database = {
         }
         Insert: {
           api_key?: string | null
+          api_key_chatgpt?: string | null
+          api_key_deepseek?: string | null
+          api_key_gemini?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           empresa_id: string
@@ -64,6 +70,9 @@ export type Database = {
         }
         Update: {
           api_key?: string | null
+          api_key_chatgpt?: string | null
+          api_key_deepseek?: string | null
+          api_key_gemini?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           empresa_id?: string

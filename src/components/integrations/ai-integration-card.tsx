@@ -93,7 +93,9 @@ interface ConfiguracaoIA {
   empresa_id: string;
   provedor_ia: ProvedorIA;
   modelo_ia?: string;
-  api_key?: string;
+  api_key_gemini?: string;
+  api_key_chatgpt?: string;
+  api_key_deepseek?: string;
   habilitado: boolean;
 }
 
@@ -107,8 +109,16 @@ export function AIIntegrationCard() {
   const [provedorSelecionado, setProvedorSelecionado] = useState<ProvedorIA>("gemini");
   const [modeloSelecionado, setModeloSelecionado] = useState<string>("gemini-2.5-flash");
   const [habilitado, setHabilitado] = useState(true);
-  const [apiKey, setApiKey] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
+  
+  // Estado para as 3 chaves de API separadas
+  const [apiKeyGemini, setApiKeyGemini] = useState("");
+  const [apiKeyChatGPT, setApiKeyChatGPT] = useState("");
+  const [apiKeyDeepSeek, setApiKeyDeepSeek] = useState("");
+  
+  const [showApiKeyGemini, setShowApiKeyGemini] = useState(false);
+  const [showApiKeyChatGPT, setShowApiKeyChatGPT] = useState(false);
+  const [showApiKeyDeepSeek, setShowApiKeyDeepSeek] = useState(false);
+  
   const [planoPermiteIA, setPlanoPermiteIA] = useState(false);
   const [planoNome, setPlanoNome] = useState("");
 
@@ -196,14 +206,19 @@ export function AIIntegrationCard() {
         setProvedorSelecionado(configData.provedor_ia as ProvedorIA);
         setModeloSelecionado(configData.modelo_ia || "gemini-2.5-flash");
         setHabilitado(configData.habilitado);
-        setApiKey(configData.api_key || "");
+        // Carregar as 3 chaves separadas
+        setApiKeyGemini((configData as any).api_key_gemini || "");
+        setApiKeyChatGPT((configData as any).api_key_chatgpt || "");
+        setApiKeyDeepSeek((configData as any).api_key_deepseek || "");
       } else {
         // Reset para valores padrão se não houver configuração
         setConfig(null);
         setProvedorSelecionado("gemini");
         setModeloSelecionado("gemini-2.5-flash");
         setHabilitado(true);
-        setApiKey("");
+        setApiKeyGemini("");
+        setApiKeyChatGPT("");
+        setApiKeyDeepSeek("");
       }
     } catch (error) {
       console.error("Erro ao carregar configuração:", error);
@@ -236,16 +251,20 @@ export function AIIntegrationCard() {
     setSaving(true);
 
     try {
+      const dadosParaSalvar = {
+        provedor_ia: provedorSelecionado,
+        modelo_ia: modeloSelecionado,
+        api_key_gemini: apiKeyGemini || null,
+        api_key_chatgpt: apiKeyChatGPT || null,
+        api_key_deepseek: apiKeyDeepSeek || null,
+        habilitado
+      };
+
       if (config?.id) {
         // Atualizar configuração existente
         const { error } = await supabase
           .from("configuracoes_ia_empresa")
-          .update({
-            provedor_ia: provedorSelecionado,
-            modelo_ia: modeloSelecionado,
-            api_key: apiKey || null,
-            habilitado
-          } as any)
+          .update(dadosParaSalvar as any)
           .eq("id", config.id);
 
         if (error) throw error;
@@ -255,10 +274,7 @@ export function AIIntegrationCard() {
           .from("configuracoes_ia_empresa")
           .insert({
             empresa_id: empresaParaSalvar,
-            provedor_ia: provedorSelecionado,
-            modelo_ia: modeloSelecionado,
-            api_key: apiKey || null,
-            habilitado
+            ...dadosParaSalvar
           } as any);
 
         if (error) throw error;
@@ -454,43 +470,120 @@ export function AIIntegrationCard() {
                 </RadioGroup>
               </div>
 
-              {/* Campo de API Key */}
+              {/* Campos de API Key para cada provedor */}
               <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                 <div className="flex items-center gap-2">
                   <Key className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base font-medium">Chave de API</Label>
+                  <Label className="text-base font-medium">Chaves de API</Label>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Insira a chave de API do provedor selecionado. Esta chave será usada para todas as requisições de IA desta empresa.
+                  Configure as chaves de API para cada provedor. Você pode cadastrar todas e alternar entre elas a qualquer momento.
                 </p>
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? "text" : "password"}
-                    placeholder={`Chave de API do ${provedoresIA.find(p => p.id === provedorSelecionado)?.nome || "provedor"}`}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    disabled={!habilitado}
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                  >
-                    {showApiKey ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
+                
+                {/* Gemini API Key */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    Google Gemini
+                    {apiKeyGemini && <Badge variant="outline" className="text-green-600 text-xs">Configurada</Badge>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKeyGemini ? "text" : "password"}
+                      placeholder="Chave de API do Google Gemini"
+                      value={apiKeyGemini}
+                      onChange={(e) => setApiKeyGemini(e.target.value)}
+                      disabled={!habilitado}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowApiKeyGemini(!showApiKeyGemini)}
+                    >
+                      {showApiKeyGemini ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha em: https://aistudio.google.com/apikey
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {provedorSelecionado === "gemini" && "Obtenha sua chave em: https://aistudio.google.com/apikey"}
-                  {provedorSelecionado === "chatgpt" && "Obtenha sua chave em: https://platform.openai.com/api-keys"}
-                  {provedorSelecionado === "deepseek" && "Obtenha sua chave em: https://platform.deepseek.com/api_keys"}
-                </p>
+
+                {/* ChatGPT API Key */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-green-600" />
+                    OpenAI ChatGPT
+                    {apiKeyChatGPT && <Badge variant="outline" className="text-green-600 text-xs">Configurada</Badge>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKeyChatGPT ? "text" : "password"}
+                      placeholder="Chave de API do OpenAI ChatGPT"
+                      value={apiKeyChatGPT}
+                      onChange={(e) => setApiKeyChatGPT(e.target.value)}
+                      disabled={!habilitado}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowApiKeyChatGPT(!showApiKeyChatGPT)}
+                    >
+                      {showApiKeyChatGPT ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha em: https://platform.openai.com/api-keys
+                  </p>
+                </div>
+
+                {/* DeepSeek API Key */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-orange-600" />
+                    DeepSeek
+                    {apiKeyDeepSeek && <Badge variant="outline" className="text-green-600 text-xs">Configurada</Badge>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKeyDeepSeek ? "text" : "password"}
+                      placeholder="Chave de API do DeepSeek"
+                      value={apiKeyDeepSeek}
+                      onChange={(e) => setApiKeyDeepSeek(e.target.value)}
+                      disabled={!habilitado}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowApiKeyDeepSeek(!showApiKeyDeepSeek)}
+                    >
+                      {showApiKeyDeepSeek ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Obtenha em: https://platform.deepseek.com/api_keys
+                  </p>
+                </div>
               </div>
 
               {/* Informações sobre uso */}
