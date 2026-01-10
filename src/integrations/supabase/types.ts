@@ -43,27 +43,33 @@ export type Database = {
       }
       configuracoes_ia_empresa: {
         Row: {
+          api_key: string | null
           atualizado_em: string | null
           criado_em: string | null
           empresa_id: string
           habilitado: boolean | null
           id: string
+          modelo_ia: string | null
           provedor_ia: string
         }
         Insert: {
+          api_key?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           empresa_id: string
           habilitado?: boolean | null
           id?: string
+          modelo_ia?: string | null
           provedor_ia?: string
         }
         Update: {
+          api_key?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           empresa_id?: string
           habilitado?: boolean | null
           id?: string
+          modelo_ia?: string | null
           provedor_ia?: string
         }
         Relationships: [
