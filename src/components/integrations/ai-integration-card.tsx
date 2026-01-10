@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +15,10 @@ import {
   X, 
   Lock,
   AlertCircle,
-  Settings2
+  Settings2,
+  Key,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +93,7 @@ interface ConfiguracaoIA {
   empresa_id: string;
   provedor_ia: ProvedorIA;
   modelo_ia?: string;
+  api_key?: string;
   habilitado: boolean;
 }
 
@@ -102,6 +107,8 @@ export function AIIntegrationCard() {
   const [provedorSelecionado, setProvedorSelecionado] = useState<ProvedorIA>("gemini");
   const [modeloSelecionado, setModeloSelecionado] = useState<string>("gemini-2.5-flash");
   const [habilitado, setHabilitado] = useState(true);
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const [planoPermiteIA, setPlanoPermiteIA] = useState(false);
   const [planoNome, setPlanoNome] = useState("");
 
@@ -184,15 +191,19 @@ export function AIIntegrationCard() {
       }
 
       if (data) {
-        setConfig(data as ConfiguracaoIA);
-        setProvedorSelecionado(data.provedor_ia as ProvedorIA);
-        setHabilitado(data.habilitado);
+        const configData = data as ConfiguracaoIA;
+        setConfig(configData);
+        setProvedorSelecionado(configData.provedor_ia as ProvedorIA);
+        setModeloSelecionado(configData.modelo_ia || "gemini-2.5-flash");
+        setHabilitado(configData.habilitado);
+        setApiKey(configData.api_key || "");
       } else {
         // Reset para valores padrão se não houver configuração
         setConfig(null);
         setProvedorSelecionado("gemini");
         setModeloSelecionado("gemini-2.5-flash");
         setHabilitado(true);
+        setApiKey("");
       }
     } catch (error) {
       console.error("Erro ao carregar configuração:", error);
@@ -231,8 +242,10 @@ export function AIIntegrationCard() {
           .from("configuracoes_ia_empresa")
           .update({
             provedor_ia: provedorSelecionado,
+            modelo_ia: modeloSelecionado,
+            api_key: apiKey || null,
             habilitado
-          })
+          } as any)
           .eq("id", config.id);
 
         if (error) throw error;
@@ -243,8 +256,10 @@ export function AIIntegrationCard() {
           .insert({
             empresa_id: empresaParaSalvar,
             provedor_ia: provedorSelecionado,
+            modelo_ia: modeloSelecionado,
+            api_key: apiKey || null,
             habilitado
-          });
+          } as any);
 
         if (error) throw error;
       }
@@ -437,6 +452,45 @@ export function AIIntegrationCard() {
                     </div>
                   ))}
                 </RadioGroup>
+              </div>
+
+              {/* Campo de API Key */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Key className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-base font-medium">Chave de API</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Insira a chave de API do provedor selecionado. Esta chave será usada para todas as requisições de IA desta empresa.
+                </p>
+                <div className="relative">
+                  <Input
+                    type={showApiKey ? "text" : "password"}
+                    placeholder={`Chave de API do ${provedoresIA.find(p => p.id === provedorSelecionado)?.nome || "provedor"}`}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    disabled={!habilitado}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                  >
+                    {showApiKey ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {provedorSelecionado === "gemini" && "Obtenha sua chave em: https://aistudio.google.com/apikey"}
+                  {provedorSelecionado === "chatgpt" && "Obtenha sua chave em: https://platform.openai.com/api-keys"}
+                  {provedorSelecionado === "deepseek" && "Obtenha sua chave em: https://platform.deepseek.com/api_keys"}
+                </p>
               </div>
 
               {/* Informações sobre uso */}

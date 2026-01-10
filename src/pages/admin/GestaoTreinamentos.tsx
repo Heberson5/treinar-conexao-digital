@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Plus, 
   Search, 
@@ -13,18 +14,24 @@ import {
   BookOpen, 
   Users, 
   Clock,
-  Video
+  Video,
+  Building2,
+  Sparkles
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTraining, Training } from "@/contexts/training-context"
 import { TrainingViewer } from "@/components/training/training-viewer"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { useDepartments } from "@/contexts/department-context"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function GestaoTreinamentos() {
   const { trainings: treinamentos, deleteTraining: removeTraining } = useTraining()
   const { departments } = useDepartments()
   const { formatDate } = useBrazilianDate()
+  const { empresas, empresaSelecionada, setEmpresaSelecionada, isMaster } = useEmpresaFilter()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -66,12 +73,43 @@ export default function GestaoTreinamentos() {
           </p>
         </div>
         
-        <Button asChild className="bg-gradient-primary">
-          <Link to="/admin/treinamentos/novo">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Treinamento
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Filtro de empresa para Master */}
+          {isMaster && (
+            <Select
+              value={empresaSelecionada || "todas"}
+              onValueChange={(value) => setEmpresaSelecionada(value === "todas" ? null : value)}
+            >
+              <SelectTrigger className="w-[220px]">
+                <Building2 className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filtrar por empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as empresas</SelectItem>
+                {empresas.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Botão Reescrever com IA para Master */}
+          {isMaster && (
+            <Button variant="outline" className="gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600" />
+              IA Disponível
+            </Button>
+          )}
+
+          <Button asChild className="bg-gradient-primary">
+            <Link to="/admin/treinamentos/novo">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Treinamento
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
