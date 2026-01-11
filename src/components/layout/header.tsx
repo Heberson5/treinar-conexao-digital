@@ -68,7 +68,7 @@ export function Header({ onLogout }: HeaderProps) {
                 </SelectItem>
                 {empresas.map((empresa) => (
                   <SelectItem key={empresa.id} value={empresa.id}>
-                    {empresa.nome}
+                    {empresa.nome_fantasia || empresa.nome}
                   </SelectItem>
                 ))}
               </SelectContent>

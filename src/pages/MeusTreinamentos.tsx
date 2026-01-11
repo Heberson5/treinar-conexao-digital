@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useTraining } from "@/contexts/training-context"
+import { useSupabaseTrainings, SupabaseTraining } from "@/hooks/use-supabase-trainings"
 import { useAuth } from "@/contexts/auth-context"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   PlayCircle, 
   Clock, 
@@ -18,46 +20,52 @@ import {
   BookOpen,
   Star,
   Award,
-  Calendar,
   RotateCcw,
-  Eye
+  Eye,
+  Building2,
+  AlertCircle,
+  Loader2
 } from "lucide-react"
 import { TrainingViewer } from "@/components/training/training-viewer"
 import { TrainingCertificate } from "@/components/training/training-certificate"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 
-export default function MeusTreinamentos() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("todos")
-  const [viewingTraining, setViewingTraining] = useState<any>(null)
-  const [isViewOpen, setIsViewOpen] = useState(false)
-  const navigate = useNavigate()
-  const { getTrainingsByDepartment, startTraining, accessTraining } = useTraining()
-  const { user } = useAuth()
-  const { formatDateOnly, formatLastAccessed } = useBrazilianDate()
-  
-  // Buscar treinamentos disponíveis para o departamento do usuário
-  const availableTrainings = getTrainingsByDepartment(user?.departamento_id).filter(
-    training => training.status === "ativo"
-  )
-  
-  const trainings = availableTrainings.map(training => ({
-    id: training.id,
-    title: training.titulo,
-    description: training.descricao,
-    category: training.categoria,
-    duration: training.duracao,
-    progress: training.progress || 0,
-    status: training.progress === 100 ? "concluido" : training.progress && training.progress > 0 ? "em-progresso" : "nao-iniciado",
-    rating: training.rating || 4.5,
-    instructor: training.instrutor,
-    deadline: training.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    lastAccessed: training.lastAccessed || "Nunca acessado",
-    completed: training.completed || false,
-    thumbnail: training.capa || "/api/placeholder/300/200",
-    originalTraining: training
-  }))
+interface TransformedTraining {
+  id: string
+  title: string
+  description: string
+  category: string
+  duration: string
+  progress: number
+  status: "concluido" | "em-progresso" | "nao-iniciado"
+  rating: number
+  instructor: string
+  deadline: string
+  lastAccessed: string
+  completed: boolean
+  thumbnail: string
+  empresaNome: string
+  originalTraining: SupabaseTraining
+}
 
+// Componente de card de treinamento
+function TrainingCard({ 
+  training, 
+  onStart, 
+  onView,
+  formatDateOnly,
+  formatLastAccessed,
+  user,
+  isMaster
+}: {
+  training: TransformedTraining
+  onStart: () => void
+  onView: () => void
+  formatDateOnly: (date: string) => string
+  formatLastAccessed: (date: string) => string
+  user: any
+  isMaster: boolean
+}) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "concluido": return "bg-green-500"
@@ -76,6 +84,204 @@ export default function MeusTreinamentos() {
     }
   }
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "concluido": return <CheckCircle className="h-8 w-8 text-green-600" />
+      case "em-progresso": return <PlayCircle className="h-8 w-8 text-black" />
+      default: return <PlayCircle className="h-8 w-8 text-black" />
+    }
+  }
+
+  const getButtonText = (status: string, completed: boolean) => {
+    if (status === "nao-iniciado") return "Iniciar"
+    if (completed) return "Revisar"
+    return "Continuar"
+  }
+
+  return (
+    <Card className="hover:shadow-md transition-shadow flex flex-col">
+      <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center overflow-hidden relative">
+        {training.thumbnail && training.thumbnail !== "/api/placeholder/300/200" ? (
+          <img 
+            src={training.thumbnail} 
+            alt={training.title} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="h-12 w-12 text-primary/50" />
+          </div>
+        )}
+        {/* Play overlay */}
+        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer" onClick={onStart}>
+          <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+            {getStatusIcon(training.status)}
+          </div>
+        </div>
+      </div>
+      
+      <CardHeader className="pb-3 flex-grow">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
+          <Badge 
+            variant="secondary" 
+            className={`${getStatusColor(training.status)} text-white shrink-0`}
+          >
+            {getStatusText(training.status)}
+          </Badge>
+        </div>
+        <CardDescription className="line-clamp-2">
+          {training.description}
+        </CardDescription>
+        {/* Mostrar empresa para master */}
+        {isMaster && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <Building2 className="h-3 w-3" />
+            {training.empresaNome}
+          </div>
+        )}
+      </CardHeader>
+      
+      <CardContent className="space-y-4 pt-0">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            {training.duration}
+          </span>
+          <span className="flex items-center gap-1">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            {training.rating.toFixed(1)}
+          </span>
+        </div>
+        
+        {training.progress > 0 && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progresso</span>
+              <span>{training.progress}%</span>
+            </div>
+            <Progress value={training.progress} />
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Prazo: {formatDateOnly(training.deadline)}</span>
+          <span>{formatLastAccessed(training.lastAccessed)}</span>
+        </div>
+         
+        <div className="flex gap-2">
+          <Button 
+            className="flex-1"
+            variant={training.completed ? "outline" : "default"}
+            onClick={onStart}
+          >
+            {training.completed && <RotateCcw className="mr-2 h-4 w-4" />}
+            {training.status === "nao-iniciado" && <PlayCircle className="mr-2 h-4 w-4" />}
+            {getButtonText(training.status, training.completed)}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={onView}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {training.completed && (
+            <TrainingCertificate
+              training={{
+                id: parseInt(training.id) || 0,
+                titulo: training.title,
+                categoria: training.category,
+                duracao: training.duration,
+                instrutor: training.instructor,
+                completedAt: training.originalTraining.progresso?.data_conclusao || undefined,
+                rating: training.rating
+              }}
+              userProgress={{
+                totalTime: training.originalTraining.progresso?.tempo_assistido_minutos || 0,
+                completionRate: training.progress,
+                score: training.originalTraining.progresso?.nota_avaliacao || 85
+              }}
+              userName={user?.nome || "Usuário"}
+              userCompany={training.empresaNome}
+              userDepartment={user?.departamento_id}
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Loading skeleton
+function TrainingCardSkeleton() {
+  return (
+    <Card>
+      <Skeleton className="aspect-video rounded-t-lg" />
+      <CardHeader className="pb-3">
+        <Skeleton className="h-6 w-3/4" />
+        <Skeleton className="h-4 w-full mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function MeusTreinamentos() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("todos")
+  const [viewingTraining, setViewingTraining] = useState<any>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
+  const navigate = useNavigate()
+  const { trainings: supabaseTrainings, isLoading, error, stats, startTraining } = useSupabaseTrainings()
+  const { user } = useAuth()
+  const { empresaSelecionadaNome, isMaster } = useEmpresaFilter()
+  const { formatDateOnly, formatLastAccessed } = useBrazilianDate()
+
+  // Formatar duração de minutos para string legível
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return "N/A"
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h ${mins}min`
+    }
+    return `${mins}min`
+  }
+
+  // Transformar dados do Supabase para o formato usado na UI
+  const trainings: TransformedTraining[] = supabaseTrainings.map(training => {
+    const progress = training.progresso?.percentual_concluido || 0
+    const isCompleted = training.progresso?.concluido || false
+    
+    return {
+      id: training.id,
+      title: training.titulo,
+      description: training.descricao || "",
+      category: training.categoria || "Geral",
+      duration: formatDuration(training.duracao_minutos),
+      progress: progress,
+      status: isCompleted ? "concluido" : progress > 0 ? "em-progresso" : "nao-iniciado",
+      rating: training.progresso?.nota_avaliacao || 4.5,
+      instructor: training.instrutor?.nome || "Não definido",
+      deadline: training.data_limite || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      lastAccessed: training.progresso?.atualizado_em || "Nunca acessado",
+      completed: isCompleted,
+      thumbnail: training.thumbnail_url || "/api/placeholder/300/200",
+      empresaNome: training.empresa?.nome_fantasia || training.empresa?.nome || "Não definida",
+      originalTraining: training
+    }
+  })
+
   const filteredTrainings = trainings.filter(training => {
     const matchesSearch = training.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          training.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -87,6 +293,57 @@ export default function MeusTreinamentos() {
   const inProgressTrainings = trainings.filter(t => t.progress > 0 && !t.completed)
   const notStartedTrainings = trainings.filter(t => t.progress === 0)
 
+  const handleStartOrContinue = async (training: TransformedTraining) => {
+    if (training.progress === 0) {
+      await startTraining(training.id)
+    }
+    navigate(`/treinamento/${training.id}`)
+  }
+
+  const renderTrainingGrid = (trainingList: TransformedTraining[]) => {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <TrainingCardSkeleton key={i} />
+          ))}
+        </div>
+      )
+    }
+
+    if (trainingList.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium">Nenhum treinamento encontrado</h3>
+          <p className="text-muted-foreground mt-1">
+            {searchTerm ? "Tente ajustar sua busca" : "Não há treinamentos disponíveis no momento"}
+          </p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {trainingList.map((training) => (
+          <TrainingCard
+            key={training.id}
+            training={training}
+            onStart={() => handleStartOrContinue(training)}
+            onView={() => {
+              setViewingTraining(training.originalTraining)
+              setIsViewOpen(true)
+            }}
+            formatDateOnly={formatDateOnly}
+            formatLastAccessed={formatLastAccessed}
+            user={user}
+            isMaster={isMaster}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -94,8 +351,23 @@ export default function MeusTreinamentos() {
         <h1 className="text-3xl font-bold">Meus Treinamentos</h1>
         <p className="text-muted-foreground mt-2">
           Acompanhe seu progresso e continue aprendendo
+          {isMaster && empresaSelecionadaNome && (
+            <span className="ml-2">
+              • <span className="font-medium">{empresaSelecionadaNome}</span>
+            </span>
+          )}
         </p>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <span className="text-destructive">{error}</span>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -107,7 +379,9 @@ export default function MeusTreinamentos() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{trainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.total}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -121,7 +395,9 @@ export default function MeusTreinamentos() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Concluídos</p>
-                <p className="text-2xl font-bold">{completedTrainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.concluidos}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -135,7 +411,9 @@ export default function MeusTreinamentos() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Em Progresso</p>
-                <p className="text-2xl font-bold">{inProgressTrainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.emProgresso}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -149,7 +427,9 @@ export default function MeusTreinamentos() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Certificados</p>
-                <p className="text-2xl font-bold">{completedTrainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.concluidos}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -184,452 +464,52 @@ export default function MeusTreinamentos() {
       {/* Tabs */}
       <Tabs defaultValue="todos" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="todos">Todos</TabsTrigger>
-          <TabsTrigger value="em-progresso">Em Progresso</TabsTrigger>
-          <TabsTrigger value="concluidos">Concluídos</TabsTrigger>
-          <TabsTrigger value="nao-iniciados">Não Iniciados</TabsTrigger>
+          <TabsTrigger value="todos">
+            Todos {!isLoading && `(${trainings.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="em-progresso">
+            Em Progresso {!isLoading && `(${inProgressTrainings.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="concluidos">
+            Concluídos {!isLoading && `(${completedTrainings.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="nao-iniciados">
+            Não Iniciados {!isLoading && `(${notStartedTrainings.length})`}
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="todos" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTrainings.map((training) => (
-              <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.originalTraining.videoUrl ? (
-                    // Show video thumbnail or iframe for videos
-                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        <img 
-                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
-                          alt={training.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      // For other video types, show capa or placeholder with play icon
-                      <div className="relative w-full h-full group cursor-pointer">
-                        {training.thumbnail !== "/api/placeholder/300/200" ? (
-                          <img 
-                            src={training.thumbnail} 
-                            alt={training.title} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
-                            <PlayCircle className="h-12 w-12 text-white" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
-                    <img 
-                      src={training.thumbnail} 
-                      alt={training.title} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <PlayCircle className="h-12 w-12 text-white" />
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
-                    <Badge 
-                      variant="secondary" 
-                      className={`${getStatusColor(training.status)} text-white`}
-                    >
-                      {getStatusText(training.status)}
-                    </Badge>
-                  </div>
-                  <CardDescription className="line-clamp-2">
-                    {training.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {training.duration}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      {training.rating}
-                    </span>
-                  </div>
-                  
-                  {training.progress > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progresso</span>
-                        <span>{training.progress}%</span>
-                      </div>
-                      <Progress value={training.progress} />
-                    </div>
-                  )}
-                  
-                   <div className="flex items-center justify-between text-sm">
-                     <span className="text-muted-foreground">
-                       Prazo: {formatDateOnly(training.deadline)}
-                     </span>
-                      <span className="text-muted-foreground">
-                        {formatLastAccessed(training.lastAccessed)}
-                      </span>
-                   </div>
-                   
-                    <div className="flex gap-2">
-                      <Button 
-                        className="flex-1"
-                        onClick={() => {
-                          if (training.progress === 0) {
-                            startTraining(training.originalTraining.id)
-                          } else {
-                            accessTraining(training.originalTraining.id)
-                          }
-                          navigate(`/treinamento/${training.originalTraining.id}`)
-                        }}
-                      >
-                        {training.progress === 0 ? "Iniciar" : training.completed ? "Revisar" : "Continuar"}
-                      </Button>
-                     <Button 
-                       variant="outline" 
-                       size="icon"
-                       onClick={() => {
-                         setViewingTraining(training.originalTraining)
-                         setIsViewOpen(true)
-                       }}
-                     >
-                       <Eye className="h-4 w-4" />
-                     </Button>
-                      {training.completed && (
-                       <TrainingCertificate
-                         training={training.originalTraining}
-                         userProgress={{
-                           totalTime: training.progress * 2, // Simulated
-                           completionRate: training.progress,
-                           score: 85 // Simulated
-                         }}
-                          userName={user?.nome || "Usuário"}
-                          userCompany="Portal Treinamentos Ltda"
-                          userDepartment={user?.departamento_id}
-                       />
-                      )}
-                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {renderTrainingGrid(filteredTrainings)}
         </TabsContent>
         
         <TabsContent value="em-progresso" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {inProgressTrainings.map((training) => (
-              <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.originalTraining.videoUrl ? (
-                    // Show video thumbnail for videos
-                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        <img 
-                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
-                          alt={training.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        {training.thumbnail !== "/api/placeholder/300/200" ? (
-                          <img 
-                            src={training.thumbnail} 
-                            alt={training.title} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
-                            <PlayCircle className="h-12 w-12 text-white" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
-                    <img 
-                      src={training.thumbnail} 
-                      alt={training.title} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <PlayCircle className="h-12 w-12 text-white" />
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {training.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Progresso</span>
-                      <span>{training.progress}%</span>
-                    </div>
-                    <Progress value={training.progress} />
-                   </div>
-                   <div className="flex gap-2">
-                     <Button 
-                       className="flex-1"
-                       onClick={() => {
-                         accessTraining(training.originalTraining.id)
-                         navigate(`/treinamento/${training.originalTraining.id}`)
-                       }}
-                     >
-                       Continuar
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="icon"
-                       onClick={() => {
-                         setViewingTraining(training.originalTraining)
-                         setIsViewOpen(true)
-                       }}
-                     >
-                       <Eye className="h-4 w-4" />
-                     </Button>
-                   </div>
-                 </CardContent>
-              </Card>
-            ))}
-          </div>
+          {renderTrainingGrid(inProgressTrainings)}
         </TabsContent>
         
         <TabsContent value="concluidos" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {completedTrainings.map((training) => (
-              <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.originalTraining.videoUrl ? (
-                    // Show video thumbnail for videos
-                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        <img 
-                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
-                          alt={training.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <CheckCircle className="h-8 w-8 text-green-600" />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        {training.thumbnail !== "/api/placeholder/300/200" ? (
-                          <img 
-                            src={training.thumbnail} 
-                            alt={training.title} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
-                            <CheckCircle className="h-12 w-12 text-white" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <CheckCircle className="h-8 w-8 text-green-600" />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
-                    <img 
-                      src={training.thumbnail} 
-                      alt={training.title} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <CheckCircle className="h-12 w-12 text-white" />
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {training.description}
-                  </CardDescription>
-                </CardHeader>
-                 <CardContent className="space-y-4">
-                   <div className="flex gap-2">
-                     <Button 
-                       variant="outline" 
-                       className="flex-1"
-                       onClick={() => {
-                         accessTraining(training.originalTraining.id)
-                         navigate(`/treinamento/${training.originalTraining.id}`)
-                       }}
-                     >
-                       <RotateCcw className="mr-2 h-4 w-4" />
-                       Revisar
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="icon"
-                       onClick={() => {
-                         setViewingTraining(training.originalTraining)
-                         setIsViewOpen(true)
-                       }}
-                     >
-                       <Eye className="h-4 w-4" />
-                     </Button>
-                       <TrainingCertificate
-                         training={training.originalTraining}
-                         userProgress={{
-                           totalTime: training.progress * 2,
-                           completionRate: training.progress,
-                           score: 85
-                         }}
-                          userName={user?.nome || "Usuário"}
-                          userCompany="Portal Treinamentos Ltda"
-                          userDepartment={user?.departamento_id}
-                       />
-                   </div>
-                 </CardContent>
-              </Card>
-            ))}
-          </div>
+          {renderTrainingGrid(completedTrainings)}
         </TabsContent>
         
         <TabsContent value="nao-iniciados" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {notStartedTrainings.map((training) => (
-              <Card key={training.id} className="hover:shadow-md transition-shadow">
-                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center overflow-hidden">
-                  {training.originalTraining.videoUrl ? (
-                    // Show video thumbnail for videos
-                    training.originalTraining.videoUrl.includes('youtube.com') || training.originalTraining.videoUrl.includes('youtu.be') ? (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        <img 
-                          src={`https://img.youtube.com/vi/${training.originalTraining.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}/maxresdefault.jpg`}
-                          alt={training.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = training.thumbnail !== "/api/placeholder/300/200" ? training.thumbnail : "/api/placeholder/300/200";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative w-full h-full group cursor-pointer">
-                        {training.thumbnail !== "/api/placeholder/300/200" ? (
-                          <img 
-                            src={training.thumbnail} 
-                            alt={training.title} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex items-center justify-center">
-                            <BookOpen className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <PlayCircle className="h-8 w-8 text-black" />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ) : training.thumbnail !== "/api/placeholder/300/200" ? (
-                    <img 
-                      src={training.thumbnail} 
-                      alt={training.title} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <BookOpen className="h-12 w-12 text-muted-foreground" />
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {training.description}
-                  </CardDescription>
-                </CardHeader>
-                 <CardContent>
-                   <div className="flex gap-2">
-                     <Button 
-                       className="flex-1"
-                       onClick={() => {
-                         startTraining(training.originalTraining.id)
-                         navigate(`/treinamento/${training.originalTraining.id}`)
-                       }}
-                     >
-                       <PlayCircle className="mr-2 h-4 w-4" />
-                       Iniciar Treinamento
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="icon"
-                       onClick={() => {
-                         setViewingTraining(training.originalTraining)
-                         setIsViewOpen(true)
-                       }}
-                     >
-                       <Eye className="h-4 w-4" />
-                     </Button>
-                   </div>
-                 </CardContent>
-              </Card>
-            ))}
-          </div>
-         </TabsContent>
-       </Tabs>
+          {renderTrainingGrid(notStartedTrainings)}
+        </TabsContent>
+      </Tabs>
 
-       {/* Training Viewer Modal */}
-       <TrainingViewer
-         training={viewingTraining}
-         open={isViewOpen}
-         onOpenChange={setIsViewOpen}
-         onStartTraining={(id) => {
-           startTraining(id)
-           setIsViewOpen(false)
-         }}
-         onContinueTraining={(id) => {
-           accessTraining(id)
-           setIsViewOpen(false)
-         }}
-       />
-     </div>
-   )
- }
+      {/* Training Viewer Modal */}
+      <TrainingViewer
+        training={viewingTraining}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        onStartTraining={async (id) => {
+          await startTraining(String(id))
+          setIsViewOpen(false)
+          navigate(`/treinamento/${id}`)
+        }}
+        onContinueTraining={(id) => {
+          setIsViewOpen(false)
+          navigate(`/treinamento/${id}`)
+        }}
+      />
+    </div>
+  )
+}

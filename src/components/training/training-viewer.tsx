@@ -17,15 +17,18 @@ import {
   Play
 } from "lucide-react"
 import { Training } from "@/contexts/training-context"
+import { SupabaseTraining } from "@/hooks/use-supabase-trainings"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { getVideoInfo } from "@/lib/video-utils"
 
+type ViewableTraining = Training | SupabaseTraining | null
+
 interface TrainingViewerProps {
-  training: Training | null
+  training: ViewableTraining
   open: boolean
   onOpenChange: (open: boolean) => void
-  onStartTraining?: (trainingId: number) => void
-  onContinueTraining?: (trainingId: number) => void
+  onStartTraining?: (trainingId: string | number) => void
+  onContinueTraining?: (trainingId: string | number) => void
 }
 
 export function TrainingViewer({ 
@@ -39,8 +42,31 @@ export function TrainingViewer({
 
   if (!training) return null
 
+  // Helper para determinar se é um treinamento do Supabase
+  const isSupabaseTraining = (t: ViewableTraining): t is SupabaseTraining => {
+    return t !== null && 'titulo' in t && 'duracao_minutos' in t
+  }
+
+  // Normalizar dados para exibição
+  const titulo = isSupabaseTraining(training) ? training.titulo : training.titulo
+  const subtitulo = isSupabaseTraining(training) ? null : training.subtitulo
+  const descricao = isSupabaseTraining(training) ? training.descricao : training.descricao
+  const duracao = isSupabaseTraining(training) 
+    ? (training.duracao_minutos ? `${Math.floor(training.duracao_minutos / 60)}h ${training.duracao_minutos % 60}min` : "N/A")
+    : training.duracao
+  const instrutor = isSupabaseTraining(training) ? training.instrutor?.nome : training.instrutor
+  const criadoEm = isSupabaseTraining(training) ? training.criado_em : training.criadoEm
+  const categoria = isSupabaseTraining(training) ? training.categoria : training.categoria
+  const capa = isSupabaseTraining(training) ? training.thumbnail_url : training.capa
+  const progress = isSupabaseTraining(training) ? training.progresso?.percentual_concluido : training.progress
+  const completed = isSupabaseTraining(training) ? training.progresso?.concluido : training.completed
+  const lastAccessed = isSupabaseTraining(training) ? training.progresso?.atualizado_em : training.lastAccessed
+  const deadline = isSupabaseTraining(training) ? training.data_limite : training.deadline
+  const videoUrl = isSupabaseTraining(training) ? null : training.videoUrl
+  const texto = isSupabaseTraining(training) ? null : training.texto
+
   const handleStartContinue = () => {
-    if (training.progress === 0) {
+    if ((progress || 0) === 0) {
       onStartTraining?.(training.id)
     } else {
       onContinueTraining?.(training.id)
@@ -48,8 +74,8 @@ export function TrainingViewer({
   }
 
   const getActionButtonText = () => {
-    if (training.progress === 0) return "Iniciar Treinamento"
-    if (training.completed) return "Revisar Treinamento"
+    if ((progress || 0) === 0) return "Iniciar Treinamento"
+    if (completed) return "Revisar Treinamento"
     return "Continuar Treinamento"
   }
 
@@ -57,19 +83,19 @@ export function TrainingViewer({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{training.titulo}</DialogTitle>
-          {training.subtitulo && (
-            <p className="text-lg text-muted-foreground">{training.subtitulo}</p>
+          <DialogTitle className="text-2xl">{titulo}</DialogTitle>
+          {subtitulo && (
+            <p className="text-lg text-muted-foreground">{subtitulo}</p>
           )}
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Capa do treinamento */}
-          {training.capa && (
+          {capa && (
             <div className="aspect-video rounded-lg overflow-hidden">
               <img 
-                src={training.capa} 
-                alt={training.titulo}
+                src={capa} 
+                alt={titulo}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -81,7 +107,7 @@ export function TrainingViewer({
               <CardContent className="p-4 text-center">
                 <Clock className="h-8 w-8 mx-auto mb-2 text-primary" />
                 <p className="text-sm text-muted-foreground">Duração</p>
-                <p className="font-semibold">{training.duracao}</p>
+                <p className="font-semibold">{duracao}</p>
               </CardContent>
             </Card>
             
@@ -89,7 +115,7 @@ export function TrainingViewer({
               <CardContent className="p-4 text-center">
                 <User className="h-8 w-8 mx-auto mb-2 text-primary" />
                 <p className="text-sm text-muted-foreground">Instrutor</p>
-                <p className="font-semibold">{training.instrutor}</p>
+                <p className="font-semibold">{instrutor || "Não definido"}</p>
               </CardContent>
             </Card>
             
@@ -97,7 +123,7 @@ export function TrainingViewer({
               <CardContent className="p-4 text-center">
                 <Calendar className="h-8 w-8 mx-auto mb-2 text-primary" />
                 <p className="text-sm text-muted-foreground">Criado em</p>
-                <p className="font-semibold">{formatDateOnly(training.criadoEm)}</p>
+                <p className="font-semibold">{criadoEm ? formatDateOnly(criadoEm) : "N/A"}</p>
               </CardContent>
             </Card>
             
@@ -105,13 +131,13 @@ export function TrainingViewer({
               <CardContent className="p-4 text-center">
                 <Star className="h-8 w-8 mx-auto mb-2 text-primary" />
                 <p className="text-sm text-muted-foreground">Categoria</p>
-                <Badge variant="secondary">{training.categoria}</Badge>
+                <Badge variant="secondary">{categoria || "Geral"}</Badge>
               </CardContent>
             </Card>
           </div>
 
           {/* Progresso do usuário */}
-          {training.progress !== undefined && (
+          {progress !== undefined && progress !== null && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -123,18 +149,18 @@ export function TrainingViewer({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Progresso</span>
-                    <span>{training.progress}%</span>
+                    <span>{progress}%</span>
                   </div>
-                  <Progress value={training.progress} />
+                  <Progress value={progress} />
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Último acesso:</span>
-                    <p className="font-semibold">{training.lastAccessed}</p>
+                    <p className="font-semibold">{lastAccessed || "Nunca acessado"}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Prazo:</span>
-                    <p className="font-semibold">{training.deadline ? formatDateOnly(training.deadline) : "Sem prazo"}</p>
+                    <p className="font-semibold">{deadline ? formatDateOnly(deadline) : "Sem prazo"}</p>
                   </div>
                 </div>
               </CardContent>
@@ -155,19 +181,19 @@ export function TrainingViewer({
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground leading-relaxed">
-                    {training.descricao}
+                    {descricao || "Sem descrição disponível"}
                   </p>
                 </CardContent>
               </Card>
               
-              {training.texto && (
+              {texto && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Conteúdo Detalhado</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="prose prose-sm max-w-none">
-                      {training.texto.split('\n').map((paragraph, index) => (
+                      {texto.split('\n').map((paragraph: string, index: number) => (
                         <p key={index} className="mb-4 leading-relaxed">
                           {paragraph}
                         </p>
@@ -179,7 +205,7 @@ export function TrainingViewer({
             </TabsContent>
             
             <TabsContent value="video" className="space-y-4">
-              {training.videoUrl ? (
+              {videoUrl ? (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -189,7 +215,7 @@ export function TrainingViewer({
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      const videoInfo = getVideoInfo(training.videoUrl);
+                      const videoInfo = getVideoInfo(videoUrl);
                       if (videoInfo.isYoutube && videoInfo.embedUrl) {
                         return (
                           <div className="aspect-video rounded-lg overflow-hidden">
@@ -208,9 +234,9 @@ export function TrainingViewer({
                             <video 
                               controls 
                               className="w-full h-full"
-                              poster={training.capa}
+                              poster={capa || undefined}
                             >
-                              <source src={training.videoUrl} type="video/mp4" />
+                              <source src={videoUrl} type="video/mp4" />
                               Seu navegador não suporta o elemento de vídeo.
                             </video>
                           </div>
@@ -248,10 +274,18 @@ export function TrainingViewer({
               <PlayCircle className="mr-2 h-5 w-5" />
               {getActionButtonText()}
             </Button>
-            {training.completed && (
+            {completed && (
               <Button variant="outline" size="lg">
                 <Award className="mr-2 h-5 w-5" />
                 Certificado
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
               </Button>
             )}
           </div>

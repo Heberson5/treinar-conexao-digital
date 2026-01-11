@@ -5,6 +5,7 @@ import { useAuth } from "./auth-context";
 interface Empresa {
   id: string;
   nome: string;
+  nome_fantasia?: string | null;
   cnpj?: string | null;
   ativo?: boolean | null;
 }
@@ -44,7 +45,7 @@ export function EmpresaFilterProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("empresas")
-        .select("id, nome, cnpj, ativo")
+        .select("id, nome, nome_fantasia, cnpj, ativo")
         .eq("ativo", true)
         .order("nome");
 
@@ -67,7 +68,8 @@ export function EmpresaFilterProvider({ children }: { children: ReactNode }) {
   };
 
   const empresaSelecionadaNome = empresaSelecionada 
-    ? empresas.find(e => e.id === empresaSelecionada)?.nome || "Empresa"
+    ? empresas.find(e => e.id === empresaSelecionada)?.nome_fantasia || 
+      empresas.find(e => e.id === empresaSelecionada)?.nome || "Empresa"
     : "Todas as empresas";
 
   return (
