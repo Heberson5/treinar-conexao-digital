@@ -8,7 +8,7 @@ import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 
 interface TrainingCertificateProps {
   training: {
-    id: number
+    id: string | number
     titulo: string
     categoria: string
     duracao: string
