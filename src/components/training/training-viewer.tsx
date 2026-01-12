@@ -286,11 +286,3 @@ export function TrainingViewer({
     </Dialog>
   )
 }
-              </Button>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
