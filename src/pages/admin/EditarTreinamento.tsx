@@ -7,12 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info } from "lucide-react";
+import { Upload, Image as ImageIcon, FileText, ArrowLeft, Save, Info, Sparkles, Loader2 } from "lucide-react";
 import { useTraining } from "@/contexts/training-context";
 import { TrainingBlockEditor, type ContentBlock } from "@/components/training/training-block-editor";
 import { useDepartments } from "@/contexts/department-context";
 import { useToast } from "@/hooks/use-toast";
 import { usePlans } from "@/contexts/plans-context";
+import { useAIRewrite } from "@/hooks/use-ai-rewrite";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function EditarTreinamento() {
   const navigate = useNavigate();
@@ -22,7 +24,12 @@ export default function EditarTreinamento() {
   const { departments } = useDepartments();
   const { toast } = useToast();
   const { planos, getLimiteRecurso } = usePlans();
+  const { user } = useAuth();
+  const { rewriteText, checkAIAccess } = useAIRewrite();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showAIButton, setShowAIButton] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
 
   const [formData, setFormData] = useState<{
     titulo: string;
@@ -54,7 +61,37 @@ export default function EditarTreinamento() {
 
   const [loading, setLoading] = useState(true);
 
-  // Plano do portal para cálculo de limite de treinamentos
+  // Verificar acesso à IA quando o componente carrega
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user?.role === "master") {
+        setShowAIButton(true);
+      } else if (user?.role === "admin" || user?.role === "instrutor") {
+        const { enabled } = await checkAIAccess();
+        setShowAIButton(enabled);
+      }
+    };
+    checkAccess();
+  }, [user]);
+
+  // Função para reescrever texto com IA
+  const handleAIRewrite = async () => {
+    if (!formData.texto?.trim()) {
+      toast({
+        title: "Texto vazio",
+        description: "Escreva algum conteúdo antes de usar a IA para reescrever.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsRewriting(true);
+    const rewrittenText = await rewriteText(formData.texto);
+    if (rewrittenText) {
+      setFormData(prev => ({ ...prev, texto: rewrittenText }));
+    }
+    setIsRewriting(false);
+  };
   const planoPortalId =
     import.meta.env.VITE_PLANO_PORTAL_ID || "premium";
 
@@ -368,18 +405,49 @@ export default function EditarTreinamento() {
         </TabsContent>
 
         <TabsContent value="conteudo" className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="texto">Conteúdo do Treinamento</Label>
-            <Textarea
-              id="texto"
-              value={formData.texto}
-              onChange={(e) =>
-                setFormData({ ...formData, texto: e.target.value })
-              }
-              placeholder="Conteúdo detalhado do treinamento..."
-              rows={12}
-            />
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Label htmlFor="texto">Conteúdo do Treinamento</Label>
+              <p className="text-sm text-muted-foreground">
+                Escreva ou edite o conteúdo detalhado do treinamento.
+              </p>
+            </div>
+            {showAIButton && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAIRewrite}
+                disabled={isRewriting || !formData.texto?.trim()}
+                className="gap-2"
+              >
+                {isRewriting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Reescrevendo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Reescrever com IA
+                  </>
+                )}
+              </Button>
+            )}
           </div>
+          <Textarea
+            id="texto"
+            value={formData.texto}
+            onChange={(e) =>
+              setFormData({ ...formData, texto: e.target.value })
+            }
+            placeholder="Conteúdo detalhado do treinamento..."
+            rows={12}
+          />
+          {showAIButton && (
+            <p className="text-xs text-muted-foreground">
+              Clique em "Reescrever com IA" para melhorar a clareza e legibilidade do texto automaticamente
+            </p>
+          )}
         </TabsContent>
 
         <TabsContent value="midia" className="space-y-4">
