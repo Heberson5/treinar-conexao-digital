@@ -41,6 +41,38 @@ export type Database = {
         }
         Relationships: []
       }
+      cnpj_demo_usado: {
+        Row: {
+          cnpj: string
+          criado_em: string
+          empresa_id: string | null
+          id: string
+          usado_em: string
+        }
+        Insert: {
+          cnpj: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          usado_em?: string
+        }
+        Update: {
+          cnpj?: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          usado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cnpj_demo_usado_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_ia_empresa: {
         Row: {
           api_key: string | null
@@ -136,11 +168,19 @@ export type Database = {
           cnpj: string | null
           criado_em: string | null
           data_contratacao: string | null
+          demo_created_at: string | null
+          demo_expires_at: string | null
+          email: string | null
+          endereco: string | null
           id: string
+          is_demo: boolean | null
           logo_url: string | null
           nome: string
           nome_fantasia: string | null
           plano_id: string | null
+          razao_social: string | null
+          responsavel: string | null
+          telefone: string | null
         }
         Insert: {
           ativo?: boolean | null
@@ -148,11 +188,19 @@ export type Database = {
           cnpj?: string | null
           criado_em?: string | null
           data_contratacao?: string | null
+          demo_created_at?: string | null
+          demo_expires_at?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: string
+          is_demo?: boolean | null
           logo_url?: string | null
           nome: string
           nome_fantasia?: string | null
           plano_id?: string | null
+          razao_social?: string | null
+          responsavel?: string | null
+          telefone?: string | null
         }
         Update: {
           ativo?: boolean | null
@@ -160,11 +208,19 @@ export type Database = {
           cnpj?: string | null
           criado_em?: string | null
           data_contratacao?: string | null
+          demo_created_at?: string | null
+          demo_expires_at?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: string
+          is_demo?: boolean | null
           logo_url?: string | null
           nome?: string
           nome_fantasia?: string | null
           plano_id?: string | null
+          razao_social?: string | null
+          responsavel?: string | null
+          telefone?: string | null
         }
         Relationships: []
       }
@@ -533,6 +589,18 @@ export type Database = {
         Returns: string
       }
       eh_admin_ou_master: { Args: { usuario_id: string }; Returns: boolean }
+      registrar_cnpj_demo: {
+        Args: { p_cnpj: string; p_empresa_id: string }
+        Returns: undefined
+      }
+      verificar_cnpj_demo_disponivel: {
+        Args: { p_cnpj: string }
+        Returns: boolean
+      }
+      verificar_demo_expirada: {
+        Args: { p_empresa_id: string }
+        Returns: boolean
+      }
       verificar_limite_treinamentos: {
         Args: { p_empresa_id: string }
         Returns: boolean
