@@ -51,6 +51,8 @@ import {
   CheckCircle,
   Loader2,
   TestTube,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,6 +94,7 @@ export default function EmpresasSupabase() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("todas");
   const [activeTab, setActiveTab] = useState<"clientes" | "demo">("clientes");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // Modais
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -482,43 +485,133 @@ export default function EmpresasSupabase() {
           </div>
 
           {/* Ações */}
-          <div className="flex items-center justify-between gap-2 pt-2 border-t">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleToggleStatus(empresa)}
-              >
-                {empresa.ativo ? "Desativar" : "Ativar"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditEmpresa(empresa)}
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfigEmpresa(empresa as any)}
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                Config
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleToggleStatus(empresa)}
+              className="flex-shrink-0"
+            >
+              {empresa.ativo ? "Desativar" : "Ativar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditEmpresa(empresa)}
+              className="flex-shrink-0"
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfigEmpresa(empresa as any)}
+              className="flex-shrink-0"
+            >
+              <Settings className="h-4 w-4 mr-1" />
+              Config
+            </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setDeleteEmpresa(empresa)}
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive flex-shrink-0 ml-auto"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>
       </Card>
+    );
+  };
+
+  // Renderizar linha de empresa (visualização em lista)
+  const renderEmpresaRow = (empresa: Empresa) => {
+    const isDemo = empresa.is_demo === true;
+    const demoExpirada = isDemo && empresa.demo_expires_at && isPast(new Date(empresa.demo_expires_at));
+    const diasRestantes = isDemo && empresa.demo_expires_at
+      ? differenceInDays(new Date(empresa.demo_expires_at), new Date())
+      : null;
+
+    return (
+      <div
+        key={empresa.id}
+        className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg ${
+          demoExpirada ? "opacity-60 bg-muted/50" : "bg-card"
+        }`}
+      >
+        {/* Info principal */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium truncate">
+              {empresa.nome_fantasia || empresa.nome}
+            </span>
+            {isDemo && (
+              <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                <TestTube className="h-3 w-3 mr-1" />
+                Demo
+              </Badge>
+            )}
+            {empresa.ativo ? (
+              <Badge className="bg-emerald-500 text-white text-xs">Ativa</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Inativa</Badge>
+            )}
+            {demoExpirada && (
+              <Badge variant="destructive" className="text-xs">Expirada</Badge>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground mt-1 space-x-2">
+            {empresa.cnpj && <span>CNPJ: {formatarCNPJ(empresa.cnpj)}</span>}
+            {empresa.email && <span>• {empresa.email}</span>}
+            {isDemo && diasRestantes !== null && !demoExpirada && (
+              <span className="text-orange-600">• {diasRestantes} dias restantes</span>
+            )}
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(empresa)}
+            title={empresa.ativo ? "Desativar" : "Ativar"}
+          >
+            {empresa.ativo ? (
+              <CheckCircle className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditEmpresa(empresa)}
+            title="Editar dados"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfigEmpresa(empresa as any)}
+            title="Configurações"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeleteEmpresa(empresa)}
+            className="text-destructive hover:text-destructive"
+            title="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     );
   };
 
@@ -633,7 +726,7 @@ export default function EmpresasSupabase() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -644,7 +737,7 @@ export default function EmpresasSupabase() {
               />
             </div>
             <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[130px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -655,6 +748,26 @@ export default function EmpresasSupabase() {
                 )}
               </SelectContent>
             </Select>
+            <div className="flex border rounded-md">
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-r-none"
+                onClick={() => setViewMode("grid")}
+                title="Visualização em blocos"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-l-none"
+                onClick={() => setViewMode("list")}
+                title="Visualização em lista"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -669,9 +782,13 @@ export default function EmpresasSupabase() {
                 </p>
               </CardContent>
             </Card>
-          ) : (
+          ) : viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {empresasFiltradas.map(renderEmpresaCard)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {empresasFiltradas.map(renderEmpresaRow)}
             </div>
           )}
         </TabsContent>
@@ -687,9 +804,13 @@ export default function EmpresasSupabase() {
                 </p>
               </CardContent>
             </Card>
-          ) : (
+          ) : viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {empresasFiltradas.map(renderEmpresaCard)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {empresasFiltradas.map(renderEmpresaRow)}
             </div>
           )}
         </TabsContent>

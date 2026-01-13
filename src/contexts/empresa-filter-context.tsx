@@ -46,7 +46,6 @@ export function EmpresaFilterProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("empresas")
         .select("id, nome, nome_fantasia, cnpj, ativo")
-        .eq("ativo", true)
         .order("nome");
 
       if (error) {
