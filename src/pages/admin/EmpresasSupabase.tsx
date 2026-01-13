@@ -886,16 +886,18 @@ export default function EmpresasSupabase() {
         />
       )}
 
-      {/* Modal de Configuração - usando o modal existente com adaptação */}
+      {/* Modal de Configuração */}
       {configEmpresa && (
-        empresa={configEmpresa as any}
-        open={configEmpresa !== null}
-        onOpenChange={(open) => !open && setConfigEmpresa(null)}
-        onUpdate={(emp) => {
-          handleUpdateEmpresa(emp as Empresa);
-          setConfigEmpresa(null);
-        }}
-      />
+        <EmpresaConfigModal
+          empresa={configEmpresa as any}
+          open={configEmpresa !== null}
+          onOpenChange={(open) => !open && setConfigEmpresa(null)}
+          onUpdate={() => {
+            fetchEmpresas();
+            setConfigEmpresa(null);
+          }}
+        />
+      )}
 
       {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={deleteEmpresa !== null} onOpenChange={(open) => !open && setDeleteEmpresa(null)}>
