@@ -18,8 +18,8 @@ import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
 import TrainingPage from "./pages/TrainingPage";
 import GestaoTreinamentos from "./pages/admin/GestaoTreinamentos";
-import NovoTreinamento from "./pages/admin/NovoTreinamento";
-import EditarTreinamento from "./pages/admin/EditarTreinamento";
+import NovoTreinamentoModerno from "./pages/admin/NovoTreinamentoModerno";
+import EditarTreinamentoModerno from "./pages/admin/EditarTreinamentoModerno";
 import Usuarios from "./pages/admin/Usuarios";
 import Cargos from "./pages/admin/Cargos";
 import Departamentos from "./pages/admin/Departamentos";
@@ -60,8 +60,8 @@ function AppContent() {
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/calendario" element={<Calendario />} />
         <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
-        <Route path="/admin/treinamentos/novo" element={<NovoTreinamento />} />
-        <Route path="/admin/treinamentos/editar/:id" element={<EditarTreinamento />} />
+        <Route path="/admin/treinamentos/novo" element={<NovoTreinamentoModerno />} />
+        <Route path="/admin/treinamentos/editar/:id" element={<EditarTreinamentoModerno />} />
         <Route path="/admin/usuarios" element={<Usuarios />} />
         <Route path="/admin/cargos" element={<Cargos />} />
         <Route path="/admin/departamentos" element={<Departamentos />} />
