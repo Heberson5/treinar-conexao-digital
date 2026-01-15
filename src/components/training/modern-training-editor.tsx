@@ -27,6 +27,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -55,6 +58,7 @@ import {
   Quote,
   Minus,
   List,
+  ListOrdered,
   CheckSquare,
   FileText,
   ChevronLeft,
@@ -78,15 +82,18 @@ import {
   Layers,
   PanelLeft,
   X,
+  Palette,
+  Building2,
 } from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 // Types
 export interface ContentBlock {
   id: string;
-  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist";
+  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist" | "numbered-list";
   content: string;
   level?: 1 | 2 | 3;
   align?: "left" | "center" | "right";
@@ -94,6 +101,12 @@ export interface ContentBlock {
   caption?: string;
   listItems?: string[];
   checkItems?: { text: string; checked: boolean }[];
+  // Estilos de texto
+  fontSize?: "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
+  textColor?: string;
+  isBold?: boolean;
+  isItalic?: boolean;
+  isUnderline?: boolean;
 }
 
 export interface TrainingSection {
@@ -111,6 +124,7 @@ export interface TrainingData {
   status: "ativo" | "inativo" | "rascunho";
   instrutor: string;
   departamento: string;
+  empresa_id?: string;
   capa?: string;
   sections: TrainingSection[];
 }
@@ -130,8 +144,9 @@ const createEmptyBlock = (type: ContentBlock["type"] = "text"): ContentBlock => 
   content: "",
   align: "left",
   level: type === "heading" ? 2 : undefined,
-  listItems: type === "list" ? [""] : undefined,
+  listItems: type === "list" || type === "numbered-list" ? [""] : undefined,
   checkItems: type === "checklist" ? [{ text: "", checked: false }] : undefined,
+  fontSize: "base",
 });
 
 const createEmptySection = (title = "Nova Seção"): TrainingSection => ({
@@ -139,6 +154,43 @@ const createEmptySection = (title = "Nova Seção"): TrainingSection => ({
   title,
   blocks: [createEmptyBlock("text")],
 });
+
+// Cores predefinidas para o texto
+const TEXT_COLORS = [
+  { name: "Padrão", value: "" },
+  { name: "Preto", value: "text-black" },
+  { name: "Cinza", value: "text-gray-600" },
+  { name: "Vermelho", value: "text-red-600" },
+  { name: "Laranja", value: "text-orange-600" },
+  { name: "Amarelo", value: "text-yellow-600" },
+  { name: "Verde", value: "text-green-600" },
+  { name: "Azul", value: "text-blue-600" },
+  { name: "Roxo", value: "text-purple-600" },
+  { name: "Rosa", value: "text-pink-600" },
+];
+
+// Tamanhos de fonte
+const FONT_SIZES = [
+  { name: "Extra Pequeno", value: "xs" },
+  { name: "Pequeno", value: "sm" },
+  { name: "Normal", value: "base" },
+  { name: "Grande", value: "lg" },
+  { name: "Extra Grande", value: "xl" },
+  { name: "2x Grande", value: "2xl" },
+  { name: "3x Grande", value: "3xl" },
+];
+
+interface Departamento {
+  id: string;
+  nome: string;
+  empresa_id: string | null;
+}
+
+interface Empresa {
+  id: string;
+  nome: string;
+  nome_fantasia: string | null;
+}
 
 export function ModernTrainingEditor({
   initialData,
@@ -156,6 +208,11 @@ export function ModernTrainingEditor({
     blockId?: string;
     type: "image" | "video";
   } | null>(null);
+
+  // Departamentos e empresas do Supabase
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   // Editor state
   const [activeSection, setActiveSection] = useState(0);
@@ -179,9 +236,55 @@ export function ModernTrainingEditor({
     status: initialData?.status || "rascunho",
     instrutor: initialData?.instrutor || "",
     departamento: initialData?.departamento || "",
+    empresa_id: initialData?.empresa_id || user?.empresa_id || "",
     capa: initialData?.capa,
     sections: initialData?.sections || [createEmptySection("Introdução")],
   });
+
+  // Carregar departamentos e empresas do Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      setLoadingData(true);
+      try {
+        // Carregar departamentos
+        const { data: depData, error: depError } = await supabase
+          .from("departamentos")
+          .select("id, nome, empresa_id")
+          .eq("ativo", true);
+
+        if (depError) {
+          console.error("Erro ao carregar departamentos:", depError);
+        } else {
+          setDepartamentos(depData || []);
+        }
+
+        // Carregar empresas (apenas para master)
+        if (user?.role === "master") {
+          const { data: empData, error: empError } = await supabase
+            .from("empresas")
+            .select("id, nome, nome_fantasia")
+            .eq("ativo", true);
+
+          if (empError) {
+            console.error("Erro ao carregar empresas:", empError);
+          } else {
+            setEmpresas(empData || []);
+          }
+        }
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadData();
+  }, [user?.role]);
+
+  // Filtrar departamentos pela empresa selecionada
+  const departamentosFiltrados = formData.empresa_id
+    ? departamentos.filter(
+        (d) => !d.empresa_id || d.empresa_id === formData.empresa_id
+      )
+    : departamentos;
 
   // Check AI access
   useEffect(() => {
@@ -313,7 +416,7 @@ export function ModernTrainingEditor({
     }
   };
 
-  // File upload
+  // File upload - aceita todos os tipos de imagem
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !uploadContext) return;
@@ -388,6 +491,155 @@ export function ModernTrainingEditor({
     reader.readAsDataURL(file);
   };
 
+  // Render preview content
+  const renderPreviewContent = () => {
+    return (
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{formData.titulo || "Sem título"}</DialogTitle>
+            {formData.subtitulo && (
+              <p className="text-lg text-muted-foreground">{formData.subtitulo}</p>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-8 mt-4">
+            {formData.capa && (
+              <div className="aspect-video rounded-lg overflow-hidden">
+                <img src={formData.capa} alt={formData.titulo} className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            {formData.sections.map((section, sectionIndex) => (
+              <div key={section.id} className="space-y-4">
+                <h2 className="text-xl font-bold border-b pb-2">{section.title}</h2>
+                {section.blocks.map((block) => {
+                  const fontSizeClass = {
+                    xs: "text-xs",
+                    sm: "text-sm",
+                    base: "text-base",
+                    lg: "text-lg",
+                    xl: "text-xl",
+                    "2xl": "text-2xl",
+                    "3xl": "text-3xl",
+                  }[block.fontSize || "base"];
+
+                  const alignClass = {
+                    left: "text-left",
+                    center: "text-center",
+                    right: "text-right",
+                  }[block.align || "left"];
+
+                  switch (block.type) {
+                    case "heading":
+                      const HeadingTag = `h${block.level || 2}` as "h1" | "h2" | "h3";
+                      const headingSize = {
+                        1: "text-3xl font-bold",
+                        2: "text-2xl font-semibold",
+                        3: "text-xl font-medium",
+                      }[block.level || 2];
+                      return (
+                        <HeadingTag key={block.id} className={cn(headingSize, alignClass, block.textColor)}>
+                          {block.content}
+                        </HeadingTag>
+                      );
+                    case "text":
+                      return (
+                        <p
+                          key={block.id}
+                          className={cn(
+                            fontSizeClass,
+                            alignClass,
+                            block.textColor,
+                            block.isBold && "font-bold",
+                            block.isItalic && "italic",
+                            block.isUnderline && "underline"
+                          )}
+                        >
+                          {block.content}
+                        </p>
+                      );
+                    case "quote":
+                      return (
+                        <blockquote
+                          key={block.id}
+                          className="border-l-4 border-primary pl-4 py-2 italic bg-muted/30 rounded-r-md"
+                        >
+                          {block.content}
+                        </blockquote>
+                      );
+                    case "image":
+                      return block.mediaUrl ? (
+                        <figure key={block.id} className={alignClass}>
+                          <img src={block.mediaUrl} alt={block.caption || ""} className="max-w-full rounded-lg" />
+                          {block.caption && (
+                            <figcaption className="text-sm text-muted-foreground mt-2">{block.caption}</figcaption>
+                          )}
+                        </figure>
+                      ) : null;
+                    case "video":
+                      return block.mediaUrl ? (
+                        <div key={block.id} className={cn("aspect-video", alignClass)}>
+                          {block.mediaUrl.includes("youtube") || block.mediaUrl.includes("youtu.be") ? (
+                            <iframe
+                              src={block.mediaUrl.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
+                              className="w-full h-full rounded-lg"
+                              allowFullScreen
+                            />
+                          ) : (
+                            <video src={block.mediaUrl} controls className="w-full h-full rounded-lg" />
+                          )}
+                        </div>
+                      ) : null;
+                    case "list":
+                      return (
+                        <ul key={block.id} className="list-disc list-inside space-y-1">
+                          {(block.listItems || []).map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      );
+                    case "numbered-list":
+                      return (
+                        <ol key={block.id} className="list-decimal list-inside space-y-1">
+                          {(block.listItems || []).map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ol>
+                      );
+                    case "checklist":
+                      return (
+                        <div key={block.id} className="space-y-1">
+                          {(block.checkItems || []).map((item, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input type="checkbox" checked={item.checked} readOnly />
+                              <span className={item.checked ? "line-through text-muted-foreground" : ""}>
+                                {item.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    case "divider":
+                      return <Separator key={block.id} className="my-6" />;
+                    default:
+                      return null;
+                  }
+                })}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPreview(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   // Render block
   const renderBlock = (block: ContentBlock, sectionIndex: number, blockIndex: number) => {
     const alignClass = {
@@ -395,6 +647,16 @@ export function ModernTrainingEditor({
       center: "text-center",
       right: "text-right",
     }[block.align || "left"];
+
+    const fontSizeClass = {
+      xs: "text-xs",
+      sm: "text-sm",
+      base: "text-base",
+      lg: "text-lg",
+      xl: "text-xl",
+      "2xl": "text-2xl",
+      "3xl": "text-3xl",
+    }[block.fontSize || "base"];
 
     const blockContent = () => {
       switch (block.type) {
@@ -410,7 +672,12 @@ export function ModernTrainingEditor({
               value={block.content}
               onChange={(e) => updateBlock(sectionIndex, block.id, { content: e.target.value })}
               placeholder={`Título ${block.level || 2}`}
-              className={cn("border-none shadow-none focus-visible:ring-0 bg-transparent", headingClass, alignClass)}
+              className={cn(
+                "border-none shadow-none focus-visible:ring-0 bg-transparent",
+                headingClass,
+                alignClass,
+                block.textColor
+              )}
             />
           );
 
@@ -420,7 +687,15 @@ export function ModernTrainingEditor({
               value={block.content}
               onChange={(e) => updateBlock(sectionIndex, block.id, { content: e.target.value })}
               placeholder="Comece a digitar seu conteúdo aqui..."
-              className={cn("min-h-[120px] border-none shadow-none focus-visible:ring-0 resize-none bg-transparent", alignClass)}
+              className={cn(
+                "min-h-[120px] border-none shadow-none focus-visible:ring-0 resize-none bg-transparent",
+                fontSizeClass,
+                alignClass,
+                block.textColor,
+                block.isBold && "font-bold",
+                block.isItalic && "italic",
+                block.isUnderline && "underline"
+              )}
             />
           );
 
@@ -438,7 +713,7 @@ export function ModernTrainingEditor({
 
         case "image":
           return (
-            <div className={cn("space-y-2", alignClass === "center" ? "mx-auto" : alignClass === "right" ? "ml-auto" : "")}>
+            <div className={cn("space-y-2", alignClass === "text-center" ? "mx-auto" : alignClass === "text-right" ? "ml-auto" : "")}>
               {block.mediaUrl ? (
                 <div className="relative group/media">
                   <img
@@ -508,7 +783,7 @@ export function ModernTrainingEditor({
 
         case "video":
           return (
-            <div className={cn("space-y-2", alignClass === "center" ? "mx-auto" : alignClass === "right" ? "ml-auto" : "")}>
+            <div className={cn("space-y-2", alignClass === "text-center" ? "mx-auto" : alignClass === "text-right" ? "ml-auto" : "")}>
               {block.mediaUrl ? (
                 <div className="relative group/media">
                   {block.mediaUrl.includes("youtube") || block.mediaUrl.includes("youtu.be") || block.mediaUrl.includes("vimeo") ? (
@@ -593,6 +868,41 @@ export function ModernTrainingEditor({
               {(block.listItems || [""]).map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-muted-foreground">•</span>
+                  <Input
+                    value={item}
+                    onChange={(e) => {
+                      const newItems = [...(block.listItems || [])];
+                      newItems[i] = e.target.value;
+                      updateBlock(sectionIndex, block.id, { listItems: newItems });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const newItems = [...(block.listItems || [])];
+                        newItems.splice(i + 1, 0, "");
+                        updateBlock(sectionIndex, block.id, { listItems: newItems });
+                      }
+                      if (e.key === "Backspace" && item === "" && (block.listItems?.length || 0) > 1) {
+                        e.preventDefault();
+                        const newItems = [...(block.listItems || [])];
+                        newItems.splice(i, 1);
+                        updateBlock(sectionIndex, block.id, { listItems: newItems });
+                      }
+                    }}
+                    placeholder="Item da lista..."
+                    className="flex-1 border-none shadow-none focus-visible:ring-0 bg-transparent"
+                  />
+                </div>
+              ))}
+            </div>
+          );
+
+        case "numbered-list":
+          return (
+            <div className="space-y-2">
+              {(block.listItems || [""]).map((item, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-muted-foreground min-w-[20px]">{i + 1}.</span>
                   <Input
                     value={item}
                     onChange={(e) => {
@@ -726,32 +1036,116 @@ export function ModernTrainingEditor({
               )}
 
               {(block.type === "text" || block.type === "heading" || block.type === "quote") && (
-                <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
-                  <Button
-                    variant={block.align === "left" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => updateBlock(sectionIndex, block.id, { align: "left" })}
-                  >
-                    <AlignLeft className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant={block.align === "center" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => updateBlock(sectionIndex, block.id, { align: "center" })}
-                  >
-                    <AlignCenter className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant={block.align === "right" ? "secondary" : "ghost"}
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => updateBlock(sectionIndex, block.id, { align: "right" })}
-                  >
-                    <AlignRight className="h-3 w-3" />
-                  </Button>
-                </div>
+                <>
+                  {/* Alinhamento */}
+                  <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
+                    <Button
+                      variant={block.align === "left" ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { align: "left" })}
+                    >
+                      <AlignLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant={block.align === "center" ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { align: "center" })}
+                    >
+                      <AlignCenter className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant={block.align === "right" ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { align: "right" })}
+                    >
+                      <AlignRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  {/* Formatação de texto */}
+                  <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
+                    <Button
+                      variant={block.isBold ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { isBold: !block.isBold })}
+                    >
+                      <Bold className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant={block.isItalic ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { isItalic: !block.isItalic })}
+                    >
+                      <Italic className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant={block.isUnderline ? "secondary" : "ghost"}
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => updateBlock(sectionIndex, block.id, { isUnderline: !block.isUnderline })}
+                    >
+                      <Underline className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  {/* Tamanho e Cor */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-6 w-6">
+                        <Type className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Type className="h-4 w-4 mr-2" />
+                          Tamanho
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {FONT_SIZES.map((size) => (
+                            <DropdownMenuItem
+                              key={size.value}
+                              onClick={() => updateBlock(sectionIndex, block.id, { fontSize: size.value as any })}
+                            >
+                              <span className={cn(block.fontSize === size.value && "font-bold")}>
+                                {size.name}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Palette className="h-4 w-4 mr-2" />
+                          Cor
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {TEXT_COLORS.map((color) => (
+                            <DropdownMenuItem
+                              key={color.value}
+                              onClick={() => updateBlock(sectionIndex, block.id, { textColor: color.value })}
+                            >
+                              <div
+                                className={cn(
+                                  "w-4 h-4 rounded-full mr-2 border",
+                                  color.value || "bg-foreground"
+                                )}
+                              />
+                              <span className={cn(block.textColor === color.value && "font-bold")}>
+                                {color.name}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
 
               {showAIButton && (block.type === "text" || block.type === "quote") && block.content.trim() && (
@@ -808,7 +1202,10 @@ export function ModernTrainingEditor({
                     <Quote className="h-4 w-4 mr-2" /> Citação
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "list", blockIndex)}>
-                    <List className="h-4 w-4 mr-2" /> Lista
+                    <List className="h-4 w-4 mr-2" /> Marcadores
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addBlock(sectionIndex, "numbered-list", blockIndex)}>
+                    <ListOrdered className="h-4 w-4 mr-2" /> Numeração
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "checklist", blockIndex)}>
                     <CheckSquare className="h-4 w-4 mr-2" /> Checklist
@@ -829,16 +1226,16 @@ export function ModernTrainingEditor({
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Top toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onCancel}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={onCancel} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="flex-1 min-w-0">
             <Input
               value={formData.titulo}
               onChange={(e) => setFormData((prev) => ({ ...prev, titulo: e.target.value }))}
               placeholder="Título do treinamento"
-              className="text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent"
+              className="text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent w-full"
             />
             <p className="text-xs text-muted-foreground">
               {formData.sections.length} seção(ões) • {formData.sections.reduce((acc, s) => acc + s.blocks.length, 0)} bloco(s)
@@ -846,7 +1243,7 @@ export function ModernTrainingEditor({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Select
             value={formData.status}
             onValueChange={(value: "ativo" | "inativo" | "rascunho") =>
@@ -877,7 +1274,7 @@ export function ModernTrainingEditor({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowPreview(!showPreview)}>
+                <Button variant="outline" size="icon" onClick={() => setShowPreview(true)}>
                   <Eye className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -896,19 +1293,23 @@ export function ModernTrainingEditor({
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar - Section navigation */}
         {showSidebar && (
-          <div className="w-64 border-r bg-muted/30 flex flex-col">
+          <div className="w-72 border-r bg-muted/20 flex flex-col">
             <div className="p-4 border-b">
-              <h3 className="font-semibold text-sm mb-2">Seções</h3>
-              <Button variant="outline" size="sm" className="w-full" onClick={addSection}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Seção
-              </Button>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  Seções
+                </h3>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addSection}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="sections" type="section">
-                {(provided) => (
-                  <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1">
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="sections" type="section">
+                  {(provided) => (
                     <div ref={provided.innerRef} {...provided.droppableProps} className="p-2 space-y-1">
                       {formData.sections.map((section, index) => (
                         <Draggable key={section.id} draggableId={section.id} index={index}>
@@ -917,23 +1318,20 @@ export function ModernTrainingEditor({
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
+                                "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
                                 activeSection === index
-                                  ? "bg-primary text-primary-foreground"
+                                  ? "bg-primary/10 border border-primary/30"
                                   : "hover:bg-muted",
-                                snapshot.isDragging && "shadow-lg"
+                                snapshot.isDragging && "shadow-lg bg-background"
                               )}
                               onClick={() => setActiveSection(index)}
                             >
                               <div {...provided.dragHandleProps} className="cursor-grab">
-                                <GripVertical className="h-4 w-4 opacity-50" />
+                                <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{section.title}</p>
-                                <p className={cn(
-                                  "text-xs",
-                                  activeSection === index ? "text-primary-foreground/70" : "text-muted-foreground"
-                                )}>
+                                <p className="text-xs text-muted-foreground">
                                   {section.blocks.length} bloco(s)
                                 </p>
                               </div>
@@ -942,10 +1340,7 @@ export function ModernTrainingEditor({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn(
-                                      "h-6 w-6 opacity-0 group-hover:opacity-100",
-                                      activeSection === index && "text-primary-foreground hover:text-primary-foreground hover:bg-primary-foreground/10"
-                                    )}
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <MoreVertical className="h-3 w-3" />
@@ -953,7 +1348,8 @@ export function ModernTrainingEditor({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => duplicateSection(index)}>
-                                    <Copy className="h-4 w-4 mr-2" /> Duplicar
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Duplicar
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
@@ -961,7 +1357,8 @@ export function ModernTrainingEditor({
                                     onClick={() => deleteSection(index)}
                                     disabled={formData.sections.length === 1}
                                   >
-                                    <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -971,43 +1368,156 @@ export function ModernTrainingEditor({
                       ))}
                       {provided.placeholder}
                     </div>
-                  </ScrollArea>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </ScrollArea>
+
+            {/* Settings panel */}
+            <div className="border-t p-4 space-y-4">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Configurações
+              </h3>
+
+              <div className="space-y-3">
+                {/* Seleção de empresa para master */}
+                {user?.role === "master" && (
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Empresa
+                    </Label>
+                    <Select
+                      value={formData.empresa_id || ""}
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          empresa_id: value,
+                          departamento: "", // Limpar departamento ao mudar empresa
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Selecione a empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map((empresa) => (
+                          <SelectItem key={empresa.id} value={empresa.id}>
+                            {empresa.nome_fantasia || empresa.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
-              </Droppable>
-            </DragDropContext>
 
-            {/* Training settings */}
-            <div className="p-4 border-t space-y-3">
-              <h4 className="font-medium text-sm text-muted-foreground">Configurações</h4>
-              
-              <div className="space-y-2">
-                <Label className="text-xs">Categoria</Label>
-                <Input
-                  value={formData.categoria}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, categoria: e.target.value }))}
-                  placeholder="Ex: Segurança"
-                  className="h-8 text-sm"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Categoria</Label>
+                  <Select
+                    value={formData.categoria}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, categoria: value }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Onboarding">Onboarding</SelectItem>
+                      <SelectItem value="Segurança">Segurança</SelectItem>
+                      <SelectItem value="Compliance">Compliance</SelectItem>
+                      <SelectItem value="Vendas">Vendas</SelectItem>
+                      <SelectItem value="Atendimento">Atendimento</SelectItem>
+                      <SelectItem value="Liderança">Liderança</SelectItem>
+                      <SelectItem value="Técnico">Técnico</SelectItem>
+                      <SelectItem value="Soft Skills">Soft Skills</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">Duração</Label>
-                <Input
-                  value={formData.duracao}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, duracao: e.target.value }))}
-                  placeholder="Ex: 2h 30min"
-                  className="h-8 text-sm"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Departamento</Label>
+                  <Select
+                    value={formData.departamento}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, departamento: value }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departamentosFiltrados.length > 0 ? (
+                        departamentosFiltrados.map((dep) => (
+                          <SelectItem key={dep.id} value={dep.nome}>
+                            {dep.nome}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="Todos">Todos</SelectItem>
+                          <SelectItem value="TI">TI</SelectItem>
+                          <SelectItem value="RH">RH</SelectItem>
+                          <SelectItem value="Vendas">Vendas</SelectItem>
+                          <SelectItem value="Financeiro">Financeiro</SelectItem>
+                          <SelectItem value="Marketing">Marketing</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">Instrutor</Label>
-                <Input
-                  value={formData.instrutor}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, instrutor: e.target.value }))}
-                  placeholder="Nome do instrutor"
-                  className="h-8 text-sm"
-                />
+                <div className="space-y-2">
+                  <Label className="text-xs">Duração estimada</Label>
+                  <Input
+                    value={formData.duracao}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, duracao: e.target.value }))}
+                    placeholder="Ex: 30min, 1h"
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Capa do treinamento</Label>
+                  <div className="relative">
+                    {formData.capa ? (
+                      <div className="relative group">
+                        <img
+                          src={formData.capa}
+                          alt="Capa"
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setFormData((prev) => ({ ...prev, capa: undefined }))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="block border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <span className="text-xs text-muted-foreground">Clique para upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCoverUpload}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Instrutor</Label>
+                  <Input
+                    value={formData.instrutor}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, instrutor: e.target.value }))}
+                    placeholder="Nome do instrutor"
+                    className="h-8 text-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1076,7 +1586,10 @@ export function ModernTrainingEditor({
                     <Quote className="h-4 w-4 mr-2" /> Citação
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addBlock(activeSection, "list")}>
-                    <List className="h-4 w-4 mr-2" /> Lista
+                    <List className="h-4 w-4 mr-2" /> Marcadores
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addBlock(activeSection, "numbered-list")}>
+                    <ListOrdered className="h-4 w-4 mr-2" /> Numeração
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addBlock(activeSection, "checklist")}>
                     <CheckSquare className="h-4 w-4 mr-2" /> Checklist
@@ -1152,7 +1665,7 @@ export function ModernTrainingEditor({
         </div>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input - aceita todos tipos de imagem */}
       <input
         ref={fileInputRef}
         type="file"
@@ -1160,6 +1673,9 @@ export function ModernTrainingEditor({
         accept={uploadContext?.type === "image" ? "image/*" : "video/*"}
         onChange={handleFileUpload}
       />
+
+      {/* Preview dialog */}
+      {renderPreviewContent()}
     </div>
   );
 }
