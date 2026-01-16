@@ -491,146 +491,203 @@ export function ModernTrainingEditor({
     reader.readAsDataURL(file);
   };
 
+  // Render preview block with proper formatting
+  const renderPreviewBlock = (block: ContentBlock) => {
+    const fontSizeClass = {
+      xs: "text-xs",
+      sm: "text-sm",
+      base: "text-base",
+      lg: "text-lg",
+      xl: "text-xl",
+      "2xl": "text-2xl",
+      "3xl": "text-3xl",
+    }[block.fontSize || "base"];
+
+    const alignClass = {
+      left: "text-left",
+      center: "text-center",
+      right: "text-right",
+    }[block.align || "left"];
+
+    const textStyles = cn(
+      fontSizeClass,
+      alignClass,
+      block.textColor,
+      block.isBold && "font-bold",
+      block.isItalic && "italic",
+      block.isUnderline && "underline"
+    );
+
+    switch (block.type) {
+      case "heading":
+        const HeadingTag = `h${block.level || 2}` as "h1" | "h2" | "h3";
+        const headingSize = {
+          1: "text-3xl font-bold",
+          2: "text-2xl font-semibold",
+          3: "text-xl font-medium",
+        }[block.level || 2];
+        return block.content ? (
+          <HeadingTag 
+            key={block.id} 
+            className={cn(
+              headingSize, 
+              alignClass, 
+              block.textColor,
+              block.isBold && "font-bold",
+              block.isItalic && "italic",
+              block.isUnderline && "underline"
+            )}
+          >
+            {block.content}
+          </HeadingTag>
+        ) : null;
+      
+      case "text":
+        return block.content ? (
+          <div key={block.id} className={textStyles}>
+            {block.content.split('\n').map((line, i) => (
+              <p key={i} className="mb-2 last:mb-0">
+                {line || <br />}
+              </p>
+            ))}
+          </div>
+        ) : null;
+      
+      case "quote":
+        return block.content ? (
+          <blockquote
+            key={block.id}
+            className={cn(
+              "border-l-4 border-primary pl-4 py-2 italic bg-muted/30 rounded-r-md",
+              textStyles
+            )}
+          >
+            {block.content}
+          </blockquote>
+        ) : null;
+      
+      case "image":
+        return block.mediaUrl ? (
+          <figure key={block.id} className={alignClass}>
+            <img 
+              src={block.mediaUrl} 
+              alt={block.caption || ""} 
+              className="max-w-full rounded-lg shadow-md" 
+            />
+            {block.caption && (
+              <figcaption className="text-sm text-muted-foreground mt-2">
+                {block.caption}
+              </figcaption>
+            )}
+          </figure>
+        ) : null;
+      
+      case "video":
+        return block.mediaUrl ? (
+          <div key={block.id} className={cn("aspect-video", alignClass)}>
+            {block.mediaUrl.includes("youtube") || block.mediaUrl.includes("youtu.be") ? (
+              <iframe
+                src={block.mediaUrl
+                  .replace("watch?v=", "embed/")
+                  .replace("youtu.be/", "youtube.com/embed/")}
+                className="w-full h-full rounded-lg"
+                allowFullScreen
+              />
+            ) : block.mediaUrl.includes("vimeo") ? (
+              <iframe
+                src={block.mediaUrl.replace("vimeo.com/", "player.vimeo.com/video/")}
+                className="w-full h-full rounded-lg"
+                allowFullScreen
+              />
+            ) : (
+              <video src={block.mediaUrl} controls className="w-full h-full rounded-lg" />
+            )}
+          </div>
+        ) : null;
+      
+      case "list":
+        return (block.listItems?.filter(item => item.trim()).length) ? (
+          <ul key={block.id} className="list-disc list-inside space-y-1 ml-4">
+            {block.listItems?.filter(item => item.trim()).map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        ) : null;
+      
+      case "numbered-list":
+        return (block.listItems?.filter(item => item.trim()).length) ? (
+          <ol key={block.id} className="list-decimal list-inside space-y-1 ml-4">
+            {block.listItems?.filter(item => item.trim()).map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ol>
+        ) : null;
+      
+      case "checklist":
+        return (block.checkItems?.filter(item => item.text.trim()).length) ? (
+          <div key={block.id} className="space-y-2">
+            {block.checkItems?.filter(item => item.text.trim()).map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  checked={item.checked} 
+                  readOnly 
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className={item.checked ? "line-through text-muted-foreground" : ""}>
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null;
+      
+      case "divider":
+        return <Separator key={block.id} className="my-6" />;
+      
+      default:
+        return null;
+    }
+  };
+
   // Render preview content
   const renderPreviewContent = () => {
     return (
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">{formData.titulo || "Sem título"}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{formData.titulo || "Sem título"}</DialogTitle>
             {formData.subtitulo && (
               <p className="text-lg text-muted-foreground">{formData.subtitulo}</p>
             )}
+            {formData.descricao && (
+              <p className="text-sm text-muted-foreground mt-2">{formData.descricao}</p>
+            )}
           </DialogHeader>
 
-          <div className="space-y-8 mt-4">
+          <div className="space-y-8 mt-6">
             {formData.capa && (
-              <div className="aspect-video rounded-lg overflow-hidden">
+              <div className="aspect-video rounded-lg overflow-hidden shadow-md">
                 <img src={formData.capa} alt={formData.titulo} className="w-full h-full object-cover" />
               </div>
             )}
 
             {formData.sections.map((section, sectionIndex) => (
               <div key={section.id} className="space-y-4">
-                <h2 className="text-xl font-bold border-b pb-2">{section.title}</h2>
-                {section.blocks.map((block) => {
-                  const fontSizeClass = {
-                    xs: "text-xs",
-                    sm: "text-sm",
-                    base: "text-base",
-                    lg: "text-lg",
-                    xl: "text-xl",
-                    "2xl": "text-2xl",
-                    "3xl": "text-3xl",
-                  }[block.fontSize || "base"];
-
-                  const alignClass = {
-                    left: "text-left",
-                    center: "text-center",
-                    right: "text-right",
-                  }[block.align || "left"];
-
-                  switch (block.type) {
-                    case "heading":
-                      const HeadingTag = `h${block.level || 2}` as "h1" | "h2" | "h3";
-                      const headingSize = {
-                        1: "text-3xl font-bold",
-                        2: "text-2xl font-semibold",
-                        3: "text-xl font-medium",
-                      }[block.level || 2];
-                      return (
-                        <HeadingTag key={block.id} className={cn(headingSize, alignClass, block.textColor)}>
-                          {block.content}
-                        </HeadingTag>
-                      );
-                    case "text":
-                      return (
-                        <p
-                          key={block.id}
-                          className={cn(
-                            fontSizeClass,
-                            alignClass,
-                            block.textColor,
-                            block.isBold && "font-bold",
-                            block.isItalic && "italic",
-                            block.isUnderline && "underline"
-                          )}
-                        >
-                          {block.content}
-                        </p>
-                      );
-                    case "quote":
-                      return (
-                        <blockquote
-                          key={block.id}
-                          className="border-l-4 border-primary pl-4 py-2 italic bg-muted/30 rounded-r-md"
-                        >
-                          {block.content}
-                        </blockquote>
-                      );
-                    case "image":
-                      return block.mediaUrl ? (
-                        <figure key={block.id} className={alignClass}>
-                          <img src={block.mediaUrl} alt={block.caption || ""} className="max-w-full rounded-lg" />
-                          {block.caption && (
-                            <figcaption className="text-sm text-muted-foreground mt-2">{block.caption}</figcaption>
-                          )}
-                        </figure>
-                      ) : null;
-                    case "video":
-                      return block.mediaUrl ? (
-                        <div key={block.id} className={cn("aspect-video", alignClass)}>
-                          {block.mediaUrl.includes("youtube") || block.mediaUrl.includes("youtu.be") ? (
-                            <iframe
-                              src={block.mediaUrl.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
-                              className="w-full h-full rounded-lg"
-                              allowFullScreen
-                            />
-                          ) : (
-                            <video src={block.mediaUrl} controls className="w-full h-full rounded-lg" />
-                          )}
-                        </div>
-                      ) : null;
-                    case "list":
-                      return (
-                        <ul key={block.id} className="list-disc list-inside space-y-1">
-                          {(block.listItems || []).map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ul>
-                      );
-                    case "numbered-list":
-                      return (
-                        <ol key={block.id} className="list-decimal list-inside space-y-1">
-                          {(block.listItems || []).map((item, i) => (
-                            <li key={i}>{item}</li>
-                          ))}
-                        </ol>
-                      );
-                    case "checklist":
-                      return (
-                        <div key={block.id} className="space-y-1">
-                          {(block.checkItems || []).map((item, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <input type="checkbox" checked={item.checked} readOnly />
-                              <span className={item.checked ? "line-through text-muted-foreground" : ""}>
-                                {item.text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    case "divider":
-                      return <Separator key={block.id} className="my-6" />;
-                    default:
-                      return null;
-                  }
-                })}
+                <div className="flex items-center gap-3 border-b pb-2">
+                  <Badge variant="outline" className="shrink-0">
+                    Seção {sectionIndex + 1}
+                  </Badge>
+                  <h2 className="text-xl font-bold">{section.title}</h2>
+                </div>
+                <div className="space-y-4 pl-2">
+                  {section.blocks.map((block) => renderPreviewBlock(block))}
+                </div>
               </div>
             ))}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowPreview(false)}>
               Fechar
             </Button>
@@ -1017,8 +1074,8 @@ export function ModernTrainingEditor({
               </TooltipProvider>
             </div>
 
-            {/* Block type toolbar */}
-            <div className="absolute -right-2 top-0 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+            {/* Block type toolbar - always visible */}
+            <div className="flex items-center gap-1 mb-2 flex-wrap">
               {block.type === "heading" && (
                 <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
                   {[1, 2, 3].map((level) => (
@@ -1026,7 +1083,7 @@ export function ModernTrainingEditor({
                       key={level}
                       variant={block.level === level ? "secondary" : "ghost"}
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-7 w-7"
                       onClick={() => updateBlock(sectionIndex, block.id, { level: level as 1 | 2 | 3 })}
                     >
                       <span className="text-xs font-bold">H{level}</span>
@@ -1037,138 +1094,179 @@ export function ModernTrainingEditor({
 
               {(block.type === "text" || block.type === "heading" || block.type === "quote") && (
                 <>
+                  {/* Formatação de texto - Negrito, Itálico, Sublinhado */}
+                  <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.isBold ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { isBold: !block.isBold })}
+                          >
+                            <Bold className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Negrito</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.isItalic ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { isItalic: !block.isItalic })}
+                          >
+                            <Italic className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Itálico</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.isUnderline ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { isUnderline: !block.isUnderline })}
+                          >
+                            <Underline className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Sublinhado</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
                   {/* Alinhamento */}
                   <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
-                    <Button
-                      variant={block.align === "left" ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { align: "left" })}
-                    >
-                      <AlignLeft className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant={block.align === "center" ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { align: "center" })}
-                    >
-                      <AlignCenter className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant={block.align === "right" ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { align: "right" })}
-                    >
-                      <AlignRight className="h-3 w-3" />
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.align === "left" ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { align: "left" })}
+                          >
+                            <AlignLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Alinhar à esquerda</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.align === "center" ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { align: "center" })}
+                          >
+                            <AlignCenter className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Centralizar</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={block.align === "right" ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateBlock(sectionIndex, block.id, { align: "right" })}
+                          >
+                            <AlignRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Alinhar à direita</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
 
-                  {/* Formatação de texto */}
-                  <div className="flex items-center gap-0.5 bg-background border rounded-md p-0.5">
-                    <Button
-                      variant={block.isBold ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { isBold: !block.isBold })}
-                    >
-                      <Bold className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant={block.isItalic ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { isItalic: !block.isItalic })}
-                    >
-                      <Italic className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant={block.isUnderline ? "secondary" : "ghost"}
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateBlock(sectionIndex, block.id, { isUnderline: !block.isUnderline })}
-                    >
-                      <Underline className="h-3 w-3" />
-                    </Button>
-                  </div>
-
-                  {/* Tamanho e Cor */}
+                  {/* Tamanho da fonte */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-6 w-6">
-                        <Type className="h-3 w-3" />
+                      <Button variant="outline" size="sm" className="h-7 gap-1 px-2">
+                        <Type className="h-3.5 w-3.5" />
+                        <span className="text-xs">
+                          {FONT_SIZES.find(s => s.value === (block.fontSize || "base"))?.name || "Normal"}
+                        </span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <Type className="h-4 w-4 mr-2" />
-                          Tamanho
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          {FONT_SIZES.map((size) => (
-                            <DropdownMenuItem
-                              key={size.value}
-                              onClick={() => updateBlock(sectionIndex, block.id, { fontSize: size.value as any })}
-                            >
-                              <span className={cn(block.fontSize === size.value && "font-bold")}>
-                                {size.name}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <Palette className="h-4 w-4 mr-2" />
-                          Cor
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          {TEXT_COLORS.map((color) => (
-                            <DropdownMenuItem
-                              key={color.value}
-                              onClick={() => updateBlock(sectionIndex, block.id, { textColor: color.value })}
-                            >
-                              <div
-                                className={cn(
-                                  "w-4 h-4 rounded-full mr-2 border",
-                                  color.value || "bg-foreground"
-                                )}
-                              />
-                              <span className={cn(block.textColor === color.value && "font-bold")}>
-                                {color.name}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
+                    <DropdownMenuContent align="start">
+                      {FONT_SIZES.map((size) => (
+                        <DropdownMenuItem
+                          key={size.value}
+                          onClick={() => updateBlock(sectionIndex, block.id, { fontSize: size.value as any })}
+                          className={cn(block.fontSize === size.value && "bg-accent")}
+                        >
+                          <span className={`text-${size.value}`}>{size.name}</span>
+                        </DropdownMenuItem>
+                      ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </>
-              )}
 
-              {showAIButton && (block.type === "text" || block.type === "quote") && block.content.trim() && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleAIRewrite(sectionIndex, block.id, block.content)}
-                        disabled={rewritingBlockId === block.id}
-                      >
-                        {rewritingBlockId === block.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3 w-3" />
-                        )}
+                  {/* Cor do texto */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 gap-1 px-2">
+                        <Palette className="h-3.5 w-3.5" />
+                        <span className="text-xs">Cor</span>
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Reescrever com IA</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {TEXT_COLORS.map((color) => (
+                        <DropdownMenuItem
+                          key={color.value}
+                          onClick={() => updateBlock(sectionIndex, block.id, { textColor: color.value })}
+                          className={cn(block.textColor === color.value && "bg-accent")}
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded-full mr-2 border",
+                              color.value || "bg-foreground"
+                            )}
+                          />
+                          <span className={color.value}>{color.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Botão de IA sempre visível */}
+                  {showAIButton && (block.type === "text" || block.type === "quote") && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 px-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50"
+                            onClick={() => handleAIRewrite(sectionIndex, block.id, block.content)}
+                            disabled={rewritingBlockId === block.id || !block.content.trim()}
+                          >
+                            {rewritingBlockId === block.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                            )}
+                            <span className="text-xs">Reescrever com IA</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Reescrever texto usando inteligência artificial</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </>
               )}
             </div>
 
@@ -1538,9 +1636,10 @@ export function ModernTrainingEditor({
               </Button>
 
               <div className="flex items-center gap-2">
-                <Badge variant="outline">
-                  {activeSection + 1} / {formData.sections.length}
-                </Badge>
+                <span className="text-sm text-muted-foreground font-medium">
+                  Seção {activeSection + 1}
+                </span>
+                <span className="text-muted-foreground">•</span>
                 <Input
                   value={formData.sections[activeSection]?.title || ""}
                   onChange={(e) => updateSectionTitle(activeSection, e.target.value)}
