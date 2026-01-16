@@ -1223,22 +1223,37 @@ export function ModernTrainingEditor({
                         <span className="text-xs">Cor</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {TEXT_COLORS.map((color) => (
-                        <DropdownMenuItem
-                          key={color.value}
-                          onClick={() => updateBlock(sectionIndex, block.id, { textColor: color.value })}
-                          className={cn(block.textColor === color.value && "bg-accent")}
-                        >
-                          <div
-                            className={cn(
-                              "w-4 h-4 rounded-full mr-2 border",
-                              color.value || "bg-foreground"
-                            )}
-                          />
-                          <span className={color.value}>{color.name}</span>
-                        </DropdownMenuItem>
-                      ))}
+                    <DropdownMenuContent align="start" className="p-2">
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {TEXT_COLORS.map((color) => (
+                          <TooltipProvider key={color.value}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => updateBlock(sectionIndex, block.id, { textColor: color.value })}
+                                  className={cn(
+                                    "w-7 h-7 rounded-md border-2 transition-all hover:scale-110",
+                                    block.textColor === color.value ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-muted-foreground/30",
+                                    color.value === "" && "bg-gradient-to-br from-foreground to-muted-foreground",
+                                    color.value === "text-black" && "bg-black",
+                                    color.value === "text-gray-600" && "bg-gray-600",
+                                    color.value === "text-red-600" && "bg-red-600",
+                                    color.value === "text-orange-600" && "bg-orange-600",
+                                    color.value === "text-yellow-600" && "bg-yellow-600",
+                                    color.value === "text-green-600" && "bg-green-600",
+                                    color.value === "text-blue-600" && "bg-blue-600",
+                                    color.value === "text-purple-600" && "bg-purple-600",
+                                    color.value === "text-pink-600" && "bg-pink-600"
+                                  )}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                {color.name}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
