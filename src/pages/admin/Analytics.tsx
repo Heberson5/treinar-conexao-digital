@@ -28,6 +28,13 @@ import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { 
+  WeeklyEngagementChart, 
+  DepartmentEngagementChart, 
+  TrainingPerformanceChart,
+  MonthlyProgressChart,
+  DistributionPieChart
+} from "@/components/charts/AnalyticsCharts"
 
 interface AnalyticsData {
   totalUsuarios: number
@@ -436,59 +443,8 @@ export default function Analytics() {
             {/* Engajamento Tab */}
             <TabsContent value="engajamento" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Atividade Semanal</CardTitle>
-                    <CardDescription>
-                      Visualizações, interações e conclusões por dia
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {engajamentoDiario.map((dia, index) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-medium">{dia.dia}</span>
-                            <div className="flex gap-4 text-xs text-muted-foreground">
-                              <span>{dia.visualizacoes} views</span>
-                              <span>{dia.interacoes} interações</span>
-                              <span>{dia.conclusoes} conclusões</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1 h-3">
-                            <div 
-                              className="bg-blue-200 rounded-sm"
-                              style={{ width: `${Math.min(100, (dia.visualizacoes / 50) * 100)}%` }}
-                            />
-                            <div 
-                              className="bg-green-400 rounded-sm"
-                              style={{ width: `${Math.min(100, (dia.interacoes / 50) * 100)}%` }}
-                            />
-                            <div 
-                              className="bg-purple-500 rounded-sm"
-                              style={{ width: `${Math.min(100, (dia.conclusoes / 20) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex justify-center gap-4 mt-6 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-200 rounded-sm"></div>
-                        <span>Visualizações</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
-                        <span>Interações</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
-                        <span>Conclusões</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Interactive Weekly Chart */}
+                <WeeklyEngagementChart data={engajamentoDiario} />
 
                 <Card>
                   <CardHeader>
@@ -501,28 +457,28 @@ export default function Analytics() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <BookOpen className="h-5 w-5 text-blue-500" />
+                          <BookOpen className="h-5 w-5 text-primary" />
                           <span>Treinamentos Ativos</span>
                         </div>
                         <span className="text-lg font-bold">{analyticsData.treinamentosAtivos}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <CheckCircle className="h-5 w-5 text-green-600" />
                           <span>Conclusões no Período</span>
                         </div>
                         <span className="text-lg font-bold">{analyticsData.totalConclusoes}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Award className="h-5 w-5 text-yellow-500" />
+                          <Award className="h-5 w-5 text-amber-500" />
                           <span>Certificados Emitidos</span>
                         </div>
                         <span className="text-lg font-bold">{analyticsData.certificadosEmitidos}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-purple-500" />
+                          <Users className="h-5 w-5 text-primary" />
                           <span>Novos Usuários</span>
                         </div>
                         <span className="text-lg font-bold">{analyticsData.novosCadastros}</span>
@@ -532,44 +488,10 @@ export default function Analytics() {
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Engajamento por Departamento</CardTitle>
-                  <CardDescription>
-                    Performance e participação por área da empresa
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {departmentStats.length > 0 ? (
-                    <div className="space-y-4">
-                      {departmentStats.map((dept, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-4">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                              <Building2 className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{dept.nome}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {dept.usuarios} usuários • {dept.conclusoes} conclusões
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold text-primary">{dept.engajamento}%</p>
-                            <p className="text-xs text-muted-foreground">Engajamento</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhum departamento encontrado</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {/* Interactive Department Chart */}
+              {departmentStats.length > 0 && (
+                <DepartmentEngagementChart data={departmentStats} />
+              )}
             </TabsContent>
 
             {/* Performance Tab */}

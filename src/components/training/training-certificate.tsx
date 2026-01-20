@@ -2,9 +2,9 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Award, Download, Share, Calendar, User, CheckCircle, Star, Building2, BookOpen } from "lucide-react"
+import { Award, Download, Share, Calendar, User, CheckCircle, BookOpen, Loader2 } from "lucide-react"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
+import jsPDF from "jspdf"
 
 interface TrainingCertificateProps {
   training: {
@@ -28,21 +28,228 @@ interface TrainingCertificateProps {
 
 export function TrainingCertificate({ training, userProgress, userName, userCompany = "Sauberlich System", userDepartment }: TrainingCertificateProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const certificateRef = useRef<HTMLDivElement>(null)
   const { formatDate } = useBrazilianDate()
 
   const certificateId = `CERT-${training.id}-${Date.now().toString().slice(-6)}`
   const completionDate = training.completedAt || new Date().toISOString()
 
-  const downloadCertificate = () => {
-    // Em uma implementação real, você geraria um PDF aqui
-    const element = certificateRef.current
-    if (element) {
-      // Simular download
-      const link = document.createElement('a')
-      link.download = `certificado-${training.titulo.replace(/\s+/g, '-').toLowerCase()}.pdf`
-      link.href = '#'
-      link.click()
+  const generatePDF = async () => {
+    setIsGenerating(true)
+    
+    try {
+      // Create PDF in A4 landscape format (297 x 210 mm)
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const pageWidth = 297
+      const pageHeight = 210
+
+      // Background gradient effect (light cream/gold)
+      pdf.setFillColor(255, 252, 245)
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+
+      // Decorative border - outer
+      pdf.setDrawColor(212, 175, 55) // Gold color
+      pdf.setLineWidth(2)
+      pdf.rect(8, 8, pageWidth - 16, pageHeight - 16)
+
+      // Decorative border - inner
+      pdf.setLineWidth(0.5)
+      pdf.rect(12, 12, pageWidth - 24, pageHeight - 24)
+
+      // Corner decorations
+      const cornerSize = 20
+      pdf.setLineWidth(1.5)
+      
+      // Top-left corner
+      pdf.line(15, 15, 15 + cornerSize, 15)
+      pdf.line(15, 15, 15, 15 + cornerSize)
+      
+      // Top-right corner
+      pdf.line(pageWidth - 15, 15, pageWidth - 15 - cornerSize, 15)
+      pdf.line(pageWidth - 15, 15, pageWidth - 15, 15 + cornerSize)
+      
+      // Bottom-left corner
+      pdf.line(15, pageHeight - 15, 15 + cornerSize, pageHeight - 15)
+      pdf.line(15, pageHeight - 15, 15, pageHeight - 15 - cornerSize)
+      
+      // Bottom-right corner
+      pdf.line(pageWidth - 15, pageHeight - 15, pageWidth - 15 - cornerSize, pageHeight - 15)
+      pdf.line(pageWidth - 15, pageHeight - 15, pageWidth - 15, pageHeight - 15 - cornerSize)
+
+      // Award icon circle (simulated)
+      pdf.setFillColor(212, 175, 55)
+      pdf.circle(pageWidth / 2, 35, 12, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('★', pageWidth / 2, 38, { align: 'center' })
+
+      // Title
+      pdf.setTextColor(50, 50, 50)
+      pdf.setFontSize(36)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('CERTIFICADO', pageWidth / 2, 60, { align: 'center' })
+
+      // Subtitle
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(100, 100, 100)
+      pdf.text('DE CONCLUSÃO', pageWidth / 2, 70, { align: 'center' })
+
+      // Decorative line
+      pdf.setDrawColor(212, 175, 55)
+      pdf.setLineWidth(0.5)
+      pdf.line(pageWidth / 2 - 50, 75, pageWidth / 2 + 50, 75)
+
+      // "Certificamos que"
+      pdf.setFontSize(14)
+      pdf.setTextColor(80, 80, 80)
+      pdf.text('Certificamos que', pageWidth / 2, 88, { align: 'center' })
+
+      // User name
+      pdf.setFontSize(28)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(180, 130, 50) // Golden brown
+      pdf.text(userName.toUpperCase(), pageWidth / 2, 102, { align: 'center' })
+
+      // Underline for name
+      const nameWidth = pdf.getTextWidth(userName.toUpperCase())
+      pdf.setDrawColor(212, 175, 55)
+      pdf.setLineWidth(0.3)
+      pdf.line(pageWidth / 2 - nameWidth / 2 - 10, 105, pageWidth / 2 + nameWidth / 2 + 10, 105)
+
+      // "concluiu com êxito o treinamento"
+      pdf.setFontSize(14)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(80, 80, 80)
+      pdf.text('concluiu com êxito o treinamento', pageWidth / 2, 118, { align: 'center' })
+
+      // Training title box
+      pdf.setFillColor(255, 248, 230) // Light gold
+      pdf.setDrawColor(212, 175, 55)
+      pdf.setLineWidth(0.5)
+      pdf.roundedRect(pageWidth / 2 - 90, 122, 180, 28, 3, 3, 'FD')
+
+      // Training title
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(50, 50, 50)
+      
+      // Wrap title if too long
+      const maxWidth = 170
+      const titleLines = pdf.splitTextToSize(training.titulo, maxWidth)
+      const titleY = titleLines.length > 1 ? 132 : 136
+      pdf.text(titleLines, pageWidth / 2, titleY, { align: 'center' })
+
+      // Training details
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(100, 100, 100)
+      const detailsY = 155
+      const detailsText = `${training.categoria} • ${training.duracao}${training.instrutor ? ` • Instrutor: ${training.instrutor}` : ''}`
+      pdf.text(detailsText, pageWidth / 2, detailsY, { align: 'center' })
+
+      // Stats section
+      const statsY = 170
+      const statsSpacing = 60
+
+      // Completion rate
+      pdf.setFillColor(34, 197, 94) // Green
+      pdf.circle(pageWidth / 2 - statsSpacing, statsY, 2, 'F')
+      pdf.setFontSize(18)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(34, 197, 94)
+      pdf.text(`${userProgress.completionRate}%`, pageWidth / 2 - statsSpacing, statsY + 6, { align: 'center' })
+      pdf.setFontSize(8)
+      pdf.setTextColor(100, 100, 100)
+      pdf.text('APROVEITAMENTO', pageWidth / 2 - statsSpacing, statsY + 12, { align: 'center' })
+
+      // Time dedicated
+      pdf.setFillColor(59, 130, 246) // Blue
+      pdf.circle(pageWidth / 2, statsY, 2, 'F')
+      pdf.setFontSize(18)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(59, 130, 246)
+      const hours = Math.floor(userProgress.totalTime / 60)
+      const minutes = userProgress.totalTime % 60
+      pdf.text(`${hours}h ${minutes}m`, pageWidth / 2, statsY + 6, { align: 'center' })
+      pdf.setFontSize(8)
+      pdf.setTextColor(100, 100, 100)
+      pdf.text('TEMPO DEDICADO', pageWidth / 2, statsY + 12, { align: 'center' })
+
+      // Score (if available)
+      if (userProgress.score) {
+        pdf.setFillColor(168, 85, 247) // Purple
+        pdf.circle(pageWidth / 2 + statsSpacing, statsY, 2, 'F')
+        pdf.setFontSize(18)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(168, 85, 247)
+        pdf.text(`${userProgress.score}%`, pageWidth / 2 + statsSpacing, statsY + 6, { align: 'center' })
+        pdf.setFontSize(8)
+        pdf.setTextColor(100, 100, 100)
+        pdf.text('NOTA FINAL', pageWidth / 2 + statsSpacing, statsY + 12, { align: 'center' })
+      }
+
+      // Footer section
+      const footerY = 195
+
+      // Date - left
+      pdf.setFontSize(9)
+      pdf.setTextColor(100, 100, 100)
+      pdf.text('Data de Conclusão', 30, footerY - 8)
+      pdf.setFontSize(11)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(50, 50, 50)
+      pdf.text(formatDate(completionDate), 30, footerY - 2)
+      pdf.setFontSize(8)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(150, 150, 150)
+      pdf.text(`ID: ${certificateId}`, 30, footerY + 4)
+
+      // Platform signature - center
+      pdf.setDrawColor(100, 100, 100)
+      pdf.setLineWidth(0.3)
+      pdf.line(pageWidth / 2 - 40, footerY - 6, pageWidth / 2 + 40, footerY - 6)
+      pdf.setFontSize(11)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(50, 50, 50)
+      pdf.text('Sauberlich System', pageWidth / 2, footerY, { align: 'center' })
+      pdf.setFontSize(8)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(100, 100, 100)
+      pdf.text('Plataforma de Treinamentos', pageWidth / 2, footerY + 5, { align: 'center' })
+
+      // Company - right
+      if (userCompany) {
+        pdf.setFontSize(9)
+        pdf.setTextColor(100, 100, 100)
+        pdf.text('Empresa', pageWidth - 30, footerY - 8, { align: 'right' })
+        pdf.setFontSize(11)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(50, 50, 50)
+        pdf.text(userCompany, pageWidth - 30, footerY - 2, { align: 'right' })
+        if (userDepartment) {
+          pdf.setFontSize(8)
+          pdf.setFont('helvetica', 'normal')
+          pdf.setTextColor(150, 150, 150)
+          pdf.text(`Dept: ${userDepartment}`, pageWidth - 30, footerY + 4, { align: 'right' })
+        }
+      }
+
+      // Save the PDF
+      const fileName = `certificado-${training.titulo.replace(/\s+/g, '-').toLowerCase()}.pdf`
+      pdf.save(fileName)
+
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -54,7 +261,6 @@ export function TrainingCertificate({ training, userProgress, userName, userComp
         url: window.location.href
       })
     } else {
-      // Fallback para copiar link
       navigator.clipboard.writeText(window.location.href)
     }
   }
@@ -84,7 +290,7 @@ export function TrainingCertificate({ training, userProgress, userName, userComp
           <div 
             ref={certificateRef} 
             className="relative bg-white rounded-lg shadow-2xl overflow-hidden"
-            style={{ aspectRatio: '297/210' }} // A4 landscape aspect ratio
+            style={{ aspectRatio: '297/210' }}
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-amber-50" />
@@ -225,7 +431,7 @@ export function TrainingCertificate({ training, userProgress, userName, userComp
                     <span className="text-sm font-medium">Progresso</span>
                     <span className="text-sm text-muted-foreground">{userProgress.completionRate}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div 
                       className="bg-green-600 h-2 rounded-full"
                       style={{ width: `${userProgress.completionRate}%` }}
@@ -240,7 +446,7 @@ export function TrainingCertificate({ training, userProgress, userName, userComp
                       {Math.floor(userProgress.totalTime / 60)}h {userProgress.totalTime % 60}m
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div className="bg-blue-600 h-2 rounded-full w-full"></div>
                   </div>
                 </div>
@@ -250,9 +456,17 @@ export function TrainingCertificate({ training, userProgress, userName, userComp
           
           {/* Actions */}
           <div className="flex gap-4 justify-center">
-            <Button onClick={downloadCertificate} className="bg-green-600 hover:bg-green-700">
-              <Download className="mr-2 h-4 w-4" />
-              Baixar Certificado (PDF)
+            <Button 
+              onClick={generatePDF} 
+              className="bg-green-600 hover:bg-green-700"
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? 'Gerando PDF...' : 'Baixar Certificado (PDF)'}
             </Button>
             <Button variant="outline" onClick={shareCertificate}>
               <Share className="mr-2 h-4 w-4" />
