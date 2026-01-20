@@ -14,12 +14,18 @@ import {
   Award,
   FileText,
   Eye,
-  Play
+  Play,
+  Image,
+  Video,
+  List,
+  CheckSquare,
+  Quote
 } from "lucide-react"
 import { Training } from "@/contexts/training-context"
 import { SupabaseTraining } from "@/hooks/use-supabase-trainings"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { getVideoInfo } from "@/lib/video-utils"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 type ViewableTraining = Training | SupabaseTraining | null
 
@@ -30,6 +36,9 @@ interface TrainingViewerProps {
   onStartTraining?: (trainingId: string | number) => void
   onContinueTraining?: (trainingId: string | number) => void
 }
+
+// Imagem padrão quando não há capa
+const DEFAULT_COVER_IMAGE = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop"
 
 export function TrainingViewer({ 
   training, 
@@ -65,6 +74,9 @@ export function TrainingViewer({
   const videoUrl = isSupabaseTraining(training) ? null : training.videoUrl
   const texto = isSupabaseTraining(training) ? null : training.texto
 
+  // Obter imagem de capa (com fallback)
+  const coverImage = capa || DEFAULT_COVER_IMAGE
+
   const handleStartContinue = () => {
     if ((progress || 0) === 0) {
       onStartTraining?.(training.id)
@@ -79,6 +91,193 @@ export function TrainingViewer({
     return "Continuar Treinamento"
   }
 
+  // Renderizar conteúdo formatado do texto (suporta markdown simples e marcadores)
+  const renderFormattedContent = (text: string) => {
+    if (!text) return null
+
+    // Dividir por seções (## Seção X:)
+    const sections = text.split(/(?=## Seção \d+:)/).filter(Boolean)
+    
+    if (sections.length === 0) {
+      return renderTextSection(text)
+    }
+
+    return (
+      <div className="space-y-8">
+        {sections.map((section, sectionIndex) => (
+          <div key={sectionIndex} className="space-y-4">
+            {renderTextSection(section)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const renderTextSection = (text: string) => {
+    const lines = text.split('\n')
+    const elements: JSX.Element[] = []
+    let currentList: string[] = []
+    let currentCheckList: string[] = []
+    let listType: 'ul' | 'ol' | 'check' | null = null
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        if (listType === 'ol') {
+          elements.push(
+            <ol key={`ol-${elements.length}`} className="list-decimal list-inside space-y-1 ml-4">
+              {currentList.map((item, i) => (
+                <li key={i} className="text-base">{item}</li>
+              ))}
+            </ol>
+          )
+        } else {
+          elements.push(
+            <ul key={`ul-${elements.length}`} className="list-disc list-inside space-y-1 ml-4">
+              {currentList.map((item, i) => (
+                <li key={i} className="text-base">{item}</li>
+              ))}
+            </ul>
+          )
+        }
+        currentList = []
+        listType = null
+      }
+      if (currentCheckList.length > 0) {
+        elements.push(
+          <div key={`check-${elements.length}`} className="space-y-2 ml-4">
+            {currentCheckList.map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span className="text-base">{item}</span>
+              </div>
+            ))}
+          </div>
+        )
+        currentCheckList = []
+      }
+    }
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim()
+
+      // Ignorar linhas vazias ou dividers
+      if (trimmedLine === '' || trimmedLine === '---') {
+        flushList()
+        if (trimmedLine === '---') {
+          elements.push(<hr key={`hr-${index}`} className="my-6 border-border" />)
+        }
+        return
+      }
+
+      // Seção/Heading ##
+      if (trimmedLine.startsWith('## ')) {
+        flushList()
+        const headingText = trimmedLine.replace(/^## /, '').replace(/Seção \d+:\s*/, '')
+        elements.push(
+          <h2 key={`h2-${index}`} className="text-xl font-bold text-primary mt-6 mb-3">
+            {headingText}
+          </h2>
+        )
+        return
+      }
+
+      // Subheading ###
+      if (trimmedLine.startsWith('### ')) {
+        flushList()
+        elements.push(
+          <h3 key={`h3-${index}`} className="text-lg font-semibold mt-4 mb-2">
+            {trimmedLine.replace(/^### /, '')}
+          </h3>
+        )
+        return
+      }
+
+      // Imagem [Imagem: URL]
+      if (trimmedLine.startsWith('[Imagem:')) {
+        flushList()
+        const urlMatch = trimmedLine.match(/\[Imagem:\s*(.+?)\]/)
+        if (urlMatch) {
+          elements.push(
+            <div key={`img-${index}`} className="my-4 rounded-lg overflow-hidden">
+              <img 
+                src={urlMatch[1]} 
+                alt="Conteúdo do treinamento"
+                className="w-full h-auto max-h-[400px] object-cover rounded-lg"
+              />
+            </div>
+          )
+        }
+        return
+      }
+
+      // Vídeo [Vídeo: URL]
+      if (trimmedLine.startsWith('[Vídeo:')) {
+        flushList()
+        const urlMatch = trimmedLine.match(/\[Vídeo:\s*(.+?)\]/)
+        if (urlMatch) {
+          const videoInfo = getVideoInfo(urlMatch[1])
+          if (videoInfo.isYoutube && videoInfo.embedUrl) {
+            elements.push(
+              <div key={`video-${index}`} className="my-4 aspect-video rounded-lg overflow-hidden">
+                <iframe
+                  src={videoInfo.embedUrl}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )
+          }
+        }
+        return
+      }
+
+      // Checklist ☑
+      if (trimmedLine.startsWith('☑')) {
+        currentCheckList.push(trimmedLine.replace(/^☑\s*/, ''))
+        return
+      }
+
+      // Lista numerada
+      if (/^\d+\.\s/.test(trimmedLine)) {
+        if (listType !== 'ol') {
+          flushList()
+          listType = 'ol'
+        }
+        currentList.push(trimmedLine.replace(/^\d+\.\s*/, ''))
+        return
+      }
+
+      // Lista com marcador
+      if (trimmedLine.startsWith('•') || trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+        if (listType !== 'ul') {
+          flushList()
+          listType = 'ul'
+        }
+        currentList.push(trimmedLine.replace(/^[•\-\*]\s*/, ''))
+        return
+      }
+
+      // Texto em negrito **texto**
+      flushList()
+      let processedText = trimmedLine
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+
+      elements.push(
+        <p 
+          key={`p-${index}`} 
+          className="text-base leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(processedText) }}
+        />
+      )
+    })
+
+    flushList()
+    return <>{elements}</>
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -91,15 +290,16 @@ export function TrainingViewer({
 
         <div className="space-y-6">
           {/* Capa do treinamento */}
-          {capa && (
-            <div className="aspect-video rounded-lg overflow-hidden">
-              <img 
-                src={capa} 
-                alt={titulo}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+            <img 
+              src={coverImage} 
+              alt={titulo}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_COVER_IMAGE
+              }}
+            />
+          </div>
 
           {/* Informações básicas */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -189,15 +389,11 @@ export function TrainingViewer({
               {texto && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Conteúdo Detalhado</CardTitle>
+                    <CardTitle>Conteúdo do Treinamento</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      {texto.split('\n').map((paragraph: string, index: number) => (
-                        <p key={index} className="mb-4 leading-relaxed">
-                          {paragraph}
-                        </p>
-                      ))}
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      {renderFormattedContent(texto)}
                     </div>
                   </CardContent>
                 </Card>
@@ -234,7 +430,7 @@ export function TrainingViewer({
                             <video 
                               controls 
                               className="w-full h-full"
-                              poster={capa || undefined}
+                              poster={coverImage}
                             >
                               <source src={videoUrl} type="video/mp4" />
                               Seu navegador não suporta o elemento de vídeo.
