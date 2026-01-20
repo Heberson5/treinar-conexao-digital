@@ -1,9 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Search,
   Filter,
@@ -13,18 +15,24 @@ import {
   Users,
   PlayCircle,
   Award,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from "lucide-react"
-import { useTraining } from "@/contexts/training-context"
+import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { useToast } from "@/hooks/use-toast"
+
+const DEFAULT_COVER_IMAGE = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=300&fit=crop"
 
 interface TrainingCatalog {
-  id: number
+  id: string
   titulo: string
   descricao: string
   categoria: string
   nivel: "basico" | "intermediario" | "avancado"
   duracao: string
+  duracaoMinutos: number
   rating: number
   participantes: number
   instrutor: string
@@ -35,110 +43,111 @@ interface TrainingCatalog {
 }
 
 export default function Catalogo() {
-  const { getTrainingsByDepartment } = useTraining()
+  const navigate = useNavigate()
   const { user } = useAuth()
+  const { empresaSelecionada, isMaster } = useEmpresaFilter()
+  const { toast } = useToast()
   
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("todas")
   const [levelFilter, setLevelFilter] = useState("todos")
-  
-  // Obter treinamentos filtrados por departamento do usuário
-  const availableTrainings = getTrainingsByDepartment(user?.departamento_id).filter(
-    training => training.status === "ativo"
-  )
-  
-  const trainings: TrainingCatalog[] = [
-    {
-      id: 1,
-      titulo: "Segurança no Trabalho - Módulo Básico",
-      descricao: "Aprenda os fundamentos da segurança ocupacional e prevenção de acidentes no ambiente de trabalho",
-      categoria: "Segurança",
-      nivel: "basico",
-      duracao: "2h 30min",
-      rating: 4.8,
-      participantes: 234,
-      instrutor: "Maria Silva",
-      tags: ["Segurança", "NR", "Prevenção"],
-      popular: true,
-      novo: false,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 2,
-      titulo: "Atendimento ao Cliente Excelente",
-      descricao: "Técnicas avançadas para proporcionar uma experiência excepcional ao cliente",
-      categoria: "Vendas",
-      nivel: "intermediario",
-      duracao: "1h 45min",
-      rating: 4.9,
-      participantes: 189,
-      instrutor: "João Santos",
-      tags: ["Vendas", "Relacionamento", "CX"],
-      popular: true,
-      novo: false,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 3,
-      titulo: "Liderança Transformacional",
-      descricao: "Desenvolva suas habilidades de liderança para transformar equipes e resultados",
-      categoria: "Liderança",
-      nivel: "avancado",
-      duracao: "4h 15min",
-      rating: 4.7,
-      participantes: 156,
-      instrutor: "Ana Costa",
-      tags: ["Liderança", "Gestão", "Transformação"],
-      popular: false,
-      novo: true,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 4,
-      titulo: "Excel Avançado para Negócios",
-      descricao: "Domine funções avançadas do Excel para análise de dados e automatização",
-      categoria: "Tecnologia",
-      nivel: "intermediario",
-      duracao: "3h 30min",
-      rating: 4.6,
-      participantes: 298,
-      instrutor: "Carlos Lima",
-      tags: ["Excel", "Dados", "Produtividade"],
-      popular: true,
-      novo: false,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 5,
-      titulo: "Comunicação Assertiva",
-      descricao: "Aprenda a se comunicar de forma clara, objetiva e respeitosa em qualquer contexto",
-      categoria: "Soft Skills",
-      nivel: "basico",
-      duracao: "2h 00min",
-      rating: 4.5,
-      participantes: 421,
-      instrutor: "Sofia Ribeiro",
-      tags: ["Comunicação", "Relacionamento", "Assertividade"],
-      popular: false,
-      novo: true,
-      thumbnail: "/api/placeholder/300/200"
-    },
-    {
-      id: 6,
-      titulo: "Gestão de Projetos com Metodologias Ágeis",
-      descricao: "Implemente Scrum e Kanban para gerenciar projetos de forma eficiente",
-      categoria: "Gestão",
-      nivel: "avancado",
-      duracao: "5h 00min",
-      rating: 4.8,
-      participantes: 167,
-      instrutor: "Roberto Alves",
-      tags: ["Scrum", "Kanban", "Gestão", "Ágil"],
-      popular: false,
-      novo: false,
-      thumbnail: "/api/placeholder/300/200"
+  const [isLoading, setIsLoading] = useState(true)
+  const [trainings, setTrainings] = useState<TrainingCatalog[]>([])
+  const [isStarting, setIsStarting] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchTrainings = async () => {
+      setIsLoading(true)
+      try {
+        const empresaFilter = isMaster && empresaSelecionada && empresaSelecionada !== "todas" 
+          ? empresaSelecionada 
+          : null
+
+        // Buscar treinamentos publicados
+        let query = supabase
+          .from("treinamentos")
+          .select(`*`)
+          .eq("publicado", true)
+
+        if (empresaFilter) {
+          query = query.eq("empresa_id", empresaFilter)
+        }
+
+        const { data: treinamentos, error } = await query
+
+        if (error) throw error
+
+        // Buscar instrutores
+        const instrutorIds = (treinamentos || []).map(t => t.instrutor_id).filter(Boolean)
+        const { data: instrutores } = await supabase
+          .from("perfis")
+          .select("id, nome")
+          .in("id", instrutorIds.length > 0 ? instrutorIds : [''])
+
+        // Buscar contagem de participantes por treinamento
+        const { data: progressoData } = await supabase
+          .from("progresso_treinamentos")
+          .select("treinamento_id, nota_avaliacao")
+
+        // Processar dados
+        const processedTrainings: TrainingCatalog[] = (treinamentos || []).map(training => {
+          const trainingProgress = (progressoData || []).filter(p => p.treinamento_id === training.id)
+          const participantes = trainingProgress.length
+          const avgRating = trainingProgress.length > 0
+            ? trainingProgress.reduce((acc, p) => acc + (p.nota_avaliacao || 4.5), 0) / trainingProgress.length
+            : 4.5
+
+          const createdAt = new Date(training.criado_em)
+          const isNew = (new Date().getTime() - createdAt.getTime()) < 30 * 24 * 60 * 60 * 1000 // 30 dias
+
+          const formatDuration = (minutes: number | null) => {
+            if (!minutes) return "N/A"
+            const hours = Math.floor(minutes / 60)
+            const mins = minutes % 60
+            if (hours > 0) return `${hours}h ${mins}min`
+            return `${mins}min`
+          }
+
+          const getNivel = (nivel: string | null): "basico" | "intermediario" | "avancado" => {
+            if (nivel === "intermediario" || nivel === "avancado") return nivel
+            return "basico"
+          }
+
+          const instrutor = (instrutores || []).find(i => i.id === training.instrutor_id)
+
+          return {
+            id: training.id,
+            titulo: training.titulo,
+            descricao: training.descricao || "",
+            categoria: training.categoria || "Geral",
+            nivel: getNivel(training.nivel),
+            duracao: formatDuration(training.duracao_minutos),
+            duracaoMinutos: training.duracao_minutos || 0,
+            rating: Math.round(avgRating * 10) / 10,
+            participantes,
+            instrutor: instrutor?.nome || "Não definido",
+            tags: training.categoria ? [training.categoria] : [],
+            popular: participantes > 10,
+            novo: isNew,
+            thumbnail: training.thumbnail_url || DEFAULT_COVER_IMAGE
+          }
+        })
+
+        setTrainings(processedTrainings)
+      } catch (error) {
+        console.error("Erro ao buscar treinamentos:", error)
+        toast({
+          title: "Erro ao carregar treinamentos",
+          description: "Não foi possível carregar o catálogo de treinamentos.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  ]
+
+    fetchTrainings()
+  }, [empresaSelecionada, isMaster, toast])
 
   const getNivelColor = (nivel: string) => {
     switch (nivel) {
@@ -158,6 +167,54 @@ export default function Catalogo() {
     }
   }
 
+  const handleStartTraining = async (trainingId: string) => {
+    if (!user) {
+      toast({
+        title: "Faça login",
+        description: "Você precisa estar logado para iniciar um treinamento.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsStarting(trainingId)
+    try {
+      // Verificar se já existe progresso
+      const { data: existingProgress } = await supabase
+        .from("progresso_treinamentos")
+        .select("*")
+        .eq("treinamento_id", trainingId)
+        .eq("usuario_id", user.id)
+        .single()
+
+      if (!existingProgress) {
+        // Criar novo progresso
+        const { error } = await supabase
+          .from("progresso_treinamentos")
+          .insert({
+            treinamento_id: trainingId,
+            usuario_id: user.id,
+            percentual_concluido: 0,
+            tempo_assistido_minutos: 0
+          })
+
+        if (error) throw error
+      }
+
+      // Navegar para a página do treinamento
+      navigate(`/treinamento/${trainingId}`)
+    } catch (error) {
+      console.error("Erro ao iniciar treinamento:", error)
+      toast({
+        title: "Erro ao iniciar",
+        description: "Não foi possível iniciar o treinamento. Tente novamente.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsStarting(null)
+    }
+  }
+
   const filteredTrainings = trainings.filter(training => {
     const matchesSearch = training.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          training.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,6 +227,24 @@ export default function Catalogo() {
   const categorias = Array.from(new Set(trainings.map(t => t.categoria)))
   const popularTrainings = trainings.filter(t => t.popular)
   const newTrainings = trainings.filter(t => t.novo)
+  const totalParticipantes = trainings.reduce((acc, t) => acc + t.participantes, 0)
+
+  const TrainingCardSkeleton = () => (
+    <Card>
+      <Skeleton className="aspect-video rounded-t-lg" />
+      <CardHeader className="pb-3">
+        <Skeleton className="h-6 w-3/4" />
+        <Skeleton className="h-4 w-full mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="space-y-8">
@@ -191,7 +266,9 @@ export default function Catalogo() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{trainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : trainings.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -205,7 +282,9 @@ export default function Catalogo() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Populares</p>
-                <p className="text-2xl font-bold">{popularTrainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : popularTrainings.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -219,7 +298,9 @@ export default function Catalogo() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Novos</p>
-                <p className="text-2xl font-bold">{newTrainings.length}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : newTrainings.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -233,7 +314,9 @@ export default function Catalogo() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Participantes</p>
-                <p className="text-2xl font-bold">{trainings.reduce((acc, t) => acc + t.participantes, 0)}</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : totalParticipantes}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -279,91 +362,119 @@ export default function Catalogo() {
       </div>
 
       {/* Training Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTrainings.map((training) => (
-          <Card key={training.id} className="hover:shadow-lg transition-shadow group">
-            <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center relative overflow-hidden">
-              <PlayCircle className="h-12 w-12 text-white group-hover:scale-110 transition-transform" />
-              
-              {/* Badges */}
-              <div className="absolute top-3 left-3 flex gap-2">
-                {training.popular && (
-                  <Badge className="bg-orange-500 text-white">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    Popular
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <TrainingCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filteredTrainings.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTrainings.map((training) => (
+            <Card key={training.id} className="hover:shadow-lg transition-shadow group">
+              <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center relative overflow-hidden">
+                <img 
+                  src={training.thumbnail} 
+                  alt={training.titulo}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = DEFAULT_COVER_IMAGE
+                  }}
+                />
+                
+                {/* Play overlay */}
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+                    <PlayCircle className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+                
+                {/* Badges */}
+                <div className="absolute top-3 left-3 flex gap-2">
+                  {training.popular && (
+                    <Badge className="bg-orange-500 text-white">
+                      <TrendingUp className="mr-1 h-3 w-3" />
+                      Popular
+                    </Badge>
+                  )}
+                  {training.novo && (
+                    <Badge className="bg-green-500 text-white">
+                      Novo
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Level Badge */}
+                <div className="absolute top-3 right-3">
+                  <Badge className={`${getNivelColor(training.nivel)} text-white`}>
+                    {getNivelText(training.nivel)}
                   </Badge>
-                )}
-                {training.novo && (
-                  <Badge className="bg-green-500 text-white">
-                    Novo
-                  </Badge>
-                )}
+                </div>
               </div>
               
-              {/* Level Badge */}
-              <div className="absolute top-3 right-3">
-                <Badge className={`${getNivelColor(training.nivel)} text-white`}>
-                  {getNivelText(training.nivel)}
-                </Badge>
-              </div>
-            </div>
-            
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                  {training.titulo}
-                </CardTitle>
-              </div>
-              <CardDescription className="line-clamp-2">
-                {training.descricao}
-              </CardDescription>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {training.duracao}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  {training.rating}
-                </span>
-              </div>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                    {training.titulo}
+                  </CardTitle>
+                </div>
+                <CardDescription className="line-clamp-2">
+                  {training.descricao}
+                </CardDescription>
+              </CardHeader>
               
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Por {training.instrutor}
-                </span>
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  {training.participantes}
-                </span>
-              </div>
-              
-              <div className="flex flex-wrap gap-1">
-                {training.tags.slice(0, 3).map((tag, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              
-              <Button className="w-full group-hover:bg-primary/90 transition-colors">
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Iniciar Treinamento
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {filteredTrainings.length === 0 && (
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {training.duracao}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    {training.rating}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Por {training.instrutor}
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {training.participantes}
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap gap-1">
+                  {training.tags.slice(0, 3).map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                
+                <Button 
+                  className="w-full group-hover:bg-primary/90 transition-colors"
+                  onClick={() => handleStartTraining(training.id)}
+                  disabled={isStarting === training.id}
+                >
+                  {isStarting === training.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                  )}
+                  Iniciar Treinamento
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
         <div className="text-center py-12">
           <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">Nenhum treinamento encontrado</h3>
           <p className="text-muted-foreground">
-            Tente ajustar os filtros ou termo de busca
+            {searchTerm ? "Tente ajustar os filtros ou termo de busca" : "Não há treinamentos disponíveis no momento"}
           </p>
         </div>
       )}
