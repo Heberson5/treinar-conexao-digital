@@ -3,7 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Treinar Conexão Digital</title>
+    <title>Sauberlich System - Plataforma de Treinamentos</title>
+    <meta name="description" content="Plataforma de treinamentos corporativos da Sauberlich System" />
+    <style>
+      /* Proteção contra cópia de conteúdo e prints */
+      body {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      /* Permitir seleção em inputs e textareas */
+      input, textarea, [contenteditable="true"] {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+      }
+    </style>
+    <script>
+      // Bloquear Print Screen e atalhos de print
+      document.addEventListener('keydown', function(e) {
+        // Bloquear Print Screen
+        if (e.key === 'PrintScreen') {
+          e.preventDefault();
+          return false;
+        }
+        // Bloquear Ctrl+P (Print)
+        if (e.ctrlKey && e.key === 'p') {
+          e.preventDefault();
+          return false;
+        }
+        // Bloquear Ctrl+Shift+S (Screenshot em alguns navegadores)
+        if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+          e.preventDefault();
+          return false;
+        }
+        // Bloquear Ctrl+C em elementos não-input
+        if (e.ctrlKey && e.key === 'c') {
+          const activeEl = document.activeElement;
+          if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+            return true; // Permitir em campos de entrada
+          }
+          e.preventDefault();
+          return false;
+        }
+      });
+      
+      // Bloquear menu de contexto (botão direito)
+      document.addEventListener('contextmenu', function(e) {
+        const activeEl = e.target;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          return true; // Permitir em campos de entrada
+        }
+        e.preventDefault();
+        return false;
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -25,7 +25,7 @@ import { usePlans, ICONES_PLANOS } from "@/contexts/plans-context"
 
 export default function Index() {
   const [email, setEmail] = useState("")
-  const [pagamentoAnual, setPagamentoAnual] = useState(false)
+  const [pagamentoAnual, setPagamentoAnual] = useState(false) // Desativado por padrão
   const { planosAtivos, descontoAnual, calcularPrecoAnual } = usePlans()
 
   const featuredTrainings = [
@@ -161,7 +161,7 @@ export default function Index() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5" />
-                  <span>Suporte 24/7</span>
+                  <span>Suporte especializado</span>
                 </div>
               </div>
             </div>
@@ -503,7 +503,7 @@ export default function Index() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Portal Treinamentos</h3>
+              <h3 className="text-lg font-semibold text-foreground">Sauberlich System</h3>
               <p className="text-muted-foreground">
                 A plataforma mais avançada para treinamentos corporativos.
               </p>
@@ -541,7 +541,7 @@ export default function Index() {
           </div>
           
           <div className="border-t mt-12 pt-8 text-center text-muted-foreground">
-            <p>&copy; 2024 Portal Treinamentos. Todos os direitos reservados.</p>
+            <p>&copy; {new Date().getFullYear()} Sauberlich System. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

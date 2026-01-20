@@ -44,8 +44,8 @@ export function Header({ onLogout }: HeaderProps) {
       <div className="flex items-center gap-4">
         <SidebarTrigger />
         <div>
-          <h1 className="text-lg font-semibold">Portal de Treinamentos</h1>
-          <p className="text-sm text-muted-foreground">Gestão de Capacitação Corporativa</p>
+          <h1 className="text-lg font-semibold">Sauberlich System</h1>
+          <p className="text-sm text-muted-foreground">Plataforma de Treinamentos</p>
         </div>
       </div>
 
