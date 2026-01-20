@@ -26,6 +26,11 @@ import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { 
+  MonthlyProgressChart, 
+  TrainingPerformanceChart,
+  DistributionPieChart
+} from "@/components/charts/AnalyticsCharts"
 
 interface ReportData {
   totalTreinamentos: number
