@@ -96,15 +96,18 @@ export default function ExecutarTreinamento() {
       setLoading(true);
       const { data, error } = await supabase
         .from("treinamentos")
-        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url")
+        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, conteudo_html")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Erro ao carregar treinamento:", error);
         toast.error("Erro ao carregar treinamento");
-      } else {
-        setTraining(data);
+      } else if (data) {
+        setTraining({
+          ...data,
+          conteudo_completo: data.conteudo_html || undefined
+        });
       }
       setLoading(false);
     }
@@ -1743,7 +1746,8 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
     );
   }
 
-  const content = getTrainingContent(training.titulo);
+  // Usa conteúdo do banco de dados primeiro, depois fallback para hardcoded
+  const content = training.conteudo_completo || getTrainingContent(training.titulo);
   const progressPercent = Math.min(Math.round((timer.activeTime / (targetDuration * 60)) * 100), 100);
   const minimumTimeReachedPercent = Math.min(Math.round((timer.activeTime / (minimumTimeRequired * 60)) * 100), 100);
 
