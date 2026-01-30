@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,13 +28,6 @@ import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
-import { 
-  WeeklyEngagementChart, 
-  DepartmentEngagementChart, 
-  TrainingPerformanceChart,
-  MonthlyProgressChart,
-  DistributionPieChart
-} from "@/components/charts/AnalyticsCharts"
 
 interface AnalyticsData {
   totalUsuarios: number
