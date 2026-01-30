@@ -201,8 +201,8 @@ export default function Catalogo() {
         if (error) throw error
       }
 
-      // Navegar para a página do treinamento
-      navigate(`/treinamento/${trainingId}`)
+      // Navegar para a página de execução do treinamento
+      navigate(`/executar-treinamento/${trainingId}`)
     } catch (error) {
       console.error("Erro ao iniciar treinamento:", error)
       toast({

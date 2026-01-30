@@ -297,7 +297,7 @@ export default function MeusTreinamentos() {
     if (training.progress === 0) {
       await startTraining(training.id)
     }
-    navigate(`/treinamento/${training.id}`)
+    navigate(`/executar-treinamento/${training.id}`)
   }
 
   const renderTrainingGrid = (trainingList: TransformedTraining[]) => {

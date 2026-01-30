@@ -13,13 +13,23 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Award
+  Award,
+  Star
 } from "lucide-react";
 import { useActiveTimer } from "@/hooks/use-active-timer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TrainingData {
   id: string;
@@ -49,7 +59,11 @@ export default function ExecutarTreinamento() {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [canComplete, setCanComplete] = useState(false);
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const targetDuration = training?.duracao_minutos || 60;
   const minimumTimeRequired = Math.ceil(targetDuration * 0.5); // 50% do tempo
@@ -167,26 +181,58 @@ export default function ExecutarTreinamento() {
       toast.error(`Você precisa permanecer pelo menos ${minimumTimeRequired} minutos no treinamento.`);
       return;
     }
+    // Mostrar diálogo de avaliação
+    setShowRatingDialog(true);
+  };
 
-    if (!progressData?.id) return;
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0) {
+      toast.error("Por favor, selecione uma nota de 1 a 5 estrelas.");
+      return;
+    }
 
-    const { error } = await supabase
-      .from("progresso_treinamentos")
-      .update({
-        concluido: true,
-        percentual_concluido: 100,
-        tempo_assistido_minutos: Math.floor(timer.activeTime / 60),
-        data_conclusao: new Date().toISOString(),
-        atualizado_em: new Date().toISOString()
-      })
-      .eq("id", progressData.id);
+    if (!progressData?.id || !user?.id || !id) return;
 
-    if (error) {
-      console.error("Erro ao concluir:", error);
-      toast.error("Erro ao concluir treinamento");
-    } else {
-      toast.success("Treinamento concluído com sucesso!");
-      navigate("/meus-treinamentos");
+    setIsSubmitting(true);
+    try {
+      // Salvar avaliação
+      const { error: ratingError } = await supabase
+        .from("avaliacoes_treinamentos")
+        .upsert({
+          treinamento_id: id,
+          usuario_id: user.id,
+          nota: selectedRating,
+          comentario: ratingComment || null
+        }, { onConflict: 'treinamento_id,usuario_id' });
+
+      if (ratingError) {
+        console.error("Erro ao salvar avaliação:", ratingError);
+        toast.error("Erro ao salvar avaliação");
+      }
+
+      // Concluir treinamento
+      const { error } = await supabase
+        .from("progresso_treinamentos")
+        .update({
+          concluido: true,
+          percentual_concluido: 100,
+          tempo_assistido_minutos: Math.floor(timer.activeTime / 60),
+          data_conclusao: new Date().toISOString(),
+          atualizado_em: new Date().toISOString(),
+          nota_avaliacao: selectedRating
+        })
+        .eq("id", progressData.id);
+
+      if (error) {
+        console.error("Erro ao concluir:", error);
+        toast.error("Erro ao concluir treinamento");
+      } else {
+        toast.success("Treinamento concluído com sucesso! Obrigado pela avaliação.");
+        navigate("/meus-treinamentos");
+      }
+    } finally {
+      setIsSubmitting(false);
+      setShowRatingDialog(false);
     }
   };
 
@@ -1836,6 +1882,92 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Avaliação */}
+      <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Avalie o Treinamento
+            </DialogTitle>
+            <DialogDescription>
+              Sua avaliação nos ajuda a melhorar nossos treinamentos. Como você classificaria esta experiência?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Estrelas de avaliação */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setSelectedRating(star)}
+                    onMouseEnter={() => setRatingHover(star)}
+                    onMouseLeave={() => setRatingHover(0)}
+                    className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                  >
+                    <Star
+                      className={`h-10 w-10 transition-colors ${
+                        star <= (ratingHover || selectedRating)
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-muted-foreground'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {selectedRating === 0 && "Selecione uma nota"}
+                {selectedRating === 1 && "Muito ruim"}
+                {selectedRating === 2 && "Ruim"}
+                {selectedRating === 3 && "Regular"}
+                {selectedRating === 4 && "Bom"}
+                {selectedRating === 5 && "Excelente"}
+              </span>
+            </div>
+
+            {/* Comentário opcional */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Comentário (opcional)
+              </label>
+              <Textarea
+                placeholder="Conte-nos mais sobre sua experiência..."
+                value={ratingComment}
+                onChange={(e) => setRatingComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowRatingDialog(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitRating}
+              disabled={selectedRating === 0 || isSubmitting}
+              className="gap-2"
+            >
+              {isSubmitting ? (
+                "Concluindo..."
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Concluir e Avaliar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
