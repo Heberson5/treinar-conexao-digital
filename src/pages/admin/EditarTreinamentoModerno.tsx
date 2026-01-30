@@ -9,6 +9,24 @@ import {
   ContentBlock,
 } from "@/components/training/modern-training-editor";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface TrainingDB {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  categoria: string | null;
+  nivel: string | null;
+  duracao_minutos: number | null;
+  obrigatorio: boolean | null;
+  publicado: boolean | null;
+  empresa_id: string | null;
+  departamento_id: string | null;
+  instrutor_id: string | null;
+  thumbnail_url: string | null;
+  criado_em: string | null;
+  atualizado_em: string | null;
+}
 
 // Função para converter texto markdown-like em seções
 function parseTextToSections(texto: string): TrainingSection[] {
@@ -207,29 +225,89 @@ function parseTextToSections(texto: string): TrainingSection[] {
   ];
 }
 
+function formatDuration(minutes: number | null): string {
+  if (!minutes) return "30min";
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0) {
+    return `${hours}h ${mins}min`;
+  }
+  return `${mins}min`;
+}
+
 export default function EditarTreinamentoModerno() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getTrainingById, updateTraining } = useTraining();
   const { toast } = useToast();
   const [training, setTraining] = useState<Training | null>(null);
+  const [dbTraining, setDbTraining] = useState<TrainingDB | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFromDatabase, setIsFromDatabase] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      const found = getTrainingById(parseInt(id));
-      if (found) {
-        setTraining(found);
-      } else {
+    const loadTraining = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+
+      // Primeiro, tentar buscar do contexto local (IDs numéricos)
+      const numericId = parseInt(id);
+      if (!isNaN(numericId)) {
+        const found = getTrainingById(numericId);
+        if (found) {
+          setTraining(found);
+          setIsFromDatabase(false);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Se não encontrou no contexto, buscar do Supabase (UUID)
+      try {
+        const { data, error } = await supabase
+          .from("treinamentos")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error) {
+          console.error("Erro ao buscar treinamento:", error);
+          toast({
+            title: "Treinamento não encontrado",
+            description: "O treinamento solicitado não foi encontrado.",
+            variant: "destructive",
+          });
+          navigate("/admin/treinamentos");
+          return;
+        }
+
+        if (data) {
+          setDbTraining(data);
+          setIsFromDatabase(true);
+        } else {
+          toast({
+            title: "Treinamento não encontrado",
+            description: "O treinamento solicitado não foi encontrado.",
+            variant: "destructive",
+          });
+          navigate("/admin/treinamentos");
+        }
+      } catch (error) {
+        console.error("Erro:", error);
         toast({
-          title: "Treinamento não encontrado",
-          description: "O treinamento solicitado não foi encontrado.",
+          title: "Erro",
+          description: "Ocorreu um erro ao carregar o treinamento.",
           variant: "destructive",
         });
         navigate("/admin/treinamentos");
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    loadTraining();
   }, [id, getTrainingById, navigate, toast]);
 
   if (loading) {
@@ -240,24 +318,40 @@ export default function EditarTreinamentoModerno() {
     );
   }
 
-  if (!training) {
+  if (!training && !dbTraining) {
     return null;
   }
 
-  const initialData: Partial<TrainingData> = {
-    titulo: training.titulo,
-    subtitulo: training.subtitulo || "",
-    descricao: training.descricao,
-    categoria: training.categoria,
-    duracao: training.duracao,
-    status: training.status,
-    instrutor: training.instrutor,
-    departamento: training.departamento || "",
-    capa: training.capa,
-    sections: parseTextToSections(training.texto || ""),
-  };
+  // Dados iniciais baseados na fonte (contexto ou banco)
+  const initialData: Partial<TrainingData> = isFromDatabase && dbTraining
+    ? {
+        titulo: dbTraining.titulo,
+        subtitulo: "",
+        descricao: dbTraining.descricao || "",
+        categoria: dbTraining.categoria || "Geral",
+        duracao: formatDuration(dbTraining.duracao_minutos),
+        status: dbTraining.publicado ? "ativo" : "rascunho",
+        instrutor: "",
+        departamento: "",
+        capa: dbTraining.thumbnail_url || "",
+        sections: parseTextToSections(dbTraining.descricao || ""),
+      }
+    : training
+    ? {
+        titulo: training.titulo,
+        subtitulo: training.subtitulo || "",
+        descricao: training.descricao,
+        categoria: training.categoria,
+        duracao: training.duracao,
+        status: training.status,
+        instrutor: training.instrutor,
+        departamento: training.departamento || "",
+        capa: training.capa,
+        sections: parseTextToSections(training.texto || ""),
+      }
+    : {};
 
-  const handleSave = (data: TrainingData) => {
+  const handleSave = async (data: TrainingData) => {
     if (!data.titulo.trim()) {
       toast({
         title: "Campo obrigatório",
@@ -313,34 +407,78 @@ export default function EditarTreinamentoModerno() {
       }
     }
 
-    // Extrair primeiro vídeo
-    let videoUrl = "";
-    for (const section of data.sections) {
-      const videoBlock = section.blocks.find((b) => b.type === "video" && b.mediaUrl);
-      if (videoBlock?.mediaUrl) {
-        videoUrl = videoBlock.mediaUrl;
-        break;
+    // Se é do banco de dados, salvar no Supabase
+    if (isFromDatabase && dbTraining) {
+      // Converter duração para minutos
+      let duracaoMinutos = 30;
+      const duracaoMatch = data.duracao.match(/(\d+)h?\s*(\d*)min?/);
+      if (duracaoMatch) {
+        const hours = parseInt(duracaoMatch[1]) || 0;
+        const mins = parseInt(duracaoMatch[2]) || 0;
+        if (data.duracao.includes("h")) {
+          duracaoMinutos = hours * 60 + mins;
+        } else {
+          duracaoMinutos = hours || mins;
+        }
       }
+
+      const { error } = await supabase
+        .from("treinamentos")
+        .update({
+          titulo: data.titulo,
+          descricao: textoConsolidado || data.descricao,
+          categoria: data.categoria,
+          duracao_minutos: duracaoMinutos,
+          publicado: data.status === "ativo",
+          thumbnail_url: capa || null,
+          atualizado_em: new Date().toISOString(),
+        })
+        .eq("id", dbTraining.id);
+
+      if (error) {
+        console.error("Erro ao atualizar:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar as alterações.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Treinamento atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } else if (training) {
+      // Extrair primeiro vídeo
+      let videoUrl = "";
+      for (const section of data.sections) {
+        const videoBlock = section.blocks.find((b) => b.type === "video" && b.mediaUrl);
+        if (videoBlock?.mediaUrl) {
+          videoUrl = videoBlock.mediaUrl;
+          break;
+        }
+      }
+
+      updateTraining(training.id, {
+        titulo: data.titulo,
+        subtitulo: data.subtitulo,
+        descricao: data.descricao || textoConsolidado.slice(0, 200) + "...",
+        texto: textoConsolidado,
+        videoUrl,
+        categoria: data.categoria,
+        duracao: data.duracao,
+        status: data.status,
+        instrutor: data.instrutor,
+        departamento: data.departamento,
+        capa,
+      });
+
+      toast({
+        title: "Treinamento atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
     }
-
-    updateTraining(training.id, {
-      titulo: data.titulo,
-      subtitulo: data.subtitulo,
-      descricao: data.descricao || textoConsolidado.slice(0, 200) + "...",
-      texto: textoConsolidado,
-      videoUrl,
-      categoria: data.categoria,
-      duracao: data.duracao,
-      status: data.status,
-      instrutor: data.instrutor,
-      departamento: data.departamento,
-      capa,
-    });
-
-    toast({
-      title: "Treinamento atualizado",
-      description: "As alterações foram salvas com sucesso.",
-    });
 
     navigate("/admin/treinamentos");
   };
