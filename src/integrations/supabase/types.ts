@@ -41,6 +41,44 @@ export type Database = {
         }
         Relationships: []
       }
+      avaliacoes_treinamentos: {
+        Row: {
+          atualizado_em: string
+          comentario: string | null
+          criado_em: string
+          id: string
+          nota: number
+          treinamento_id: string
+          usuario_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          comentario?: string | null
+          criado_em?: string
+          id?: string
+          nota: number
+          treinamento_id: string
+          usuario_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          comentario?: string | null
+          criado_em?: string
+          id?: string
+          nota?: number
+          treinamento_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_treinamentos_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cnpj_demo_usado: {
         Row: {
           cnpj: string
@@ -458,6 +496,7 @@ export type Database = {
         Row: {
           atualizado_em: string | null
           categoria: string | null
+          conteudo_html: string | null
           criado_em: string | null
           data_limite: string | null
           departamento_id: string | null
@@ -466,15 +505,18 @@ export type Database = {
           empresa_id: string | null
           id: string
           instrutor_id: string | null
+          media_avaliacao: number | null
           nivel: string | null
           obrigatorio: boolean | null
           publicado: boolean | null
           thumbnail_url: string | null
           titulo: string
+          total_avaliacoes: number | null
         }
         Insert: {
           atualizado_em?: string | null
           categoria?: string | null
+          conteudo_html?: string | null
           criado_em?: string | null
           data_limite?: string | null
           departamento_id?: string | null
@@ -483,15 +525,18 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           instrutor_id?: string | null
+          media_avaliacao?: number | null
           nivel?: string | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           thumbnail_url?: string | null
           titulo: string
+          total_avaliacoes?: number | null
         }
         Update: {
           atualizado_em?: string | null
           categoria?: string | null
+          conteudo_html?: string | null
           criado_em?: string | null
           data_limite?: string | null
           departamento_id?: string | null
@@ -500,11 +545,13 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           instrutor_id?: string | null
+          media_avaliacao?: number | null
           nivel?: string | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           thumbnail_url?: string | null
           titulo?: string
+          total_avaliacoes?: number | null
         }
         Relationships: [
           {
