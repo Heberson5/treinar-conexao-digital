@@ -426,12 +426,12 @@ export default function GestaoTreinamentos() {
                     variant="default" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => navigate(`/executar-treinamento/${training.id}`)}
+                    onClick={() => handleViewTraining(training)}
                   >
                     <Eye className="mr-2 h-4 w-4" />
-                    Iniciar
+                    Visualizar
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline" 
                     size="sm"
                     onClick={() => navigate(`/admin/treinamentos/editar/${training.id}`)}
