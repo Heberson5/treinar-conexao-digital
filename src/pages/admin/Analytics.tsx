@@ -436,8 +436,36 @@ export default function Analytics() {
             {/* Engajamento Tab */}
             <TabsContent value="engajamento" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Interactive Weekly Chart */}
-                <WeeklyEngagementChart data={engajamentoDiario} />
+                {/* Weekly Engagement Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Engajamento Semanal</CardTitle>
+                    <CardDescription>Atividade dos últimos 7 dias</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {engajamentoDiario.map((dia, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <span className="font-medium">{dia.dia}</span>
+                          <div className="flex gap-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4 text-blue-600" />
+                              <span>{dia.visualizacoes}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Play className="h-4 w-4 text-green-600" />
+                              <span>{dia.interacoes}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="h-4 w-4 text-purple-600" />
+                              <span>{dia.conclusoes}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Card>
                   <CardHeader>
@@ -481,9 +509,35 @@ export default function Analytics() {
                 </Card>
               </div>
 
-              {/* Interactive Department Chart */}
+              {/* Department Engagement Table */}
               {departmentStats.length > 0 && (
-                <DepartmentEngagementChart data={departmentStats} />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Engajamento por Departamento
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {departmentStats.map((dept, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{dept.nome}</span>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span>{dept.usuarios} usuários</span>
+                              <span>{dept.conclusoes} conclusões</span>
+                              <Badge variant={dept.engajamento >= 70 ? "default" : "secondary"}>
+                                {dept.engajamento}%
+                              </Badge>
+                            </div>
+                          </div>
+                          <Progress value={dept.engajamento} className="h-2" />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </TabsContent>
 
