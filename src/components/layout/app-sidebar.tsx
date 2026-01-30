@@ -25,6 +25,7 @@ import {
   Briefcase,
   CreditCard,
   Zap,
+  Sparkles,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
@@ -38,6 +39,7 @@ const mainMenuItems = [
 ]
 
 const adminMenuItems = [
+  { title: "Dashboard Executivo", url: "/admin/executivo", icon: Sparkles },
   { title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: BookOpen },
   { title: "Usuários", url: "/admin/usuarios", icon: Users },
   { title: "Cargos", url: "/admin/cargos", icon: Briefcase },

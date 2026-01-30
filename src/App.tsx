@@ -33,6 +33,7 @@ import Analytics from "./pages/admin/Analytics";
 import Permissoes from "./pages/admin/Permissoes";
 import Configuracoes from "./pages/admin/Configuracoes";
 import Integracoes from "./pages/admin/Integracoes";
+import DashboardExecutivo from "./pages/admin/DashboardExecutivo";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ function AppContent() {
         <Route path="/admin/permissoes" element={<Permissoes />} />
         <Route path="/admin/configuracoes" element={<Configuracoes />} />
         <Route path="/admin/integracoes" element={<Integracoes />} />
+        <Route path="/admin/executivo" element={<DashboardExecutivo />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
