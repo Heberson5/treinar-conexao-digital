@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import MeusTreinamentos from "./pages/MeusTreinamentos";
 import Catalogo from "./pages/Catalogo";
 import TrainingPage from "./pages/TrainingPage";
+import ExecutarTreinamento from "./pages/ExecutarTreinamento";
 import GestaoTreinamentos from "./pages/admin/GestaoTreinamentos";
 import NovoTreinamentoModerno from "./pages/admin/NovoTreinamentoModerno";
 import EditarTreinamentoModerno from "./pages/admin/EditarTreinamentoModerno";
@@ -58,6 +59,7 @@ function AppContent() {
         <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
         <Route path="/catalogo" element={<Catalogo />} />
         <Route path="/treinamento/:id" element={<TrainingPage />} />
+        <Route path="/executar-treinamento/:id" element={<ExecutarTreinamento />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/calendario" element={<Calendario />} />
         <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />

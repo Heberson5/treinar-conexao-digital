@@ -423,13 +423,13 @@ export default function GestaoTreinamentos() {
                 </div>
                 <div className="flex gap-2">
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => handleViewTraining(training)}
+                    onClick={() => navigate(`/executar-treinamento/${training.id}`)}
                   >
                     <Eye className="mr-2 h-4 w-4" />
-                    Visualizar
+                    Iniciar
                   </Button>
                   <Button 
                     variant="outline" 
