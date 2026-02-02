@@ -422,8 +422,8 @@ export default function Index() {
             </div>
             
             {loadingTrainings ? (
-              <div className="grid md:grid-cols-3 gap-8">
-                {[1, 2, 3].map((i) => (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i} className="overflow-hidden">
                     <Skeleton className="aspect-video w-full" />
                     <CardHeader>
@@ -437,7 +437,7 @@ export default function Index() {
                 ))}
               </div>
             ) : trainingModels.length > 0 ? (
-              <div className="grid md:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {trainingModels.slice(0, 6).map((training) => (
                   <Card key={training.id} className="hover:shadow-lg transition-shadow group overflow-hidden">
                     <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center relative overflow-hidden">

@@ -29,6 +29,8 @@ interface LandingPageConfig {
   show_annual_toggle: boolean
   featured_trainings_enabled: boolean
   custom_css: string | null
+  termos_de_uso: string | null
+  sobre_nos: string | null
 }
 
 const defaultConfig: LandingPageConfig = {
@@ -48,7 +50,7 @@ const defaultConfig: LandingPageConfig = {
   features_section: [
     { title: "Plataforma Segura", description: "Seus dados protegidos com criptografia de ponta", icon: "Shield", color: "bg-blue-100 text-blue-600" },
     { title: "Aprendizado Rápido", description: "Metodologia otimizada para máxima retenção", icon: "Zap", color: "bg-yellow-100 text-yellow-600" },
-    { title: "Certificação", description: "Certificados reconhecidos pelo mercado", icon: "Award", color: "bg-green-100 text-green-600" }
+    { title: "Certificado", description: "Certificados reconhecidos pelo mercado", icon: "Award", color: "bg-green-100 text-green-600" }
   ],
   cta_title: 'Pronto para transformar sua equipe?',
   cta_subtitle: 'Junte-se a milhares de empresas que já revolucionaram seus treinamentos conosco',
@@ -57,7 +59,9 @@ const defaultConfig: LandingPageConfig = {
   logo_url: null,
   show_annual_toggle: false,
   featured_trainings_enabled: true,
-  custom_css: null
+  custom_css: null,
+  termos_de_uso: null,
+  sobre_nos: null
 }
 
 export function useLandingConfig() {
@@ -93,7 +97,9 @@ export function useLandingConfig() {
             logo_url: data.logo_url,
             show_annual_toggle: data.show_annual_toggle ?? defaultConfig.show_annual_toggle,
             featured_trainings_enabled: data.featured_trainings_enabled ?? defaultConfig.featured_trainings_enabled,
-            custom_css: data.custom_css
+            custom_css: data.custom_css,
+            termos_de_uso: data.termos_de_uso,
+            sobre_nos: data.sobre_nos
           })
         }
       } finally {

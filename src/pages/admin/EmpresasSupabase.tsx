@@ -53,11 +53,13 @@ import {
   TestTube,
   LayoutGrid,
   List,
+  Palette,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { EmpresaDadosModal } from "@/components/empresa/empresa-dados-modal";
 import { EmpresaConfigModal } from "@/components/empresa/empresa-config-modal";
+import { ColorPaletteSelector } from "@/components/empresa/color-palette-selector";
 import { 
   validarCNPJ, 
   formatarCNPJ, 
@@ -117,6 +119,7 @@ export default function EmpresasSupabase() {
     endereco: "",
     responsavel: "",
     is_demo: false,
+    tema_cor: "purple",
   });
 
   const { toast } = useToast();
@@ -305,6 +308,7 @@ export default function EmpresasSupabase() {
         demo_created_at: createForm.is_demo ? agora.toISOString() : null,
         demo_expires_at: createForm.is_demo ? addDays(agora, 7).toISOString() : null,
         data_contratacao: agora.toISOString(),
+        tema_cor: createForm.tema_cor,
       };
 
       const { data, error } = await supabase
@@ -342,6 +346,7 @@ export default function EmpresasSupabase() {
         endereco: "",
         responsavel: "",
         is_demo: false,
+        tema_cor: "purple",
       });
       setCnpjValid(null);
       setCnpjDemoDisponivel(null);
@@ -974,6 +979,12 @@ export default function EmpresasSupabase() {
                 />
               </div>
             </div>
+
+            {/* Paleta de Cores */}
+            <ColorPaletteSelector
+              value={createForm.tema_cor}
+              onChange={(value) => setCreateForm(prev => ({ ...prev, tema_cor: value }))}
+            />
           </div>
 
           <div className="flex justify-end gap-2">

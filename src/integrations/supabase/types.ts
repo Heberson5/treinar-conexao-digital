@@ -219,6 +219,7 @@ export type Database = {
           razao_social: string | null
           responsavel: string | null
           telefone: string | null
+          tema_cor: string | null
         }
         Insert: {
           ativo?: boolean | null
@@ -239,6 +240,7 @@ export type Database = {
           razao_social?: string | null
           responsavel?: string | null
           telefone?: string | null
+          tema_cor?: string | null
         }
         Update: {
           ativo?: boolean | null
@@ -259,6 +261,7 @@ export type Database = {
           razao_social?: string | null
           responsavel?: string | null
           telefone?: string | null
+          tema_cor?: string | null
         }
         Relationships: []
       }
@@ -282,7 +285,9 @@ export type Database = {
           id: string
           logo_url: string | null
           show_annual_toggle: boolean | null
+          sobre_nos: string | null
           stats_section: Json | null
+          termos_de_uso: string | null
         }
         Insert: {
           atualizado_em?: string | null
@@ -303,7 +308,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           show_annual_toggle?: boolean | null
+          sobre_nos?: string | null
           stats_section?: Json | null
+          termos_de_uso?: string | null
         }
         Update: {
           atualizado_em?: string | null
@@ -324,7 +331,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           show_annual_toggle?: boolean | null
+          sobre_nos?: string | null
           stats_section?: Json | null
+          termos_de_uso?: string | null
         }
         Relationships: []
       }

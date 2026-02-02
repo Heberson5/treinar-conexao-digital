@@ -1,146 +1,136 @@
+import { useLandingConfig } from "@/hooks/use-landing-config"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 
 export default function TermosDeUso() {
+  const { config, isLoading } = useLandingConfig()
+
+  const renderMarkdown = (text: string) => {
+    // Conversão simples de Markdown para HTML
+    let html = text
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-6 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-8 mb-3">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
+      // Bold and Italic
+      .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Strikethrough
+      .replace(/~~(.*?)~~/g, '<del>$1</del>')
+      // Links
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary underline hover:no-underline">$1</a>')
+      // Code
+      .replace(/`(.*?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
+      // Horizontal Rule
+      .replace(/^---$/gim, '<hr class="my-6 border-border" />')
+      // Blockquote
+      .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-primary pl-4 py-2 my-4 italic text-muted-foreground">$1</blockquote>')
+      // Lists
+      .replace(/^\* (.*$)/gim, '<li class="ml-4">$1</li>')
+      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
+      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
+      // Line breaks
+      .replace(/\n\n/g, '</p><p class="my-4">')
+      .replace(/\n/g, '<br />')
+
+    return `<div class="prose dark:prose-invert max-w-none"><p class="my-4">${html}</p></div>`
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <Skeleton className="h-12 w-64 mb-8" />
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-6 w-5/6" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Conteúdo padrão caso não exista no banco
+  const defaultContent = `# Termos de Uso
+
+## 1. Aceitação dos Termos
+Ao acessar e utilizar a plataforma ${config.company_name}, você concorda em cumprir estes Termos de Uso.
+
+## 2. Definições
+- **Plataforma**: Sistema de gestão de treinamentos corporativos
+- **Usuário**: Pessoa física ou jurídica que utiliza os serviços
+- **Conteúdo**: Materiais de treinamento, vídeos, textos e avaliações
+
+## 3. Uso da Plataforma
+3.1. O acesso é restrito a usuários autorizados pela empresa contratante.
+3.2. É proibido compartilhar credenciais de acesso.
+3.3. O conteúdo é protegido por direitos autorais.
+
+## 4. Responsabilidades
+4.1. O usuário é responsável por manter suas credenciais seguras.
+4.2. A plataforma não se responsabiliza por uso indevido.
+4.3. Conteúdos gerados por usuários são de responsabilidade do criador.
+
+## 5. Privacidade e LGPD
+5.1. Coletamos apenas dados necessários para funcionamento do serviço.
+5.2. Seus dados são protegidos conforme a Lei Geral de Proteção de Dados.
+5.3. Você pode solicitar a exclusão de seus dados a qualquer momento.
+
+## 6. Pagamentos
+6.1. Os planos são cobrados conforme contrato firmado.
+6.2. O não pagamento pode resultar em suspensão do acesso.
+6.3. Reembolsos seguem a política vigente no momento da contratação.
+
+## 7. Cancelamento
+7.1. O cancelamento pode ser solicitado a qualquer momento.
+7.2. Os dados serão mantidos por 30 dias após o cancelamento.
+7.3. Após este período, todos os dados serão excluídos permanentemente.
+
+## 8. Alterações nos Termos
+8.1. Estes termos podem ser alterados a qualquer momento.
+8.2. Alterações significativas serão comunicadas por e-mail.
+8.3. O uso continuado implica aceitação das alterações.
+
+## 9. Contato
+Para dúvidas sobre estes termos, entre em contato através dos canais oficiais da plataforma.`
+
+  const content = config.termos_de_uso || defaultContent
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao Início
-            </Button>
-          </Link>
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-2">
+              <span className="text-xl font-bold text-foreground">{config.company_name}</span>
+            </Link>
+            <Link to="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-bold text-foreground mb-8">Termos de Uso</h1>
-        
-        <div className="prose prose-lg dark:prose-invert max-w-none space-y-8">
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Última atualização: {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-          </p>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">1. Aceitação dos Termos</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Ao acessar e utilizar a plataforma Sauberlich System ("Plataforma"), você ("Usuário") concorda em cumprir e estar vinculado a estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá acessar ou utilizar a Plataforma.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">2. Descrição do Serviço</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              A Sauberlich System é uma plataforma de gestão de treinamentos corporativos que oferece ferramentas para criação, distribuição e monitoramento de cursos online. Nossos serviços incluem:
-            </p>
-            <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Criação e gerenciamento de treinamentos personalizados</li>
-              <li>Acompanhamento de progresso e desempenho dos colaboradores</li>
-              <li>Emissão de certificados de conclusão</li>
-              <li>Relatórios analíticos e indicadores de performance</li>
-              <li>Gestão de usuários e departamentos</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">3. Cadastro e Conta</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Para utilizar a Plataforma, você deve criar uma conta fornecendo informações precisas, completas e atualizadas. Você é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta. Compromete-se a notificar imediatamente qualquer uso não autorizado de sua conta.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">4. Propriedade Intelectual</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Todo o conteúdo disponível na Plataforma, incluindo textos, gráficos, logotipos, ícones, imagens, clipes de áudio e vídeo, downloads digitais e compilações de dados, é propriedade da Sauberlich System ou de seus licenciadores e é protegido por leis de propriedade intelectual.
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              O conteúdo criado pelos Usuários permanece de propriedade do respectivo Usuário ou empresa, sendo concedida à Plataforma licença limitada para hospedagem e distribuição conforme as funcionalidades do serviço.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">5. Uso Aceitável</h2>
-            <p className="text-muted-foreground leading-relaxed">Ao utilizar a Plataforma, você concorda em não:</p>
-            <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Violar qualquer lei ou regulamento aplicável</li>
-              <li>Infringir direitos de propriedade intelectual de terceiros</li>
-              <li>Transmitir conteúdo ilegal, difamatório, obsceno ou prejudicial</li>
-              <li>Interferir ou interromper a integridade ou o desempenho da Plataforma</li>
-              <li>Tentar obter acesso não autorizado a sistemas ou redes</li>
-              <li>Coletar informações de outros usuários sem consentimento</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">6. Planos e Pagamentos</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              A Plataforma oferece diferentes planos de assinatura com recursos e limites específicos. Os pagamentos são processados de forma segura através de parceiros certificados. O cancelamento da assinatura pode ser realizado a qualquer momento, sendo os serviços mantidos até o final do período já pago.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">7. Proteção de Dados</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Estamos comprometidos com a proteção de seus dados pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018). Coletamos apenas os dados necessários para a prestação dos serviços e implementamos medidas técnicas e organizacionais apropriadas para garantir a segurança das informações.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">8. Limitação de Responsabilidade</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              A Sauberlich System não será responsável por danos indiretos, incidentais, especiais, consequenciais ou punitivos, incluindo perda de lucros, dados ou uso, resultantes do acesso ou uso da Plataforma. Nossa responsabilidade máxima será limitada ao valor pago pelo Usuário nos últimos 12 meses.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">9. Disponibilidade do Serviço</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Nos esforçamos para manter a Plataforma disponível 24 horas por dia, 7 dias por semana. No entanto, não garantimos que o serviço será ininterrupto ou livre de erros. Poderemos realizar manutenções programadas com aviso prévio aos Usuários.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">10. Modificações dos Termos</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Reservamo-nos o direito de modificar estes Termos de Uso a qualquer momento. As alterações entrarão em vigor imediatamente após sua publicação na Plataforma. O uso continuado após as modificações constitui aceitação dos novos termos.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">11. Rescisão</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Podemos suspender ou encerrar seu acesso à Plataforma imediatamente, sem aviso prévio, por qualquer motivo, incluindo violação destes Termos. Após a rescisão, seu direito de usar a Plataforma cessará imediatamente.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">12. Lei Aplicável</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil. Qualquer disputa decorrente destes termos será submetida ao foro da comarca de Santa Catarina, Brasil.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">13. Contato</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Para questões relacionadas a estes Termos de Uso, entre em contato conosco através dos canais oficiais disponíveis na Plataforma.
-            </p>
-          </section>
-        </div>
+      <main className="max-w-4xl mx-auto px-4 py-12">
+        <div 
+          className="prose dark:prose-invert max-w-none"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+        />
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card py-8 mt-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-muted-foreground">
-            &copy; {new Date().getFullYear()} Sauberlich System. Todos os direitos reservados.
-          </p>
+      <footer className="bg-background border-t py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} {config.company_name}. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
