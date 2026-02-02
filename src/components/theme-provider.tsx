@@ -26,9 +26,11 @@ export function ThemeProvider({
   storageKey = "training-portal-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem(storageKey) as Theme
+    // Se não houver tema salvo, usar "system" para adaptar automaticamente
+    return stored || "system"
+  })
 
   useEffect(() => {
     const root = window.document.documentElement

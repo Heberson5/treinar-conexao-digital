@@ -26,6 +26,8 @@ import Cargos from "./pages/admin/Cargos";
 import Departamentos from "./pages/admin/Departamentos";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import TermosDeUso from "./pages/TermosDeUso";
+import SobreNos from "./pages/SobreNos";
 import Relatorios from "./pages/Relatorios";
 import Calendario from "./pages/Calendario";
 import EmpresasSupabase from "./pages/admin/EmpresasSupabase";
@@ -46,9 +48,11 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<LoginForm />} />
-        <Route path="*" element={<Index />} />
+        <Route path="/termos-de-uso" element={<TermosDeUso />} />
+        <Route path="/sobre-nos" element={<SobreNos />} />
         <Route path="/gestao/treinamentos/novo" element={<NewTrainingPage />} />
-</Routes>
+        <Route path="*" element={<Index />} />
+      </Routes>
     );
   }
 
@@ -86,7 +90,7 @@ function AppContent() {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="system">
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
