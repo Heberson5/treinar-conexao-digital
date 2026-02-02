@@ -43,6 +43,7 @@ interface TrainingDB {
   thumbnail_url: string | null
   criado_em: string | null
   atualizado_em: string | null
+  conteudo_html: string | null
 }
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"
@@ -191,11 +192,14 @@ export default function GestaoTreinamentos() {
 
   const handleViewTraining = (training: TrainingDB) => {
     // Converter para o formato esperado pelo TrainingViewer
+    // Usa conteudo_html se disponível, caso contrário usa descricao
+    const textoCompleto = training.conteudo_html || training.descricao || ""
+    
     setViewingTraining({
       id: training.id,
       titulo: training.titulo,
       descricao: training.descricao || "",
-      texto: training.descricao || "",
+      texto: textoCompleto,
       categoria: training.categoria || "Geral",
       duracao: formatDuration(training.duracao_minutos),
       status: training.publicado ? "ativo" : "rascunho",

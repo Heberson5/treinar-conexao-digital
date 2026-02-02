@@ -26,6 +26,7 @@ interface TrainingDB {
   thumbnail_url: string | null;
   criado_em: string | null;
   atualizado_em: string | null;
+  conteudo_html: string | null;
 }
 
 // Função para converter texto markdown-like em seções
@@ -268,7 +269,7 @@ export default function EditarTreinamentoModerno() {
       try {
         const { data, error } = await supabase
           .from("treinamentos")
-          .select("*")
+          .select("*, conteudo_html")
           .eq("id", id)
           .single();
 
@@ -323,6 +324,7 @@ export default function EditarTreinamentoModerno() {
   }
 
   // Dados iniciais baseados na fonte (contexto ou banco)
+  // Usa conteudo_html se disponível, caso contrário usa descricao
   const initialData: Partial<TrainingData> = isFromDatabase && dbTraining
     ? {
         titulo: dbTraining.titulo,
@@ -333,8 +335,9 @@ export default function EditarTreinamentoModerno() {
         status: dbTraining.publicado ? "ativo" : "rascunho",
         instrutor: "",
         departamento: "",
+        empresa_id: dbTraining.empresa_id || "",
         capa: dbTraining.thumbnail_url || "",
-        sections: parseTextToSections(dbTraining.descricao || ""),
+        sections: parseTextToSections(dbTraining.conteudo_html || dbTraining.descricao || ""),
       }
     : training
     ? {
@@ -426,11 +429,13 @@ export default function EditarTreinamentoModerno() {
         .from("treinamentos")
         .update({
           titulo: data.titulo,
-          descricao: textoConsolidado || data.descricao,
+          descricao: data.descricao || textoConsolidado.slice(0, 500),
+          conteudo_html: textoConsolidado,
           categoria: data.categoria,
           duracao_minutos: duracaoMinutos,
           publicado: data.status === "ativo",
           thumbnail_url: capa || null,
+          empresa_id: data.empresa_id || dbTraining.empresa_id,
           atualizado_em: new Date().toISOString(),
         })
         .eq("id", dbTraining.id);

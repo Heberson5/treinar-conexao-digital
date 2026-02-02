@@ -35,6 +35,7 @@ import Permissoes from "./pages/admin/Permissoes";
 import Configuracoes from "./pages/admin/Configuracoes";
 import Integracoes from "./pages/admin/Integracoes";
 import DashboardExecutivo from "./pages/admin/DashboardExecutivo";
+import LandingPageEditor from "./pages/admin/LandingPageEditor";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ function AppContent() {
         <Route path="/admin/configuracoes" element={<Configuracoes />} />
         <Route path="/admin/integracoes" element={<Integracoes />} />
         <Route path="/admin/executivo" element={<DashboardExecutivo />} />
+        <Route path="/admin/landing-page" element={<LandingPageEditor />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>

@@ -93,7 +93,7 @@ export function CalendarIntegrationCard() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Atenção:</strong> Para ativar esta funcionalidade, é necessário configurar o Lovable Cloud com as credenciais OAuth do Google e Microsoft.
+            <strong>Atenção:</strong> Para ativar esta funcionalidade, é necessário configurar o backend com as credenciais OAuth do Google e Microsoft.
           </AlertDescription>
         </Alert>
 
