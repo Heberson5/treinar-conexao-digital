@@ -26,6 +26,7 @@ import {
   CreditCard,
   Zap,
   Sparkles,
+  Palette,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
@@ -52,11 +53,17 @@ const adminMenuItems = [
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
 ]
 
+// Itens exclusivos para Master
+const masterMenuItems = [
+  { title: "Editor Landing Page", url: "/admin/landing-page", icon: Palette },
+]
+
 export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
   const currentPath = location.pathname
-  const { canAccessAdmin } = useAuth()
+  const { canAccessAdmin, user } = useAuth()
+  const isMaster = user?.role === 'master'
   
   const isMainExpanded = mainMenuItems.some((item) => currentPath === item.url)
   const isAdminExpanded = adminMenuItems.some((item) => currentPath === item.url)
@@ -121,6 +128,27 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Menu Master (apenas para usuários Master) */}
+        {isMaster && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Master</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {masterMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end className={getNavClass}>
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   )

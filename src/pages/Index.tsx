@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Play, 
   BookOpen, 
@@ -22,11 +23,26 @@ import {
   Check
 } from "lucide-react"
 import { usePlans, ICONES_PLANOS } from "@/contexts/plans-context"
+import { useLandingConfig } from "@/hooks/use-landing-config"
+
+// Mapeamento de ícones por nome
+const ICON_MAP: Record<string, React.ElementType> = {
+  Users,
+  Building,
+  BookOpen,
+  Star,
+  Shield,
+  Zap,
+  Award,
+  TrendingUp,
+  Clock
+}
 
 export default function Index() {
   const [email, setEmail] = useState("")
-  const [pagamentoAnual, setPagamentoAnual] = useState(false) // Desativado por padrão
+  const [pagamentoAnual, setPagamentoAnual] = useState(false)
   const { planosAtivos, descontoAnual, calcularPrecoAnual } = usePlans()
+  const { config, isLoading } = useLandingConfig()
 
   const featuredTrainings = [
     {
@@ -64,80 +80,55 @@ export default function Index() {
     }
   ]
 
-  const stats = [
-    {
-      value: "50,000+",
-      label: "Funcionários Treinados",
-      icon: Users,
-      color: "text-blue-600"
-    },
-    {
-      value: "1,500+",
-      label: "Empresas Atendidas",
-      icon: Building,
-      color: "text-green-600"
-    },
-    {
-      value: "300+",
-      label: "Cursos Disponíveis",
-      icon: BookOpen,
-      color: "text-purple-600"
-    },
-    {
-      value: "98%",
-      label: "Taxa de Satisfação",
-      icon: Star,
-      color: "text-yellow-600"
-    }
-  ]
-
-  const features = [
-    {
-      title: "Plataforma Segura",
-      description: "Seus dados protegidos com criptografia de ponta",
-      icon: Shield,
-      color: "bg-blue-100 text-blue-600"
-    },
-    {
-      title: "Aprendizado Rápido",
-      description: "Metodologia otimizada para máxima retenção",
-      icon: Zap,
-      color: "bg-yellow-100 text-yellow-600"
-    },
-    {
-      title: "Certificação",
-      description: "Certificados reconhecidos pelo mercado",
-      icon: Award,
-      color: "bg-green-100 text-green-600"
-    }
-  ]
-
   const getIconComponent = (iconName: string) => {
-    return ICONES_PLANOS[iconName] || Users
+    return ICON_MAP[iconName] || ICONES_PLANOS[iconName] || Users
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="relative overflow-hidden bg-gradient-to-r from-primary via-primary-glow to-primary-darker">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <Skeleton className="h-12 w-3/4 bg-white/20" />
+                <Skeleton className="h-24 w-full bg-white/20" />
+                <Skeleton className="h-12 w-1/2 bg-white/20" />
+              </div>
+              <Skeleton className="h-96 w-full bg-white/20 rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Inject custom CSS */}
+      {config.custom_css && (
+        <style dangerouslySetInnerHTML={{ __html: config.custom_css }} />
+      )}
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-primary via-primary-glow to-primary-darker">
+      <section className={`relative overflow-hidden bg-gradient-to-r ${config.hero_background_color}`}>
         <div className="absolute inset-0 bg-grid-white/10 bg-grid" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div>
                 <Badge className="bg-white/20 text-white border-white/30 mb-4">
-                  🚀 Transforme sua equipe hoje mesmo
+                  {config.hero_badge}
                 </Badge>
                 <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">
-                  A Plataforma de
-                  <span className="block bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-                    Treinamentos
-                  </span>
-                  do Futuro
+                  {config.hero_title.split('\n').map((line, i) => (
+                    <span key={i} className={i > 0 ? "block bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent" : ""}>
+                      {line}
+                    </span>
+                  ))}
                 </h1>
                 <p className="text-xl text-white/90 mt-6 leading-relaxed">
-                  Capacite sua equipe com treinamentos interativos, gamificados e com certificação.
-                  Resultados mensuráveis em semanas, não meses.
+                  {config.hero_subtitle}
                 </p>
               </div>
               
@@ -145,12 +136,12 @@ export default function Index() {
                 <Link to="/login">
                   <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-lg">
                     <Play className="mr-2 h-5 w-5" />
-                    Comece Agora Grátis
+                    {config.hero_cta_primary}
                   </Button>
                 </Link>
                 <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
                   <BookOpen className="mr-2 h-5 w-5" />
-                  Ver Demonstração
+                  {config.hero_cta_secondary}
                 </Button>
               </div>
               
@@ -204,15 +195,18 @@ export default function Index() {
       <section className="py-16 bg-accent/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className={`inline-flex p-3 rounded-full bg-background mb-4`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+            {config.stats_section.map((stat, index) => {
+              const IconComponent = getIconComponent(stat.icon)
+              return (
+                <div key={index} className="text-center">
+                  <div className={`inline-flex p-3 rounded-full bg-background mb-4`}>
+                    <IconComponent className={`h-6 w-6 ${stat.color}`} />
+                  </div>
+                  <div className="text-3xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-muted-foreground">{stat.label}</div>
                 </div>
-                <div className="text-3xl font-bold text-foreground">{stat.value}</div>
-                <div className="text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -230,19 +224,22 @@ export default function Index() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="text-center">
-                  <div className={`inline-flex p-4 rounded-full ${feature.color} mb-4`}>
-                    <feature.icon className="h-8 w-8" />
-                  </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  <CardDescription className="text-base">
-                    {feature.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
+            {config.features_section.map((feature, index) => {
+              const IconComponent = getIconComponent(feature.icon)
+              return (
+                <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+                  <CardHeader className="text-center">
+                    <div className={`inline-flex p-4 rounded-full ${feature.color} mb-4`}>
+                      <IconComponent className="h-8 w-8" />
+                    </div>
+                    <CardTitle className="text-xl">{feature.title}</CardTitle>
+                    <CardDescription className="text-base">
+                      {feature.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -260,7 +257,7 @@ export default function Index() {
               </p>
               
               {/* Toggle Mensal/Anual */}
-              {descontoAnual.habilitado && (
+              {config.show_annual_toggle && descontoAnual.habilitado && (
                 <div className="flex items-center justify-center gap-4 mt-8">
                   <Label htmlFor="pagamentoAnual" className={`text-sm ${!pagamentoAnual ? 'font-semibold' : 'text-muted-foreground'}`}>
                     Mensal
@@ -380,14 +377,13 @@ export default function Index() {
             </div>
 
             {/* Enterprise additional info */}
-            {planosAtivos.some(p => p.id === "enterprise") && (
+            {planosAtivos.some(p => p.nome.toLowerCase().includes('enterprise')) && (
               <div className="mt-12 max-w-2xl mx-auto">
                 <Card className="bg-muted/50">
                   <CardContent className="p-6 text-center">
                     <p className="text-muted-foreground">
-                      <strong>Plano Enterprise:</strong> Precisa de mais usuários? 
-                      Contrate pacotes adicionais de {planosAtivos.find(p => p.id === "enterprise")?.usuariosPorPacote || 5} usuários 
-                      por R$ {(planosAtivos.find(p => p.id === "enterprise")?.precoPacoteAdicional || 150).toFixed(2).replace('.', ',')}/mês cada.
+                      <strong>Plano Enterprise:</strong> Precisa de mais treinamentos? 
+                      Contrate pacotes adicionais de treinamentos extras por um valor adicional mensal.
                     </p>
                   </CardContent>
                 </Card>
@@ -398,90 +394,92 @@ export default function Index() {
       )}
 
       {/* Featured Trainings */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Treinamentos em Destaque
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Conheça alguns dos nossos cursos mais populares
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {featuredTrainings.map((training) => (
-              <Card key={training.id} className="hover:shadow-lg transition-shadow group">
-                <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center relative overflow-hidden">
-                  <Play className="h-12 w-12 text-white group-hover:scale-110 transition-transform" />
-                  <Badge className="absolute top-3 left-3 bg-white/20 text-white border-white/30">
-                    {training.category}
-                  </Badge>
-                </div>
-                
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                      {training.title}
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="line-clamp-2">
-                    {training.description}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {training.duration}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      {training.rating}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <Badge variant="secondary">
-                      {training.level}
+      {config.featured_trainings_enabled && (
+        <section className="py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                Treinamentos em Destaque
+              </h2>
+              <p className="text-xl text-muted-foreground">
+                Conheça alguns dos nossos cursos mais populares
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-8">
+              {featuredTrainings.map((training) => (
+                <Card key={training.id} className="hover:shadow-lg transition-shadow group">
+                  <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center relative overflow-hidden">
+                    <Play className="h-12 w-12 text-white group-hover:scale-110 transition-transform" />
+                    <Badge className="absolute top-3 left-3 bg-white/20 text-white border-white/30">
+                      {training.category}
                     </Badge>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      {training.students}
-                    </span>
                   </div>
                   
-                  <Link to="/login">
-                    <Button className="w-full group-hover:bg-primary/90 transition-colors">
-                      <Play className="mr-2 h-4 w-4" />
-                      Iniciar Treinamento
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                        {training.title}
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                      {training.description}
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {training.duration}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        {training.rating}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <Badge variant="secondary">
+                        {training.level}
+                      </Badge>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        {training.students}
+                      </span>
+                    </div>
+                    
+                    <Link to="/login">
+                      <Button className="w-full group-hover:bg-primary/90 transition-colors">
+                        <Play className="mr-2 h-4 w-4" />
+                        Iniciar Treinamento
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            <div className="text-center mt-12">
+              <Link to="/login">
+                <Button variant="outline" size="lg">
+                  Ver Todos os Treinamentos
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
-          
-          <div className="text-center mt-12">
-            <Link to="/login">
-              <Button variant="outline" size="lg">
-                Ver Todos os Treinamentos
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-primary to-primary-glow">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Pronto para transformar sua equipe?
+            {config.cta_title}
           </h2>
           <p className="text-xl text-white/90 mb-8">
-            Junte-se a milhares de empresas que já revolucionaram seus treinamentos conosco
+            {config.cta_subtitle}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -503,9 +501,9 @@ export default function Index() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Sauberlich System</h3>
+              <h3 className="text-lg font-semibold text-foreground">{config.company_name}</h3>
               <p className="text-muted-foreground">
-                A plataforma mais avançada para treinamentos corporativos.
+                {config.company_description}
               </p>
             </div>
             
@@ -541,7 +539,7 @@ export default function Index() {
           </div>
           
           <div className="border-t mt-12 pt-8 text-center text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Sauberlich System. Todos os direitos reservados.</p>
+            <p>&copy; {new Date().getFullYear()} {config.company_name}. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

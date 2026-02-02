@@ -262,6 +262,72 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_page_config: {
+        Row: {
+          atualizado_em: string | null
+          company_description: string | null
+          company_name: string | null
+          criado_em: string | null
+          cta_subtitle: string | null
+          cta_title: string | null
+          custom_css: string | null
+          featured_trainings_enabled: boolean | null
+          features_section: Json | null
+          hero_background_color: string | null
+          hero_badge: string | null
+          hero_cta_primary: string | null
+          hero_cta_secondary: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          logo_url: string | null
+          show_annual_toggle: boolean | null
+          stats_section: Json | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          criado_em?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          custom_css?: string | null
+          featured_trainings_enabled?: boolean | null
+          features_section?: Json | null
+          hero_background_color?: string | null
+          hero_badge?: string | null
+          hero_cta_primary?: string | null
+          hero_cta_secondary?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          show_annual_toggle?: boolean | null
+          stats_section?: Json | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          criado_em?: string | null
+          cta_subtitle?: string | null
+          cta_title?: string | null
+          custom_css?: string | null
+          featured_trainings_enabled?: boolean | null
+          features_section?: Json | null
+          hero_background_color?: string | null
+          hero_badge?: string | null
+          hero_cta_primary?: string | null
+          hero_cta_secondary?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          logo_url?: string | null
+          show_annual_toggle?: boolean | null
+          stats_section?: Json | null
+        }
+        Relationships: []
+      }
       perfis: {
         Row: {
           ativo: boolean | null
@@ -335,6 +401,7 @@ export type Database = {
           plano_id: string | null
           preco_contratado: number
           recursos_contratados: Json | null
+          treinamentos_extras: number | null
         }
         Insert: {
           ativo?: boolean | null
@@ -351,6 +418,7 @@ export type Database = {
           plano_id?: string | null
           preco_contratado: number
           recursos_contratados?: Json | null
+          treinamentos_extras?: number | null
         }
         Update: {
           ativo?: boolean | null
@@ -367,6 +435,7 @@ export type Database = {
           plano_id?: string | null
           preco_contratado?: number
           recursos_contratados?: Json | null
+          treinamentos_extras?: number | null
         }
         Relationships: [
           {
@@ -631,6 +700,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      copiar_modelos_para_empresa: {
+        Args: { p_empresa_id: string }
+        Returns: undefined
+      }
       criar_contrato_plano: {
         Args: { p_empresa_id: string; p_plano_id: string }
         Returns: string
@@ -649,6 +722,10 @@ export type Database = {
         Returns: boolean
       }
       verificar_limite_treinamentos: {
+        Args: { p_empresa_id: string }
+        Returns: boolean
+      }
+      verificar_limite_usuarios: {
         Args: { p_empresa_id: string }
         Returns: boolean
       }
