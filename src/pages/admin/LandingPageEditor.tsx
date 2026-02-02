@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Save,
@@ -20,13 +19,13 @@ import {
   Building2,
   ArrowLeft,
   Loader2,
-  RefreshCw,
-  Image,
-  ExternalLink
+  FileText,
+  Info
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/integrations/supabase/client"
+import { MarkdownEditor } from "@/components/landing/markdown-editor"
 
 interface LandingPageConfig {
   id: string
@@ -46,6 +45,8 @@ interface LandingPageConfig {
   show_annual_toggle: boolean
   featured_trainings_enabled: boolean
   custom_css: string | null
+  termos_de_uso: string | null
+  sobre_nos: string | null
 }
 
 const defaultConfig: Omit<LandingPageConfig, 'id'> = {
@@ -64,7 +65,7 @@ const defaultConfig: Omit<LandingPageConfig, 'id'> = {
   features_section: [
     { title: "Plataforma Segura", description: "Seus dados protegidos com criptografia de ponta", icon: "Shield", color: "bg-blue-100 text-blue-600" },
     { title: "Aprendizado Rápido", description: "Metodologia otimizada para máxima retenção", icon: "Zap", color: "bg-yellow-100 text-yellow-600" },
-    { title: "Certificação", description: "Certificados reconhecidos pelo mercado", icon: "Award", color: "bg-green-100 text-green-600" }
+    { title: "Certificado", description: "Certificados reconhecidos pelo mercado", icon: "Award", color: "bg-green-100 text-green-600" }
   ],
   cta_title: 'Pronto para transformar sua equipe?',
   cta_subtitle: 'Junte-se a milhares de empresas que já revolucionaram seus treinamentos conosco',
@@ -73,7 +74,9 @@ const defaultConfig: Omit<LandingPageConfig, 'id'> = {
   logo_url: null,
   show_annual_toggle: false,
   featured_trainings_enabled: true,
-  custom_css: null
+  custom_css: null,
+  termos_de_uso: null,
+  sobre_nos: null
 }
 
 export default function LandingPageEditor() {
@@ -160,7 +163,9 @@ export default function LandingPageEditor() {
           logo_url: config.logo_url,
           show_annual_toggle: config.show_annual_toggle,
           featured_trainings_enabled: config.featured_trainings_enabled,
-          custom_css: config.custom_css
+          custom_css: config.custom_css,
+          termos_de_uso: config.termos_de_uso,
+          sobre_nos: config.sobre_nos
         })
         .eq("id", config.id)
 
@@ -263,7 +268,7 @@ export default function LandingPageEditor() {
       </div>
 
       <Tabs defaultValue="hero" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="hero">
             <Type className="h-4 w-4 mr-2" />
             Hero
@@ -276,13 +281,21 @@ export default function LandingPageEditor() {
             <LayoutGrid className="h-4 w-4 mr-2" />
             Recursos
           </TabsTrigger>
-          <TabsTrigger value="cta">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            CTA
-          </TabsTrigger>
           <TabsTrigger value="brand">
             <Building2 className="h-4 w-4 mr-2" />
             Marca
+          </TabsTrigger>
+          <TabsTrigger value="terms">
+            <FileText className="h-4 w-4 mr-2" />
+            Termos
+          </TabsTrigger>
+          <TabsTrigger value="about">
+            <Info className="h-4 w-4 mr-2" />
+            Sobre
+          </TabsTrigger>
+          <TabsTrigger value="advanced">
+            <Palette className="h-4 w-4 mr-2" />
+            Avançado
           </TabsTrigger>
         </TabsList>
 
@@ -331,25 +344,14 @@ export default function LandingPageEditor() {
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hero_cta_primary">Botão Principal</Label>
-                    <Input
-                      id="hero_cta_primary"
-                      value={config.hero_cta_primary}
-                      onChange={(e) => updateConfig('hero_cta_primary', e.target.value)}
-                      placeholder="Comece Agora Grátis"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hero_cta_secondary">Botão Secundário</Label>
-                    <Input
-                      id="hero_cta_secondary"
-                      value={config.hero_cta_secondary}
-                      onChange={(e) => updateConfig('hero_cta_secondary', e.target.value)}
-                      placeholder="Ver Demonstração"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hero_cta_primary">Botão Principal</Label>
+                  <Input
+                    id="hero_cta_primary"
+                    value={config.hero_cta_primary}
+                    onChange={(e) => updateConfig('hero_cta_primary', e.target.value)}
+                    placeholder="Comece Agora Grátis"
+                  />
                 </div>
               </div>
             </CardContent>
@@ -425,39 +427,6 @@ export default function LandingPageEditor() {
           </Card>
         </TabsContent>
 
-        {/* CTA Section */}
-        <TabsContent value="cta" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Call to Action Final</CardTitle>
-              <CardDescription>
-                A última chamada para ação antes do rodapé
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="cta_title">Título do CTA</Label>
-                <Input
-                  id="cta_title"
-                  value={config.cta_title}
-                  onChange={(e) => updateConfig('cta_title', e.target.value)}
-                  placeholder="Pronto para transformar sua equipe?"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cta_subtitle">Subtítulo do CTA</Label>
-                <Textarea
-                  id="cta_subtitle"
-                  value={config.cta_subtitle}
-                  onChange={(e) => updateConfig('cta_subtitle', e.target.value)}
-                  placeholder="Junte-se a milhares de empresas..."
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Brand Section */}
         <TabsContent value="brand" className="space-y-6 mt-6">
           <Card>
@@ -499,6 +468,28 @@ export default function LandingPageEditor() {
 
               <Separator />
 
+              <div className="space-y-2">
+                <Label htmlFor="cta_title">Título do CTA Final</Label>
+                <Input
+                  id="cta_title"
+                  value={config.cta_title}
+                  onChange={(e) => updateConfig('cta_title', e.target.value)}
+                  placeholder="Pronto para transformar sua equipe?"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cta_subtitle">Subtítulo do CTA</Label>
+                <Textarea
+                  id="cta_subtitle"
+                  value={config.cta_subtitle}
+                  onChange={(e) => updateConfig('cta_subtitle', e.target.value)}
+                  placeholder="Junte-se a milhares de empresas..."
+                  rows={2}
+                />
+              </div>
+
+              <Separator />
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -528,7 +519,52 @@ export default function LandingPageEditor() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
+        {/* Terms of Use Section */}
+        <TabsContent value="terms" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Termos de Uso</CardTitle>
+              <CardDescription>
+                Edite os termos de uso que serão exibidos em /termos-de-uso. 
+                Use formatação Markdown para estruturar o conteúdo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MarkdownEditor
+                value={config.termos_de_uso || ''}
+                onChange={(value) => updateConfig('termos_de_uso', value)}
+                placeholder="# Termos de Uso\n\n## 1. Aceitação dos Termos\n..."
+                minHeight="500px"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* About Us Section */}
+        <TabsContent value="about" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sobre Nós</CardTitle>
+              <CardDescription>
+                Edite a página "Sobre Nós" que será exibida em /sobre-nos.
+                Use formatação Markdown para estruturar o conteúdo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MarkdownEditor
+                value={config.sobre_nos || ''}
+                onChange={(value) => updateConfig('sobre_nos', value)}
+                placeholder="# Sobre Nós\n\n## Nossa Missão\n..."
+                minHeight="500px"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Advanced Section */}
+        <TabsContent value="advanced" className="space-y-6 mt-6">
           <Card>
             <CardHeader>
               <CardTitle>CSS Personalizado</CardTitle>
@@ -541,7 +577,7 @@ export default function LandingPageEditor() {
                 value={config.custom_css || ''}
                 onChange={(e) => updateConfig('custom_css', e.target.value)}
                 placeholder="/* Seus estilos CSS personalizados aqui */"
-                rows={8}
+                rows={12}
                 className="font-mono text-sm"
               />
             </CardContent>
