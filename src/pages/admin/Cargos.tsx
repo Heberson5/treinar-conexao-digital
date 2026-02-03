@@ -1,113 +1,272 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Plus, 
   Search, 
   Edit3, 
   Trash2, 
   Briefcase,
-  Building2
+  Building2,
+  Loader2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 
 interface Cargo {
-  id: number
+  id: string
   nome: string
-  descricao: string
-  departamento: string
+  descricao: string | null
+  empresa_id: string | null
+  empresa_nome?: string
   ativo: boolean
 }
 
-const cargosIniciais: Cargo[] = [
-  { id: 1, nome: "Administrador Master", descricao: "Controle total do sistema", departamento: "TI", ativo: true },
-  { id: 2, nome: "Analista de RH", descricao: "Gestão de recursos humanos", departamento: "RH", ativo: true },
-  { id: 3, nome: "Vendedor", descricao: "Vendas e atendimento", departamento: "Vendas", ativo: true },
-  { id: 4, nome: "Gerente de Vendas", descricao: "Gestão da equipe de vendas", departamento: "Vendas", ativo: true },
-  { id: 5, nome: "Analista Financeiro", descricao: "Análise financeira", departamento: "Financeiro", ativo: true }
-]
+interface Empresa {
+  id: string
+  nome: string
+  nome_fantasia: string | null
+}
 
 export default function Cargos() {
-  const [cargos, setCargos] = useState<Cargo[]>(cargosIniciais)
+  const { toast } = useToast()
+  const { user } = useAuth()
+  const { isMaster } = useEmpresaFilter()
+  
+  const [cargos, setCargos] = useState<Cargo[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingCargo, setEditingCargo] = useState<Cargo | null>(null)
-  const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
 
   const [newCargo, setNewCargo] = useState({
     nome: "",
     descricao: "",
-    departamento: ""
+    empresa_id: ""
   })
+
+  // Carregar dados
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Carregar cargos
+        const { data: cargosData, error: cargosError } = await supabase
+          .from("cargos")
+          .select("*")
+          .order("nome")
+
+        if (cargosError) {
+          console.error("Erro ao carregar cargos:", cargosError)
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os cargos.",
+            variant: "destructive"
+          })
+        }
+
+        // Carregar empresas
+        const { data: empresasData, error: empresasError } = await supabase
+          .from("empresas")
+          .select("id, nome, nome_fantasia")
+          .eq("ativo", true)
+
+        if (empresasError) {
+          console.error("Erro ao carregar empresas:", empresasError)
+        }
+
+        if (empresasData) setEmpresas(empresasData)
+
+        // Montar lista de cargos com nome da empresa
+        const cargosList: Cargo[] = (cargosData || []).map((cargo) => {
+          const empresa = empresasData?.find((e) => e.id === cargo.empresa_id)
+          return {
+            ...cargo,
+            empresa_nome: empresa?.nome_fantasia || empresa?.nome || "Global (todas empresas)"
+          }
+        })
+
+        setCargos(cargosList)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [toast])
 
   const resetForm = () => {
     setNewCargo({
       nome: "",
       descricao: "",
-      departamento: ""
+      empresa_id: isMaster ? "" : (user?.empresa_id || "")
     })
     setEditingCargo(null)
   }
 
-  const handleCreate = () => {
-    if (!newCargo.nome || !newCargo.departamento) {
+  const handleOpenCreate = () => {
+    resetForm()
+    if (!isMaster && user?.empresa_id) {
+      setNewCargo(prev => ({ ...prev, empresa_id: user.empresa_id || "" }))
+    }
+    setIsCreateOpen(true)
+  }
+
+  const handleCreate = async () => {
+    if (!newCargo.nome.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Nome e departamento são obrigatórios",
+        title: "Campo obrigatório",
+        description: "O nome do cargo é obrigatório.",
         variant: "destructive"
       })
       return
     }
 
-    const cargo: Cargo = {
-      id: Date.now(),
-      ...newCargo,
-      ativo: true
-    }
+    setIsSaving(true)
 
-    setCargos([...cargos, cargo])
-    setIsCreateOpen(false)
-    resetForm()
-    
-    toast({
-      title: "Cargo criado!",
-      description: "O cargo foi criado com sucesso."
-    })
+    try {
+      const { data, error } = await supabase
+        .from("cargos")
+        .insert({
+          nome: newCargo.nome.trim(),
+          descricao: newCargo.descricao.trim() || null,
+          empresa_id: newCargo.empresa_id || null
+        })
+        .select()
+        .single()
+
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível criar o cargo.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const empresa = empresas.find((e) => e.id === newCargo.empresa_id)
+      setCargos([...cargos, {
+        ...data,
+        empresa_nome: empresa?.nome_fantasia || empresa?.nome || "Global (todas empresas)"
+      }])
+
+      setIsCreateOpen(false)
+      resetForm()
+      
+      toast({
+        title: "Cargo criado!",
+        description: "O cargo foi criado com sucesso."
+      })
+    } catch (error) {
+      console.error("Erro:", error)
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao criar o cargo.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleEdit = (cargo: Cargo) => {
     setEditingCargo(cargo)
     setNewCargo({
       nome: cargo.nome,
-      descricao: cargo.descricao,
-      departamento: cargo.departamento
+      descricao: cargo.descricao || "",
+      empresa_id: cargo.empresa_id || ""
     })
     setIsCreateOpen(true)
   }
 
-  const handleUpdate = () => {
-    if (!editingCargo) return
+  const handleUpdate = async () => {
+    if (!editingCargo || !newCargo.nome.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "O nome do cargo é obrigatório.",
+        variant: "destructive"
+      })
+      return
+    }
 
-    setCargos(cargos.map(c => 
-      c.id === editingCargo.id 
-        ? { ...editingCargo, ...newCargo }
-        : c
-    ))
-    
-    setIsCreateOpen(false)
-    resetForm()
-    
-    toast({
-      title: "Cargo atualizado!",
-      description: "O cargo foi atualizado com sucesso."
-    })
+    setIsSaving(true)
+
+    try {
+      const { error } = await supabase
+        .from("cargos")
+        .update({
+          nome: newCargo.nome.trim(),
+          descricao: newCargo.descricao.trim() || null,
+          empresa_id: newCargo.empresa_id || null
+        })
+        .eq("id", editingCargo.id)
+
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o cargo.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const empresa = empresas.find((e) => e.id === newCargo.empresa_id)
+      setCargos(cargos.map(c => 
+        c.id === editingCargo.id 
+          ? { 
+              ...c, 
+              nome: newCargo.nome.trim(),
+              descricao: newCargo.descricao.trim() || null,
+              empresa_id: newCargo.empresa_id || null,
+              empresa_nome: empresa?.nome_fantasia || empresa?.nome || "Global (todas empresas)"
+            }
+          : c
+      ))
+      
+      setIsCreateOpen(false)
+      resetForm()
+      
+      toast({
+        title: "Cargo atualizado!",
+        description: "O cargo foi atualizado com sucesso."
+      })
+    } catch (error) {
+      console.error("Erro:", error)
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao atualizar o cargo.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from("cargos")
+      .delete()
+      .eq("id", id)
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o cargo.",
+        variant: "destructive"
+      })
+      return
+    }
+
     setCargos(cargos.filter(c => c.id !== id))
     toast({
       title: "Cargo excluído",
@@ -115,19 +274,63 @@ export default function Cargos() {
     })
   }
 
-  const toggleStatus = (id: number) => {
-    setCargos(cargos.map(cargo => 
-      cargo.id === id 
-        ? { ...cargo, ativo: !cargo.ativo }
-        : cargo
+  const toggleStatus = async (cargo: Cargo) => {
+    const novoStatus = !cargo.ativo
+
+    const { error } = await supabase
+      .from("cargos")
+      .update({ ativo: novoStatus })
+      .eq("id", cargo.id)
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setCargos(cargos.map(c => 
+      c.id === cargo.id 
+        ? { ...c, ativo: novoStatus }
+        : c
     ))
+
+    toast({
+      title: "Status atualizado",
+      description: `Cargo ${novoStatus ? "ativado" : "desativado"} com sucesso.`
+    })
   }
 
   const filteredCargos = cargos.filter(cargo =>
     cargo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cargo.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cargo.departamento.toLowerCase().includes(searchTerm.toLowerCase())
+    (cargo.descricao?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (cargo.empresa_nome?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   )
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -145,7 +348,7 @@ export default function Cargos() {
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary">
+            <Button className="bg-gradient-primary" onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Cargo
             </Button>
@@ -181,22 +384,42 @@ export default function Cargos() {
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="departamento">Departamento *</Label>
-                <Input
-                  id="departamento"
-                  value={newCargo.departamento}
-                  onChange={(e) => setNewCargo({...newCargo, departamento: e.target.value})}
-                  placeholder="Ex: Vendas, RH, TI"
-                />
-              </div>
+              {isMaster && (
+                <div className="space-y-2">
+                  <Label htmlFor="empresa">Empresa</Label>
+                  <Select
+                    value={newCargo.empresa_id}
+                    onValueChange={(value) => setNewCargo({...newCargo, empresa_id: value})}
+                  >
+                    <SelectTrigger id="empresa">
+                      <SelectValue placeholder="Global (todas empresas)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Global (todas empresas)</SelectItem>
+                      {empresas.map((empresa) => (
+                        <SelectItem key={empresa.id} value={empresa.id}>
+                          {empresa.nome_fantasia || empresa.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Cargos globais ficam disponíveis para todas as empresas.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSaving}>
                 Cancelar
               </Button>
-              <Button onClick={editingCargo ? handleUpdate : handleCreate} className="bg-gradient-primary">
+              <Button 
+                onClick={editingCargo ? handleUpdate : handleCreate} 
+                className="bg-gradient-primary"
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingCargo ? "Atualizar" : "Criar Cargo"}
               </Button>
             </div>
@@ -209,7 +432,7 @@ export default function Cargos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <Briefcase className="h-5 w-5 text-blue-600" />
               </div>
               <div>
@@ -222,7 +445,7 @@ export default function Cargos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <Briefcase className="h-5 w-5 text-green-600" />
               </div>
               <div>
@@ -235,12 +458,12 @@ export default function Cargos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                 <Building2 className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Departamentos</p>
-                <p className="text-2xl font-bold">{new Set(cargos.map(c => c.departamento)).size}</p>
+                <p className="text-sm text-muted-foreground">Globais</p>
+                <p className="text-2xl font-bold">{cargos.filter(c => !c.empresa_id).length}</p>
               </div>
             </div>
           </CardContent>
@@ -267,55 +490,68 @@ export default function Cargos() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredCargos.map((cargo) => (
-              <div key={cargo.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Briefcase className="h-5 w-5 text-primary" />
+          {filteredCargos.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhum cargo encontrado.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {filteredCargos.map((cargo) => (
+                <div key={cargo.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Briefcase className="h-5 w-5 text-primary" />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium">{cargo.nome}</h4>
+                        <Badge variant={cargo.ativo ? "default" : "secondary"}>
+                          {cargo.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                        {!cargo.empresa_id && (
+                          <Badge variant="outline" className="border-purple-500 text-purple-600">
+                            Global
+                          </Badge>
+                        )}
+                      </div>
+                      {cargo.descricao && (
+                        <p className="text-sm text-muted-foreground">{cargo.descricao}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {cargo.empresa_nome}
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium">{cargo.nome}</h4>
-                      <Badge variant={cargo.ativo ? "default" : "secondary"}>
-                        {cargo.ativo ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{cargo.descricao}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Departamento: {cargo.departamento}
-                    </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => toggleStatus(cargo)}
+                    >
+                      {cargo.ativo ? "Desativar" : "Ativar"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(cargo)}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDelete(cargo.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => toggleStatus(cargo.id)}
-                  >
-                    {cargo.ativo ? "Desativar" : "Ativar"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleEdit(cargo)}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(cargo.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

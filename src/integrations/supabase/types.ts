@@ -79,6 +79,44 @@ export type Database = {
           },
         ]
       }
+      cargos: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          criado_em: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cargos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cnpj_demo_usado: {
         Row: {
           cnpj: string
@@ -344,12 +382,16 @@ export type Database = {
           avatar_url: string | null
           cargo: string | null
           criado_em: string | null
+          data_proxima_troca_senha: string | null
+          data_ultima_troca_senha: string | null
           departamento_id: string | null
+          dias_para_trocar_senha: number | null
           email: string
           empresa_id: string | null
           id: string
           nome: string
           telefone: string | null
+          trocar_senha_primeiro_login: boolean | null
         }
         Insert: {
           ativo?: boolean | null
@@ -357,12 +399,16 @@ export type Database = {
           avatar_url?: string | null
           cargo?: string | null
           criado_em?: string | null
+          data_proxima_troca_senha?: string | null
+          data_ultima_troca_senha?: string | null
           departamento_id?: string | null
+          dias_para_trocar_senha?: number | null
           email: string
           empresa_id?: string | null
           id: string
           nome: string
           telefone?: string | null
+          trocar_senha_primeiro_login?: boolean | null
         }
         Update: {
           ativo?: boolean | null
@@ -370,12 +416,16 @@ export type Database = {
           avatar_url?: string | null
           cargo?: string | null
           criado_em?: string | null
+          data_proxima_troca_senha?: string | null
+          data_ultima_troca_senha?: string | null
           departamento_id?: string | null
+          dias_para_trocar_senha?: number | null
           email?: string
           empresa_id?: string | null
           id?: string
           nome?: string
           telefone?: string | null
+          trocar_senha_primeiro_login?: boolean | null
         }
         Relationships: [
           {
