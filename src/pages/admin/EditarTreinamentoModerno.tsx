@@ -355,10 +355,38 @@ export default function EditarTreinamentoModerno() {
     : {};
 
   const handleSave = async (data: TrainingData) => {
+    // Validações obrigatórias
     if (!data.titulo.trim()) {
       toast({
         title: "Campo obrigatório",
         description: "Preencha o título do treinamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data.categoria || data.categoria.trim() === "") {
+      toast({
+        title: "Campo obrigatório",
+        description: "Selecione uma categoria para o treinamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data.departamento || data.departamento.trim() === "") {
+      toast({
+        title: "Campo obrigatório",
+        description: "Selecione um departamento para o treinamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data.duracao || data.duracao.trim() === "") {
+      toast({
+        title: "Campo obrigatório",
+        description: "Informe a duração estimada do treinamento.",
         variant: "destructive",
       });
       return;
