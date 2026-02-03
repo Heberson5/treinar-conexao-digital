@@ -22,6 +22,7 @@ import {
   type DadosEmpresaCNPJ 
 } from "@/lib/cnpj-utils";
 import { supabase } from "@/integrations/supabase/client";
+import { ColorPaletteSelector } from "@/components/empresa/color-palette-selector";
 
 interface EmpresaDados {
   id: string;
@@ -36,6 +37,7 @@ interface EmpresaDados {
   is_demo: boolean | null;
   demo_expires_at: string | null;
   ativo: boolean | null;
+  tema_cor?: string | null;
 }
 
 interface EmpresaDadosModalProps {
@@ -65,6 +67,7 @@ export function EmpresaDadosModal({
     telefone: "",
     endereco: "",
     responsavel: "",
+    tema_cor: "purple",
   });
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export function EmpresaDadosModal({
         telefone: empresa.telefone || "",
         endereco: empresa.endereco || "",
         responsavel: empresa.responsavel || "",
+        tema_cor: empresa.tema_cor || "purple",
       });
       // Validar CNPJ inicial
       if (empresa.cnpj) {
@@ -171,6 +175,7 @@ export function EmpresaDadosModal({
           telefone: formData.telefone.trim() || null,
           endereco: formData.endereco.trim() || null,
           responsavel: formData.responsavel.trim() || null,
+          tema_cor: formData.tema_cor,
         })
         .eq("id", empresa.id);
 
@@ -186,6 +191,7 @@ export function EmpresaDadosModal({
         telefone: formData.telefone.trim() || null,
         endereco: formData.endereco.trim() || null,
         responsavel: formData.responsavel.trim() || null,
+        tema_cor: formData.tema_cor,
       });
 
       toast({
@@ -342,6 +348,12 @@ export function EmpresaDadosModal({
               placeholder="Nome do responsável"
             />
           </div>
+
+          {/* Paleta de Cores (Tema) */}
+          <ColorPaletteSelector
+            value={formData.tema_cor}
+            onChange={(value) => setFormData(prev => ({ ...prev, tema_cor: value }))}
+          />
 
           {/* Indicadores de status */}
           {(empresa.is_demo || !empresa.ativo) && (
