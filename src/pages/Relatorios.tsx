@@ -26,6 +26,8 @@ import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { exportData } from "@/lib/export-utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface ReportData {
   totalTreinamentos: number
@@ -62,7 +64,8 @@ export default function Relatorios() {
   const [selectedPeriod, setSelectedPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d")
   const { formatDate } = useBrazilianDate()
   const { user } = useAuth()
-  const { empresaSelecionada, isMaster: isMasterFilter } = useEmpresaFilter()
+  const { empresaSelecionada, isMaster: isMasterFilter, empresaSelecionadaNome } = useEmpresaFilter()
+  const { toast } = useToast()
   
   const [isLoading, setIsLoading] = useState(true)
   const [reportData, setReportData] = useState<ReportData>({
@@ -219,36 +222,90 @@ export default function Relatorios() {
   }, [selectedPeriod, empresaSelecionada, isMasterFilter])
 
   const exportReport = (format: 'pdf' | 'excel', type: string) => {
-    let content = ""
+    const periodLabel = selectedPeriod === "7d" ? "Últimos 7 dias" : 
+                        selectedPeriod === "30d" ? "Últimos 30 dias" : 
+                        selectedPeriod === "90d" ? "Últimos 90 dias" : "Último ano"
     
-    if (type === "geral") {
-      content = [
-        ["Relatório Geral"],
-        ["Total de Treinamentos", reportData.totalTreinamentos],
-        ["Total de Participantes", reportData.totalParticipantes],
-        ["Taxa de Conclusão", `${reportData.taxaConclusao}%`],
-        ["Horas de Treinamento", reportData.horasTreinamento],
-        ["Certificados Emitidos", reportData.certificadosEmitidos]
-      ].map(row => row.join(",")).join("\n")
-    } else if (type === "departamentos") {
-      content = [
-        ["Departamento", "Participantes", "Conclusões", "Taxa"],
-        ...departmentReports.map(d => [d.nome, d.participantes, d.conclusoes, `${d.taxa}%`])
-      ].map(row => row.join(",")).join("\n")
-    } else if (type === "treinamentos") {
-      content = [
-        ["Treinamento", "Participantes", "Conclusões", "Taxa", "Avaliação"],
-        ...trainingReports.map(t => [t.titulo, t.participantes, t.conclusoes, `${t.taxa}%`, t.avaliacao])
-      ].map(row => row.join(",")).join("\n")
+    const subtitle = `Período: ${periodLabel}${isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" ? ` | Empresa: ${empresaSelecionadaNome}` : ''}`
+    
+    try {
+      if (type === "geral") {
+        exportData(format, {
+          filename: `relatorio-geral-${new Date().toISOString().split('T')[0]}`,
+          title: "Relatório Geral de Treinamentos",
+          subtitle,
+          columns: [
+            { header: "Métrica", key: "metrica" },
+            { header: "Valor", key: "valor" }
+          ],
+          data: [
+            { metrica: "Total de Treinamentos", valor: reportData.totalTreinamentos },
+            { metrica: "Total de Participantes", valor: reportData.totalParticipantes },
+            { metrica: "Taxa de Conclusão", valor: `${reportData.taxaConclusao}%` },
+            { metrica: "Horas de Treinamento", valor: `${reportData.horasTreinamento}h` },
+            { metrica: "Certificados Emitidos", valor: reportData.certificadosEmitidos }
+          ]
+        })
+      } else if (type === "departamentos") {
+        exportData(format, {
+          filename: `relatorio-departamentos-${new Date().toISOString().split('T')[0]}`,
+          title: "Relatório por Departamentos",
+          subtitle,
+          columns: [
+            { header: "Departamento", key: "nome" },
+            { header: "Participantes", key: "participantes" },
+            { header: "Conclusões", key: "conclusoes" },
+            { header: "Taxa", key: "taxa" }
+          ],
+          data: departmentReports.map(d => ({
+            ...d,
+            taxa: `${d.taxa}%`
+          }))
+        })
+      } else if (type === "treinamentos") {
+        exportData(format, {
+          filename: `relatorio-treinamentos-${new Date().toISOString().split('T')[0]}`,
+          title: "Relatório por Treinamentos",
+          subtitle,
+          columns: [
+            { header: "Treinamento", key: "titulo" },
+            { header: "Participantes", key: "participantes" },
+            { header: "Conclusões", key: "conclusoes" },
+            { header: "Taxa", key: "taxa" },
+            { header: "Avaliação", key: "avaliacao" }
+          ],
+          data: trainingReports.map(t => ({
+            ...t,
+            taxa: `${t.taxa}%`,
+            avaliacao: `${t.avaliacao}/5`
+          }))
+        })
+      } else if (type === "mensal") {
+        exportData(format, {
+          filename: `relatorio-mensal-${new Date().toISOString().split('T')[0]}`,
+          title: "Evolução Mensal",
+          subtitle,
+          columns: [
+            { header: "Mês", key: "mes" },
+            { header: "Iniciados", key: "iniciados" },
+            { header: "Concluídos", key: "concluidos" },
+            { header: "Certificados", key: "certificados" }
+          ],
+          data: monthlyData
+        })
+      }
+      
+      toast({
+        title: "Exportação concluída",
+        description: `Relatório exportado em formato ${format.toUpperCase()}.`
+      })
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Não foi possível exportar o relatório.",
+        variant: "destructive"
+      })
     }
-
-    const blob = new Blob([content], { type: format === 'excel' ? 'text/csv;charset=utf-8;' : 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `relatorio-${type}-${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'csv' : 'txt'}`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   const LoadingSkeleton = () => (

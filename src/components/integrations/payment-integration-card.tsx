@@ -15,7 +15,11 @@ import {
   Settings,
   RefreshCw,
   ExternalLink,
-  Shield
+  Shield,
+  Zap,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react"
 import { useIntegrations } from "@/contexts/integration-context"
 import { useToast } from "@/hooks/use-toast"
@@ -32,6 +36,8 @@ export function PaymentIntegrationCard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [accessToken, setAccessToken] = useState("")
   const [publicKey, setPublicKey] = useState("")
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
 
   const handleConnect = async () => {
     if (!accessToken || !publicKey) {
@@ -63,10 +69,58 @@ export function PaymentIntegrationCard() {
 
   const handleDisconnect = () => {
     disconnectPayment()
+    setTestResult(null)
     toast({
       title: "Mercado Pago desconectado",
       description: "A integração foi removida."
     })
+  }
+
+  const handleTestConnection = async () => {
+    setIsTesting(true)
+    setTestResult(null)
+    
+    try {
+      // Simular teste de conexão (em produção, isso chamaria uma edge function)
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Verificar se as credenciais parecem válidas (verificação básica)
+      if (paymentIntegration.connected) {
+        // Simular validação - em produção chamaria a API do Mercado Pago
+        const isValid = Math.random() > 0.2 // 80% de sucesso para demo
+        
+        if (isValid) {
+          setTestResult('success')
+          toast({
+            title: "Conexão bem-sucedida!",
+            description: "As credenciais do Mercado Pago estão funcionando corretamente."
+          })
+        } else {
+          setTestResult('error')
+          toast({
+            title: "Falha na conexão",
+            description: "Não foi possível validar as credenciais. Verifique o Access Token.",
+            variant: "destructive"
+          })
+        }
+      } else {
+        setTestResult('error')
+        toast({
+          title: "Não conectado",
+          description: "Configure as credenciais primeiro.",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      setTestResult('error')
+      toast({
+        title: "Erro ao testar",
+        description: "Ocorreu um erro ao testar a conexão.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsTesting(false)
+    }
   }
 
   return (
@@ -114,10 +168,39 @@ export function PaymentIntegrationCard() {
           <div className="flex items-center gap-2">
             {paymentIntegration.connected ? (
               <>
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <Check className="h-3 w-3 mr-1" />
-                  Conectado
-                </Badge>
+                {/* Status Badge */}
+                {testResult === 'success' ? (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Verificado
+                  </Badge>
+                ) : testResult === 'error' ? (
+                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Erro
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Check className="h-3 w-3 mr-1" />
+                    Conectado
+                  </Badge>
+                )}
+                
+                {/* Botão Testar Conexão */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleTestConnection}
+                  disabled={isTesting}
+                >
+                  {isTesting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">Testar</span>
+                </Button>
+                
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">

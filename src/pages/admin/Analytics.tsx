@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { 
   BarChart3, 
   TrendingUp, 
@@ -22,12 +23,16 @@ import {
   CheckCircle,
   AlertCircle,
   Download,
-  Building2
+  Building2,
+  FileText,
+  FileSpreadsheet
 } from "lucide-react"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { exportData } from "@/lib/export-utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface AnalyticsData {
   totalUsuarios: number
@@ -61,7 +66,8 @@ export default function Analytics() {
   const [selectedPeriod, setSelectedPeriod] = useState("30d")
   const { formatDate } = useBrazilianDate()
   const { user } = useAuth()
-  const { empresaSelecionada, isMaster: isMasterFilter } = useEmpresaFilter()
+  const { empresaSelecionada, isMaster: isMasterFilter, empresaSelecionadaNome } = useEmpresaFilter()
+  const { toast } = useToast()
   
   const [isLoading, setIsLoading] = useState(true)
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
@@ -279,25 +285,45 @@ export default function Analytics() {
     fetchAnalytics()
   }, [selectedPeriod, empresaSelecionada, isMasterFilter])
 
-  const exportAnalytics = () => {
-    const csvContent = [
-      ["Métrica", "Valor"],
-      ["Total Usuários", analyticsData.totalUsuarios],
-      ["Usuários Ativos", analyticsData.usuariosAtivos],
-      ["Novos Cadastros", analyticsData.novosCadastros],
-      ["Total Treinamentos", analyticsData.totalTreinamentos],
-      ["Taxa de Conclusão", `${analyticsData.taxaConclusao}%`],
-      ["Horas de Estudo", analyticsData.horasEstudo],
-      ["Certificados Emitidos", analyticsData.certificadosEmitidos]
-    ].map(row => row.join(",")).join("\n")
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `analytics-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  const exportAnalytics = (format: 'excel' | 'pdf') => {
+    const periodLabel = selectedPeriod === "7d" ? "Últimos 7 dias" : 
+                        selectedPeriod === "30d" ? "Últimos 30 dias" : 
+                        selectedPeriod === "90d" ? "Últimos 90 dias" : "Último ano"
+    
+    const subtitle = `Período: ${periodLabel}${isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" ? ` | Empresa: ${empresaSelecionadaNome}` : ''}`
+    
+    try {
+      exportData(format, {
+        filename: `analytics-${new Date().toISOString().split('T')[0]}`,
+        title: "Relatório de Analytics",
+        subtitle,
+        columns: [
+          { header: "Métrica", key: "metrica" },
+          { header: "Valor", key: "valor" }
+        ],
+        data: [
+          { metrica: "Total Usuários", valor: analyticsData.totalUsuarios },
+          { metrica: "Usuários Ativos", valor: analyticsData.usuariosAtivos },
+          { metrica: "Novos Cadastros", valor: analyticsData.novosCadastros },
+          { metrica: "Total Treinamentos", valor: analyticsData.totalTreinamentos },
+          { metrica: "Treinamentos Ativos", valor: analyticsData.treinamentosAtivos },
+          { metrica: "Taxa de Conclusão", valor: `${analyticsData.taxaConclusao}%` },
+          { metrica: "Horas de Estudo", valor: `${analyticsData.horasEstudo}h` },
+          { metrica: "Certificados Emitidos", valor: analyticsData.certificadosEmitidos }
+        ]
+      })
+      
+      toast({
+        title: "Exportação concluída",
+        description: `Analytics exportado em formato ${format.toUpperCase()}.`
+      })
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Não foi possível exportar o relatório.",
+        variant: "destructive"
+      })
+    }
   }
 
   const LoadingSkeleton = () => (
@@ -342,10 +368,24 @@ export default function Analytics() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" onClick={exportAnalytics} disabled={isLoading}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={isLoading}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportAnalytics('excel')}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportAnalytics('pdf')}>
+                <FileText className="mr-2 h-4 w-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
-import { ReactNode } from "react"
+import { ReactNode, useEffect } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { Header } from "@/components/layout/header"
+import { useCompanyTheme } from "@/hooks/use-company-theme"
 
 interface MainLayoutProps {
   children: ReactNode
@@ -9,6 +10,9 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, onLogout }: MainLayoutProps) {
+  // Hook para aplicar tema da empresa quando Master filtra
+  const { theme } = useCompanyTheme();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
