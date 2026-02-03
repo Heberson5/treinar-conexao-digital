@@ -428,7 +428,7 @@ export default function Usuarios() {
       }
 
       // Atualizar perfil com dados adicionais
-      const diasTroca = diasParaTrocarSenha ? parseInt(diasParaTrocarSenha) : null
+      const diasTroca = diasParaTrocarSenha && diasParaTrocarSenha !== "none" ? parseInt(diasParaTrocarSenha) : null
       const dataProximaTroca = diasTroca
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
@@ -511,7 +511,7 @@ export default function Usuarios() {
     setIsSaving(true)
 
     try {
-      const diasTroca = diasParaTrocarSenha ? parseInt(diasParaTrocarSenha) : null
+      const diasTroca = diasParaTrocarSenha && diasParaTrocarSenha !== "none" ? parseInt(diasParaTrocarSenha) : null
       const dataProximaTroca = diasTroca
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
@@ -944,11 +944,13 @@ export default function Usuarios() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departamentosFiltrados.map((dep) => (
-                      <SelectItem key={dep.id} value={dep.id}>
-                        {dep.nome}
-                      </SelectItem>
-                    ))}
+                    {departamentosFiltrados
+                      .filter((dep) => dep.id && dep.id.trim() !== "")
+                      .map((dep) => (
+                        <SelectItem key={dep.id} value={dep.id}>
+                          {dep.nome}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -960,11 +962,13 @@ export default function Usuarios() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cargosFiltrados.map((cargo) => (
-                      <SelectItem key={cargo.id} value={cargo.nome}>
-                        {cargo.nome}
-                      </SelectItem>
-                    ))}
+                    {cargosFiltrados
+                      .filter((cargo) => cargo.id && cargo.id.trim() !== "" && cargo.nome && cargo.nome.trim() !== "")
+                      .map((cargo) => (
+                        <SelectItem key={cargo.id} value={cargo.nome}>
+                          {cargo.nome}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1012,7 +1016,7 @@ export default function Usuarios() {
                     <SelectValue placeholder="Não exigir" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Não exigir</SelectItem>
+                    <SelectItem value="none">Não exigir</SelectItem>
                     <SelectItem value="30">30 dias</SelectItem>
                     <SelectItem value="60">60 dias</SelectItem>
                     <SelectItem value="90">90 dias</SelectItem>
@@ -1123,11 +1127,13 @@ export default function Usuarios() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departamentosFiltrados.map((dep) => (
-                      <SelectItem key={dep.id} value={dep.id}>
-                        {dep.nome}
-                      </SelectItem>
-                    ))}
+                    {departamentosFiltrados
+                      .filter((dep) => dep.id && dep.id.trim() !== "")
+                      .map((dep) => (
+                        <SelectItem key={dep.id} value={dep.id}>
+                          {dep.nome}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1139,11 +1145,13 @@ export default function Usuarios() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cargosFiltrados.map((cargo) => (
-                      <SelectItem key={cargo.id} value={cargo.nome}>
-                        {cargo.nome}
-                      </SelectItem>
-                    ))}
+                    {cargosFiltrados
+                      .filter((cargo) => cargo.id && cargo.id.trim() !== "" && cargo.nome && cargo.nome.trim() !== "")
+                      .map((cargo) => (
+                        <SelectItem key={cargo.id} value={cargo.nome}>
+                          {cargo.nome}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1191,7 +1199,7 @@ export default function Usuarios() {
                     <SelectValue placeholder="Não exigir" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Não exigir</SelectItem>
+                    <SelectItem value="none">Não exigir</SelectItem>
                     <SelectItem value="30">30 dias</SelectItem>
                     <SelectItem value="60">60 dias</SelectItem>
                     <SelectItem value="90">90 dias</SelectItem>
