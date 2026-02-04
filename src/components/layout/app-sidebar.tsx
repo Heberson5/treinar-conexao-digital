@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -27,10 +26,12 @@ import {
   Zap,
   Sparkles,
   Palette,
+  DollarSign,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
 
+// Menu principal - visível para todos usuários autenticados
 const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Meus Treinamentos", url: "/meus-treinamentos", icon: GraduationCap },
@@ -39,34 +40,40 @@ const mainMenuItems = [
   { title: "Calendário", url: "/calendario", icon: Calendar },
 ]
 
-const adminMenuItems = [
-  { title: "Dashboard Executivo", url: "/admin/executivo", icon: Sparkles },
-  { title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: BookOpen },
-  { title: "Usuários", url: "/admin/usuarios", icon: Users },
-  { title: "Cargos", url: "/admin/cargos", icon: Briefcase },
-  { title: "Departamentos", url: "/admin/departamentos", icon: Building2 },
-  { title: "Empresas", url: "/admin/empresas", icon: Building2 },
-  { title: "Planos", url: "/admin/planos", icon: CreditCard },
-  { title: "Integrações", url: "/admin/integracoes", icon: Zap },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
-  { title: "Permissões", url: "/admin/permissoes", icon: Shield },
-  { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
-]
+// Menu administrativo - com controle de permissão por item
+const getAdminMenuItems = (role: string) => {
+  const items = [
+    { title: "Dashboard Executivo", url: "/admin/executivo", icon: Sparkles, roles: ["master", "admin"] },
+    { title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: BookOpen, roles: ["master", "admin", "instrutor"] },
+    { title: "Usuários", url: "/admin/usuarios", icon: Users, roles: ["master", "admin"] },
+    { title: "Cargos", url: "/admin/cargos", icon: Briefcase, roles: ["master", "admin"] },
+    { title: "Departamentos", url: "/admin/departamentos", icon: Building2, roles: ["master", "admin"] },
+    { title: "Empresas", url: "/admin/empresas", icon: Building2, roles: ["master"] },
+    { title: "Planos", url: "/admin/planos", icon: CreditCard, roles: ["master"] },
+    { title: "Integrações", url: "/admin/integracoes", icon: Zap, roles: ["master", "admin"] },
+    { title: "Analytics", url: "/admin/analytics", icon: BarChart3, roles: ["master", "admin"] },
+    { title: "Permissões", url: "/admin/permissoes", icon: Shield, roles: ["master"] },
+    { title: "Configurações", url: "/admin/configuracoes", icon: Settings, roles: ["master"] },
+  ]
+
+  return items.filter(item => item.roles.includes(role))
+}
 
 // Itens exclusivos para Master
 const masterMenuItems = [
   { title: "Editor Landing Page", url: "/admin/landing-page", icon: Palette },
+  { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
 ]
 
 export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
-  const currentPath = location.pathname
-  const { canAccessAdmin, user } = useAuth()
-  const isMaster = user?.role === 'master'
+  const { user } = useAuth()
+  const userRole = user?.role || 'usuario'
+  const isMaster = userRole === 'master'
+  const isAdminOrHigher = ['master', 'admin', 'instrutor'].includes(userRole)
   
-  const isMainExpanded = mainMenuItems.some((item) => currentPath === item.url)
-  const isAdminExpanded = adminMenuItems.some((item) => currentPath === item.url)
+  const adminMenuItems = getAdminMenuItems(userRole)
 
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"
@@ -110,24 +117,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Menu Administrativo */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Administração</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavClass}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {open && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Menu Administrativo - apenas para admin, instrutor e master */}
+        {isAdminOrHigher && adminMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end className={getNavClass}>
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Menu Master (apenas para usuários Master) */}
         {isMaster && (

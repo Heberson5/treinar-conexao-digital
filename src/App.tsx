@@ -38,6 +38,7 @@ import Configuracoes from "./pages/admin/Configuracoes";
 import Integracoes from "./pages/admin/Integracoes";
 import DashboardExecutivo from "./pages/admin/DashboardExecutivo";
 import LandingPageEditor from "./pages/admin/LandingPageEditor";
+import Financeiro from "./pages/admin/Financeiro";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ function AppContent() {
         <Route path="/admin/integracoes" element={<Integracoes />} />
         <Route path="/admin/executivo" element={<DashboardExecutivo />} />
         <Route path="/admin/landing-page" element={<LandingPageEditor />} />
+        <Route path="/admin/financeiro" element={<Financeiro />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
