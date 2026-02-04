@@ -42,8 +42,25 @@ import Financeiro from "./pages/admin/Financeiro";
 
 const queryClient = new QueryClient();
 
+// Loading screen component
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
+
+  // CRITICAL: Show loading screen while checking authentication
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -61,6 +78,7 @@ function AppContent() {
     <MainLayout onLogout={logout}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
         <Route path="/catalogo" element={<Catalogo />} />

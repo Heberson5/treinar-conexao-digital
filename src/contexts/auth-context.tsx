@@ -78,36 +78,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Configurar listener de autenticação PRIMEIRO
+    let isMounted = true;
+
+    // Configurar listener de autenticação PRIMEIRO (para mudanças ONGOING)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+        
         setSession(session);
         
         if (session?.user) {
           // Usar setTimeout para evitar deadlock
           setTimeout(() => {
-            fetchUserData(session.user);
+            if (isMounted) {
+              fetchUserData(session.user);
+            }
           }, 0);
         } else {
           setUser(null);
         }
-        
-        setIsLoading(false);
       }
     );
 
-    // DEPOIS verificar sessão existente
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      
-      if (session?.user) {
-        fetchUserData(session.user);
+    // INITIAL load - controla isLoading
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        setSession(session);
+        
+        if (session?.user) {
+          // Aguardar fetchUserData antes de definir isLoading = false
+          await fetchUserData(session.user);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-      
-      setIsLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
