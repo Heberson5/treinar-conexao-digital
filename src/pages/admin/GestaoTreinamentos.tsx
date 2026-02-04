@@ -6,6 +6,16 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { 
   Plus, 
   Search, 
@@ -19,7 +29,8 @@ import {
   Sparkles,
   Globe,
   Building2,
-  FileText
+  FileText,
+  Copy,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { TrainingViewer } from "@/components/training/training-viewer"
@@ -61,6 +72,8 @@ export default function GestaoTreinamentos() {
   const [isLoading, setIsLoading] = useState(true)
   const [viewingTraining, setViewingTraining] = useState<any>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [duplicateTraining, setDuplicateTraining] = useState<TrainingDB | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
 
   // Buscar treinamentos do Supabase
   useEffect(() => {
@@ -119,6 +132,49 @@ export default function GestaoTreinamentos() {
         title: "Treinamento excluído",
         description: "O treinamento foi removido com sucesso."
       })
+    }
+  }
+
+  const handleDuplicate = async () => {
+    if (!duplicateTraining) return
+
+    setIsDuplicating(true)
+    try {
+      const { data, error } = await supabase
+        .from("treinamentos")
+        .insert({
+          titulo: `${duplicateTraining.titulo} (Cópia)`,
+          descricao: duplicateTraining.descricao,
+          categoria: duplicateTraining.categoria,
+          nivel: duplicateTraining.nivel,
+          duracao_minutos: duplicateTraining.duracao_minutos,
+          obrigatorio: false,
+          publicado: false, // Sempre como rascunho
+          empresa_id: duplicateTraining.empresa_id || user?.empresa_id || null,
+          departamento_id: duplicateTraining.departamento_id,
+          thumbnail_url: duplicateTraining.thumbnail_url,
+          conteudo_html: duplicateTraining.conteudo_html,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setTrainings(prev => [data, ...prev])
+      toast({
+        title: "Treinamento duplicado",
+        description: "O treinamento foi duplicado como rascunho."
+      })
+    } catch (error) {
+      console.error("Erro ao duplicar:", error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível duplicar o treinamento.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDuplicating(false)
+      setDuplicateTraining(null)
     }
   }
 
@@ -438,6 +494,14 @@ export default function GestaoTreinamentos() {
                   <Button
                     variant="outline" 
                     size="sm"
+                    onClick={() => setDuplicateTraining(training)}
+                    title="Duplicar treinamento"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline" 
+                    size="sm"
                     onClick={() => navigate(`/admin/treinamentos/editar/${training.id}`)}
                   >
                     <Edit3 className="h-4 w-4" />
@@ -463,6 +527,25 @@ export default function GestaoTreinamentos() {
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
       />
+
+      {/* Confirm Duplicate Dialog */}
+      <AlertDialog open={!!duplicateTraining} onOpenChange={(open) => !open && setDuplicateTraining(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicar Treinamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja duplicar o treinamento "{duplicateTraining?.titulo}"?
+              A cópia será criada como rascunho.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDuplicating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicate} disabled={isDuplicating}>
+              {isDuplicating ? "Duplicando..." : "Duplicar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

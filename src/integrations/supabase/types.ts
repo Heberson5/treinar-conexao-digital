@@ -241,8 +241,10 @@ export type Database = {
         Row: {
           ativo: boolean | null
           atualizado_em: string | null
+          bloqueada: boolean | null
           cnpj: string | null
           criado_em: string | null
+          data_bloqueio: string | null
           data_contratacao: string | null
           demo_created_at: string | null
           demo_expires_at: string | null
@@ -251,6 +253,7 @@ export type Database = {
           id: string
           is_demo: boolean | null
           logo_url: string | null
+          motivo_bloqueio: string | null
           nome: string
           nome_fantasia: string | null
           plano_id: string | null
@@ -262,8 +265,10 @@ export type Database = {
         Insert: {
           ativo?: boolean | null
           atualizado_em?: string | null
+          bloqueada?: boolean | null
           cnpj?: string | null
           criado_em?: string | null
+          data_bloqueio?: string | null
           data_contratacao?: string | null
           demo_created_at?: string | null
           demo_expires_at?: string | null
@@ -272,6 +277,7 @@ export type Database = {
           id?: string
           is_demo?: boolean | null
           logo_url?: string | null
+          motivo_bloqueio?: string | null
           nome: string
           nome_fantasia?: string | null
           plano_id?: string | null
@@ -283,8 +289,10 @@ export type Database = {
         Update: {
           ativo?: boolean | null
           atualizado_em?: string | null
+          bloqueada?: boolean | null
           cnpj?: string | null
           criado_em?: string | null
+          data_bloqueio?: string | null
           data_contratacao?: string | null
           demo_created_at?: string | null
           demo_expires_at?: string | null
@@ -293,6 +301,7 @@ export type Database = {
           id?: string
           is_demo?: boolean | null
           logo_url?: string | null
+          motivo_bloqueio?: string | null
           nome?: string
           nome_fantasia?: string | null
           plano_id?: string | null
@@ -374,6 +383,66 @@ export type Database = {
           termos_de_uso?: string | null
         }
         Relationships: []
+      }
+      pagamentos: {
+        Row: {
+          atualizado_em: string | null
+          contrato_id: string | null
+          criado_em: string | null
+          data_pagamento: string | null
+          data_vencimento: string
+          empresa_id: string
+          id: string
+          metodo_pagamento: string | null
+          observacoes: string | null
+          referencia: string | null
+          status: string
+          valor: number
+        }
+        Insert: {
+          atualizado_em?: string | null
+          contrato_id?: string | null
+          criado_em?: string | null
+          data_pagamento?: string | null
+          data_vencimento: string
+          empresa_id: string
+          id?: string
+          metodo_pagamento?: string | null
+          observacoes?: string | null
+          referencia?: string | null
+          status?: string
+          valor: number
+        }
+        Update: {
+          atualizado_em?: string | null
+          contrato_id?: string | null
+          criado_em?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string
+          empresa_id?: string
+          id?: string
+          metodo_pagamento?: string | null
+          observacoes?: string | null
+          referencia?: string | null
+          status?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "plano_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       perfis: {
         Row: {
