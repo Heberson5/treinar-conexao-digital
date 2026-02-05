@@ -377,7 +377,7 @@ export default function Index() {
                         )}
                       </ul>
                       
-                      <Link to="/login" className="mt-6">
+                      <Link to={`/checkout?plano=${plano.id}&annual=${pagamentoAnual}`} className="mt-6">
                         <Button 
                           className={`w-full ${plano.popular ? '' : ''}`}
                           variant={plano.popular ? "default" : "outline"}

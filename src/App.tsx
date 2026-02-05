@@ -26,6 +26,7 @@ import Cargos from "./pages/admin/Cargos";
 import Departamentos from "./pages/admin/Departamentos";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import Checkout from "./pages/Checkout";
 import TermosDeUso from "./pages/TermosDeUso";
 import SobreNos from "./pages/SobreNos";
 import Relatorios from "./pages/Relatorios";
@@ -66,6 +67,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<LoginForm />} />
+        <Route path="/checkout" element={<Checkout />} />
         <Route path="/termos-de-uso" element={<TermosDeUso />} />
         <Route path="/sobre-nos" element={<SobreNos />} />
         <Route path="/gestao/treinamentos/novo" element={<NewTrainingPage />} />
