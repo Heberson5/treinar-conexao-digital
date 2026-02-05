@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { useIntegrations } from "@/contexts/integration-context"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/integrations/supabase/client"
 
 export function PaymentIntegrationCard() {
   const { 
@@ -81,37 +82,38 @@ export function PaymentIntegrationCard() {
     setTestResult(null)
     
     try {
-      // Simular teste de conexão (em produção, isso chamaria uma edge function)
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Verificar se as credenciais parecem válidas (verificação básica)
-      if (paymentIntegration.connected) {
-        // Simular validação - em produção chamaria a API do Mercado Pago
-        const isValid = Math.random() > 0.2 // 80% de sucesso para demo
-        
-        if (isValid) {
-          setTestResult('success')
-          toast({
-            title: "Conexão bem-sucedida!",
-            description: "As credenciais do Mercado Pago estão funcionando corretamente."
-          })
-        } else {
-          setTestResult('error')
-          toast({
-            title: "Falha na conexão",
-            description: "Não foi possível validar as credenciais. Verifique o Access Token.",
-            variant: "destructive"
-          })
-        }
+      // Call the edge function to test connection with Mercado Pago
+      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
+        body: { action: 'test-connection', data: {} }
+      })
+
+      if (error) {
+        console.error('Test connection error:', error)
+        setTestResult('error')
+        toast({
+          title: "Erro ao testar",
+          description: error.message || "Não foi possível conectar ao servidor.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (data?.success) {
+        setTestResult('success')
+        toast({
+          title: "Conexão bem-sucedida!",
+          description: "As credenciais do Mercado Pago estão funcionando corretamente."
+        })
       } else {
         setTestResult('error')
         toast({
-          title: "Não conectado",
-          description: "Configure as credenciais primeiro.",
+          title: "Falha na conexão",
+          description: data?.error || "Não foi possível validar as credenciais.",
           variant: "destructive"
         })
       }
     } catch (error) {
+      console.error('Test connection error:', error)
       setTestResult('error')
       toast({
         title: "Erro ao testar",
