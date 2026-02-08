@@ -67,6 +67,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<LoginForm />} />
+        <Route path="/auth" element={<LoginForm />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/termos-de-uso" element={<TermosDeUso />} />
         <Route path="/sobre-nos" element={<SobreNos />} />
@@ -81,6 +82,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
         <Route path="/catalogo" element={<Catalogo />} />
