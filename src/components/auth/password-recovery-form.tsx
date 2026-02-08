@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/integrations/supabase/client"
 import { Mail, ArrowLeft, Check } from "lucide-react"
 
 interface PasswordRecoveryFormProps {
@@ -40,15 +41,33 @@ export function PasswordRecoveryForm({ onBack }: PasswordRecoveryFormProps) {
 
     setIsLoading(true)
     
-    // Simular envio de email
-    setTimeout(() => {
-      setIsLoading(false)
-      setEmailSent(true)
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha"
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`
       })
-    }, 2000)
+      
+      if (error) {
+        toast({
+          title: "Erro ao enviar email",
+          description: error.message,
+          variant: "destructive"
+        })
+      } else {
+        setEmailSent(true)
+        toast({
+          title: "Email enviado!",
+          description: "Verifique sua caixa de entrada para redefinir sua senha"
+        })
+      }
+    } catch {
+      toast({
+        title: "Erro inesperado",
+        description: "Tente novamente mais tarde",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (emailSent) {

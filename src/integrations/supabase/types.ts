@@ -837,6 +837,10 @@ export type Database = {
         Returns: string
       }
       eh_admin_ou_master: { Args: { usuario_id: string }; Returns: boolean }
+      get_empresa_id_do_usuario: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       registrar_cnpj_demo: {
         Args: { p_cnpj: string; p_empresa_id: string }
         Returns: undefined
