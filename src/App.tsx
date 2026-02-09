@@ -56,12 +56,19 @@ function LoadingScreen() {
 }
 
 function AppContent() {
-  const { isAuthenticated, isLoading, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const userRole = user?.role || 'usuario';
+  const isAdminOrHigher = ['master', 'admin', 'instrutor'].includes(userRole);
+  const isMaster = userRole === 'master';
+  const isAdminOrMaster = ['master', 'admin'].includes(userRole);
 
   // CRITICAL: Show loading screen while checking authentication
   if (isLoading) {
     return <LoadingScreen />;
   }
+
+  // Default redirect based on role
+  const defaultRoute = isAdminOrHigher ? "/dashboard" : "/meus-treinamentos";
 
   if (!isAuthenticated) {
     return (
@@ -80,31 +87,40 @@ function AppContent() {
   return (
     <MainLayout onLogout={logout}>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/login" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/auth" element={<Navigate to={defaultRoute} replace />} />
+        
+        {/* Rotas acessíveis por todos */}
         <Route path="/meus-treinamentos" element={<MeusTreinamentos />} />
         <Route path="/catalogo" element={<Catalogo />} />
         <Route path="/treinamento/:id" element={<TrainingPage />} />
         <Route path="/executar-treinamento/:id" element={<ExecutarTreinamento />} />
-        <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/calendario" element={<Calendario />} />
-        <Route path="/admin/treinamentos" element={<GestaoTreinamentos />} />
-        <Route path="/admin/treinamentos/novo" element={<NovoTreinamentoModerno />} />
-        <Route path="/admin/treinamentos/editar/:id" element={<EditarTreinamentoModerno />} />
-        <Route path="/admin/usuarios" element={<Usuarios />} />
-        <Route path="/admin/cargos" element={<Cargos />} />
-        <Route path="/admin/departamentos" element={<Departamentos />} />
-        <Route path="/admin/empresas" element={<EmpresasSupabase />} />
-        <Route path="/admin/planos" element={<Planos />} />
-        <Route path="/admin/analytics" element={<Analytics />} />
-        <Route path="/admin/permissoes" element={<Permissoes />} />
-        <Route path="/admin/configuracoes" element={<Configuracoes />} />
-        <Route path="/admin/integracoes" element={<Integracoes />} />
-        <Route path="/admin/executivo" element={<DashboardExecutivo />} />
-        <Route path="/admin/landing-page" element={<LandingPageEditor />} />
-        <Route path="/admin/financeiro" element={<Financeiro />} />
+
+        {/* Rotas para admin/instrutor/master */}
+        <Route path="/dashboard" element={isAdminOrHigher ? <Dashboard /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/relatorios" element={isAdminOrHigher ? <Relatorios /> : <Navigate to="/meus-treinamentos" replace />} />
+
+        {/* Rotas administrativas */}
+        <Route path="/admin/treinamentos" element={isAdminOrHigher ? <GestaoTreinamentos /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/treinamentos/novo" element={isAdminOrHigher ? <NovoTreinamentoModerno /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/treinamentos/editar/:id" element={isAdminOrHigher ? <EditarTreinamentoModerno /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/usuarios" element={isAdminOrMaster ? <Usuarios /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/cargos" element={isAdminOrMaster ? <Cargos /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/departamentos" element={isAdminOrMaster ? <Departamentos /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/integracoes" element={isAdminOrMaster ? <Integracoes /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/analytics" element={isAdminOrMaster ? <Analytics /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/executivo" element={isAdminOrMaster ? <DashboardExecutivo /> : <Navigate to="/meus-treinamentos" replace />} />
+
+        {/* Rotas exclusivas Master */}
+        <Route path="/admin/empresas" element={isMaster ? <EmpresasSupabase /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/planos" element={isMaster ? <Planos /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/permissoes" element={isMaster ? <Permissoes /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/configuracoes" element={isMaster ? <Configuracoes /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/landing-page" element={isMaster ? <LandingPageEditor /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/financeiro" element={isMaster ? <Financeiro /> : <Navigate to="/meus-treinamentos" replace />} />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>

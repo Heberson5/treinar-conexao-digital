@@ -31,14 +31,17 @@ import {
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
 
-// Menu principal - visível para todos usuários autenticados
-const mainMenuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Meus Treinamentos", url: "/meus-treinamentos", icon: GraduationCap },
-  { title: "Catálogo", url: "/catalogo", icon: BookOpen },
-  { title: "Relatórios", url: "/relatorios", icon: FileText },
-  { title: "Calendário", url: "/calendario", icon: Calendar },
-]
+// Menu principal - filtrado por role
+const getMainMenuItems = (role: string) => {
+  const items = [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["master", "admin", "instrutor"] },
+    { title: "Meus Treinamentos", url: "/meus-treinamentos", icon: GraduationCap, roles: ["master", "admin", "instrutor", "usuario"] },
+    { title: "Catálogo", url: "/catalogo", icon: BookOpen, roles: ["master", "admin", "instrutor", "usuario"] },
+    { title: "Relatórios", url: "/relatorios", icon: FileText, roles: ["master", "admin", "instrutor"] },
+    { title: "Calendário", url: "/calendario", icon: Calendar, roles: ["master", "admin", "instrutor", "usuario"] },
+  ]
+  return items.filter(item => item.roles.includes(role))
+}
 
 // Menu administrativo - com controle de permissão por item
 const getAdminMenuItems = (role: string) => {
@@ -73,6 +76,7 @@ export function AppSidebar() {
   const isMaster = userRole === 'master'
   const isAdminOrHigher = ['master', 'admin', 'instrutor'].includes(userRole)
   
+  const mainMenuItems = getMainMenuItems(userRole)
   const adminMenuItems = getAdminMenuItems(userRole)
 
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
