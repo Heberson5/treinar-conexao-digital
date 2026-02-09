@@ -1,31 +1,31 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Save,
   Eye,
   Palette,
-  Type,
-  LayoutGrid,
-  TrendingUp,
-  Building2,
   ArrowLeft,
   Loader2,
   FileText,
-  Info
+  Info,
+  Layers,
+  PanelLeft,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/integrations/supabase/client"
 import { MarkdownEditor } from "@/components/landing/markdown-editor"
+import {
+  VisualSectionEditor,
+  SectionPropertyEditor,
+  type LandingSection,
+} from "@/components/landing/visual-section-editor"
+import { LandingPreview } from "@/components/landing/landing-preview"
 
 interface LandingPageConfig {
   id: string
@@ -49,34 +49,81 @@ interface LandingPageConfig {
   sobre_nos: string | null
 }
 
-const defaultConfig: Omit<LandingPageConfig, 'id'> = {
-  hero_title: 'A Plataforma de Treinamentos do Futuro',
-  hero_subtitle: 'Capacite sua equipe com treinamentos interativos, gamificados e com certificação.',
-  hero_badge: '🚀 Transforme sua equipe hoje mesmo',
-  hero_cta_primary: 'Comece Agora Grátis',
-  hero_cta_secondary: 'Ver Demonstração',
-  hero_background_color: 'from-primary via-primary-glow to-primary-darker',
-  stats_section: [
-    { value: "50,000+", label: "Funcionários Treinados", icon: "Users", color: "text-blue-600" },
-    { value: "1,500+", label: "Empresas Atendidas", icon: "Building", color: "text-green-600" },
-    { value: "300+", label: "Cursos Disponíveis", icon: "BookOpen", color: "text-purple-600" },
-    { value: "98%", label: "Taxa de Satisfação", icon: "Star", color: "text-yellow-600" }
-  ],
-  features_section: [
-    { title: "Plataforma Segura", description: "Seus dados protegidos com criptografia de ponta", icon: "Shield", color: "bg-blue-100 text-blue-600" },
-    { title: "Aprendizado Rápido", description: "Metodologia otimizada para máxima retenção", icon: "Zap", color: "bg-yellow-100 text-yellow-600" },
-    { title: "Certificado", description: "Certificados reconhecidos pelo mercado", icon: "Award", color: "bg-green-100 text-green-600" }
-  ],
-  cta_title: 'Pronto para transformar sua equipe?',
-  cta_subtitle: 'Junte-se a milhares de empresas que já revolucionaram seus treinamentos conosco',
-  company_name: 'Sauberlich System',
-  company_description: 'A plataforma mais avançada para treinamentos corporativos.',
-  logo_url: null,
-  show_annual_toggle: false,
-  featured_trainings_enabled: true,
-  custom_css: null,
-  termos_de_uso: null,
-  sobre_nos: null
+function configToSections(config: LandingPageConfig): LandingSection[] {
+  return [
+    {
+      id: "hero",
+      type: "hero",
+      visible: true,
+      data: {
+        badge: config.hero_badge,
+        title: config.hero_title,
+        subtitle: config.hero_subtitle,
+        ctaPrimary: config.hero_cta_primary,
+        bgColor: config.hero_background_color,
+      },
+    },
+    {
+      id: "stats",
+      type: "stats",
+      visible: true,
+      data: { items: config.stats_section },
+    },
+    {
+      id: "features",
+      type: "features",
+      visible: true,
+      data: { title: "Por que escolher nossa plataforma?", items: config.features_section },
+    },
+    {
+      id: "pricing",
+      type: "pricing",
+      visible: true,
+      data: { showAnnualToggle: config.show_annual_toggle },
+    },
+    {
+      id: "trainings",
+      type: "trainings",
+      visible: config.featured_trainings_enabled,
+      data: {},
+    },
+    {
+      id: "cta",
+      type: "cta",
+      visible: true,
+      data: {
+        title: config.cta_title,
+        subtitle: config.cta_subtitle,
+        buttonText: "Começar Gratuitamente",
+      },
+    },
+  ]
+}
+
+function sectionsToConfig(
+  sections: LandingSection[],
+  existing: LandingPageConfig
+): Partial<LandingPageConfig> {
+  const hero = sections.find((s) => s.type === "hero")
+  const stats = sections.find((s) => s.type === "stats")
+  const features = sections.find((s) => s.type === "features")
+  const cta = sections.find((s) => s.type === "cta")
+  const trainings = sections.find((s) => s.type === "trainings")
+  const pricing = sections.find((s) => s.type === "pricing")
+
+  return {
+    hero_badge: hero?.data.badge ?? existing.hero_badge,
+    hero_title: hero?.data.title ?? existing.hero_title,
+    hero_subtitle: hero?.data.subtitle ?? existing.hero_subtitle,
+    hero_cta_primary: hero?.data.ctaPrimary ?? existing.hero_cta_primary,
+    hero_background_color: hero?.data.bgColor ?? existing.hero_background_color,
+    stats_section: stats?.data.items ?? existing.stats_section,
+    features_section: features?.data.items ?? existing.features_section,
+    cta_title: cta?.data.title ?? existing.cta_title,
+    cta_subtitle: cta?.data.subtitle ?? existing.cta_subtitle,
+    featured_trainings_enabled: trainings?.visible ?? existing.featured_trainings_enabled,
+    show_annual_toggle: pricing?.data.showAnnualToggle ?? existing.show_annual_toggle,
+  }
 }
 
 export default function LandingPageEditor() {
@@ -86,20 +133,17 @@ export default function LandingPageEditor() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [config, setConfig] = useState<LandingPageConfig | null>(null)
+  const [sections, setSections] = useState<LandingSection[]>([])
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("visual")
 
-  // Verificar se é master
   useEffect(() => {
-    if (user && user.role !== 'master') {
-      navigate('/admin')
-      toast({
-        title: "Acesso negado",
-        description: "Apenas usuários Master podem acessar esta página.",
-        variant: "destructive"
-      })
+    if (user && user.role !== "master") {
+      navigate("/admin")
+      toast({ title: "Acesso negado", description: "Apenas usuários Master.", variant: "destructive" })
     }
   }, [user, navigate, toast])
 
-  // Carregar configuração
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -110,116 +154,69 @@ export default function LandingPageEditor() {
           .maybeSingle()
 
         if (error) {
-          console.error("Erro ao carregar configuração:", error)
-          toast({
-            title: "Erro",
-            description: "Não foi possível carregar as configurações.",
-            variant: "destructive"
-          })
+          console.error("Erro ao carregar:", error)
+          toast({ title: "Erro", description: "Não foi possível carregar.", variant: "destructive" })
         } else if (data) {
-          setConfig(data as LandingPageConfig)
-        } else {
-          // Criar configuração padrão se não existir
-          const { data: newData, error: insertError } = await supabase
-            .from("landing_page_config")
-            .insert(defaultConfig)
-            .select()
-            .single()
-
-          if (insertError) {
-            console.error("Erro ao criar configuração:", insertError)
-          } else if (newData) {
-            setConfig(newData as LandingPageConfig)
-          }
+          const c = data as LandingPageConfig
+          setConfig(c)
+          setSections(configToSections(c))
         }
       } finally {
         setIsLoading(false)
       }
     }
-
     loadConfig()
   }, [toast])
 
   const handleSave = async () => {
     if (!config) return
-
     setIsSaving(true)
     try {
-      const { error } = await supabase
-        .from("landing_page_config")
-        .update({
-          hero_title: config.hero_title,
-          hero_subtitle: config.hero_subtitle,
-          hero_badge: config.hero_badge,
-          hero_cta_primary: config.hero_cta_primary,
-          hero_cta_secondary: config.hero_cta_secondary,
-          hero_background_color: config.hero_background_color,
-          stats_section: config.stats_section,
-          features_section: config.features_section,
-          cta_title: config.cta_title,
-          cta_subtitle: config.cta_subtitle,
-          company_name: config.company_name,
-          company_description: config.company_description,
-          logo_url: config.logo_url,
-          show_annual_toggle: config.show_annual_toggle,
-          featured_trainings_enabled: config.featured_trainings_enabled,
-          custom_css: config.custom_css,
-          termos_de_uso: config.termos_de_uso,
-          sobre_nos: config.sobre_nos
-        })
-        .eq("id", config.id)
-
-      if (error) {
-        throw error
+      const updates = {
+        ...sectionsToConfig(sections, config),
+        company_name: config.company_name,
+        company_description: config.company_description,
+        logo_url: config.logo_url,
+        custom_css: config.custom_css,
+        termos_de_uso: config.termos_de_uso,
+        sobre_nos: config.sobre_nos,
       }
 
-      toast({
-        title: "Configurações salvas",
-        description: "As alterações foram salvas com sucesso."
-      })
+      const { error } = await supabase
+        .from("landing_page_config")
+        .update(updates)
+        .eq("id", config.id)
+
+      if (error) throw error
+
+      // Update local config with saved values
+      setConfig((prev) => (prev ? { ...prev, ...updates } : null))
+
+      toast({ title: "Salvo!", description: "Alterações salvas com sucesso." })
     } catch (error) {
       console.error("Erro ao salvar:", error)
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar as configurações.",
-        variant: "destructive"
-      })
+      toast({ title: "Erro", description: "Não foi possível salvar.", variant: "destructive" })
     } finally {
       setIsSaving(false)
     }
   }
 
-  const updateConfig = (key: keyof LandingPageConfig, value: any) => {
-    setConfig(prev => prev ? { ...prev, [key]: value } : null)
-  }
+  const updateSectionData = useCallback(
+    (sectionId: string, data: Record<string, any>) => {
+      setSections((prev) =>
+        prev.map((s) => (s.id === sectionId ? { ...s, data } : s))
+      )
+    },
+    []
+  )
 
-  const updateStat = (index: number, field: string, value: string) => {
-    if (!config) return
-    const newStats = [...config.stats_section]
-    newStats[index] = { ...newStats[index], [field]: value }
-    updateConfig('stats_section', newStats)
-  }
-
-  const updateFeature = (index: number, field: string, value: string) => {
-    if (!config) return
-    const newFeatures = [...config.features_section]
-    newFeatures[index] = { ...newFeatures[index], [field]: value }
-    updateConfig('features_section', newFeatures)
-  }
+  const selectedSection = sections.find((s) => s.id === selectedSectionId)
 
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10 rounded-lg" />
-          <div>
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-48 mt-2" />
-          </div>
-        </div>
-        <div className="grid gap-6">
-          <Skeleton className="h-96 w-full" />
-        </div>
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-[600px] w-full" />
       </div>
     )
   }
@@ -233,352 +230,192 @@ export default function LandingPageEditor() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Palette className="h-8 w-8 text-primary" />
-              Editor da Landing Page
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Palette className="h-6 w-6 text-primary" />
+              Editor Visual da Landing Page
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Personalize a página inicial do seu site
+            <p className="text-sm text-muted-foreground">
+              Arraste, reordene e edite as seções visualmente
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => window.open('/', '_blank')}>
-            <Eye className="mr-2 h-4 w-4" />
-            Visualizar
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.open("/", "_blank")}>
+            <Eye className="mr-1.5 h-4 w-4" />
+            Preview
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            Salvar Alterações
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+            Salvar
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="hero" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="hero">
-            <Type className="h-4 w-4 mr-2" />
-            Hero
-          </TabsTrigger>
-          <TabsTrigger value="stats">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Estatísticas
-          </TabsTrigger>
-          <TabsTrigger value="features">
-            <LayoutGrid className="h-4 w-4 mr-2" />
-            Recursos
-          </TabsTrigger>
-          <TabsTrigger value="brand">
-            <Building2 className="h-4 w-4 mr-2" />
-            Marca
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="visual">
+            <Layers className="h-4 w-4 mr-1.5" />
+            Editor Visual
           </TabsTrigger>
           <TabsTrigger value="terms">
-            <FileText className="h-4 w-4 mr-2" />
-            Termos
+            <FileText className="h-4 w-4 mr-1.5" />
+            Termos de Uso
           </TabsTrigger>
           <TabsTrigger value="about">
-            <Info className="h-4 w-4 mr-2" />
-            Sobre
+            <Info className="h-4 w-4 mr-1.5" />
+            Sobre Nós
           </TabsTrigger>
-          <TabsTrigger value="advanced">
-            <Palette className="h-4 w-4 mr-2" />
-            Avançado
+          <TabsTrigger value="brand">
+            <PanelLeft className="h-4 w-4 mr-1.5" />
+            Marca & CSS
           </TabsTrigger>
         </TabsList>
 
-        {/* Hero Section */}
-        <TabsContent value="hero" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Seção Hero</CardTitle>
-              <CardDescription>
-                A primeira impressão do seu site - personalize o cabeçalho principal
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hero_badge">Badge / Destaque</Label>
-                  <Input
-                    id="hero_badge"
-                    value={config.hero_badge}
-                    onChange={(e) => updateConfig('hero_badge', e.target.value)}
-                    placeholder="🚀 Transforme sua equipe hoje mesmo"
-                  />
-                </div>
+        {/* Visual Editor */}
+        <TabsContent value="visual" className="mt-4">
+          <div className="grid grid-cols-12 gap-4" style={{ minHeight: "70vh" }}>
+            {/* Left Panel - Section List */}
+            <div className="col-span-3">
+              <Card className="sticky top-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Seções</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[55vh]">
+                    <VisualSectionEditor
+                      sections={sections}
+                      onSectionsChange={setSections}
+                      selectedSectionId={selectedSectionId}
+                      onSelectSection={setSelectedSectionId}
+                    />
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="hero_title">Título Principal</Label>
-                  <Textarea
-                    id="hero_title"
-                    value={config.hero_title}
-                    onChange={(e) => updateConfig('hero_title', e.target.value)}
-                    placeholder="A Plataforma de Treinamentos do Futuro"
-                    rows={2}
+            {/* Center - Live Preview */}
+            <div className="col-span-6">
+              <div className="sticky top-4">
+                <ScrollArea className="h-[75vh] rounded-xl border">
+                  <LandingPreview
+                    sections={sections}
+                    selectedSectionId={selectedSectionId}
+                    onSelectSection={setSelectedSectionId}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="hero_subtitle">Subtítulo</Label>
-                  <Textarea
-                    id="hero_subtitle"
-                    value={config.hero_subtitle}
-                    onChange={(e) => updateConfig('hero_subtitle', e.target.value)}
-                    placeholder="Capacite sua equipe com treinamentos interativos..."
-                    rows={3}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label htmlFor="hero_cta_primary">Botão Principal</Label>
-                  <Input
-                    id="hero_cta_primary"
-                    value={config.hero_cta_primary}
-                    onChange={(e) => updateConfig('hero_cta_primary', e.target.value)}
-                    placeholder="Comece Agora Grátis"
-                  />
-                </div>
+                </ScrollArea>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Right Panel - Property Editor */}
+            <div className="col-span-3">
+              <Card className="sticky top-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Propriedades</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[55vh]">
+                    {selectedSection ? (
+                      <SectionPropertyEditor
+                        section={selectedSection}
+                        onUpdate={(data) => updateSectionData(selectedSection.id, data)}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Selecione uma seção para editar suas propriedades
+                      </p>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
-        {/* Stats Section */}
-        <TabsContent value="stats" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estatísticas</CardTitle>
-              <CardDescription>
-                Números que impressionam seus visitantes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {config.stats_section.map((stat, index) => (
-                <div key={index} className="grid grid-cols-3 gap-4 p-4 border rounded-lg">
-                  <div className="space-y-2">
-                    <Label>Valor</Label>
-                    <Input
-                      value={stat.value}
-                      onChange={(e) => updateStat(index, 'value', e.target.value)}
-                      placeholder="50,000+"
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Descrição</Label>
-                    <Input
-                      value={stat.label}
-                      onChange={(e) => updateStat(index, 'label', e.target.value)}
-                      placeholder="Funcionários Treinados"
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Features Section */}
-        <TabsContent value="features" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recursos em Destaque</CardTitle>
-              <CardDescription>
-                Os principais benefícios da sua plataforma
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {config.features_section.map((feature, index) => (
-                <div key={index} className="grid gap-4 p-4 border rounded-lg">
-                  <div className="space-y-2">
-                    <Label>Título</Label>
-                    <Input
-                      value={feature.title}
-                      onChange={(e) => updateFeature(index, 'title', e.target.value)}
-                      placeholder="Plataforma Segura"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Descrição</Label>
-                    <Textarea
-                      value={feature.description}
-                      onChange={(e) => updateFeature(index, 'description', e.target.value)}
-                      placeholder="Seus dados protegidos com criptografia de ponta"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Brand Section */}
-        <TabsContent value="brand" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Identidade da Marca</CardTitle>
-              <CardDescription>
-                Configure o nome e descrição da sua empresa
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Nome da Empresa</Label>
-                <Input
-                  id="company_name"
-                  value={config.company_name}
-                  onChange={(e) => updateConfig('company_name', e.target.value)}
-                  placeholder="Sauberlich System"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company_description">Descrição da Empresa</Label>
-                <Textarea
-                  id="company_description"
-                  value={config.company_description}
-                  onChange={(e) => updateConfig('company_description', e.target.value)}
-                  placeholder="A plataforma mais avançada para treinamentos corporativos."
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo_url">URL do Logo</Label>
-                <Input
-                  id="logo_url"
-                  value={config.logo_url || ''}
-                  onChange={(e) => updateConfig('logo_url', e.target.value)}
-                  placeholder="https://exemplo.com/logo.png"
-                />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="cta_title">Título do CTA Final</Label>
-                <Input
-                  id="cta_title"
-                  value={config.cta_title}
-                  onChange={(e) => updateConfig('cta_title', e.target.value)}
-                  placeholder="Pronto para transformar sua equipe?"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cta_subtitle">Subtítulo do CTA</Label>
-                <Textarea
-                  id="cta_subtitle"
-                  value={config.cta_subtitle}
-                  onChange={(e) => updateConfig('cta_subtitle', e.target.value)}
-                  placeholder="Junte-se a milhares de empresas..."
-                  rows={2}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Toggle de Planos Anuais</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Exibir opção de pagamento anual na seção de preços
-                    </p>
-                  </div>
-                  <Switch
-                    checked={config.show_annual_toggle}
-                    onCheckedChange={(checked) => updateConfig('show_annual_toggle', checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Treinamentos em Destaque</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Exibir seção de treinamentos populares
-                    </p>
-                  </div>
-                  <Switch
-                    checked={config.featured_trainings_enabled}
-                    onCheckedChange={(checked) => updateConfig('featured_trainings_enabled', checked)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Terms of Use Section */}
-        <TabsContent value="terms" className="space-y-6 mt-6">
+        {/* Terms */}
+        <TabsContent value="terms" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle>Termos de Uso</CardTitle>
-              <CardDescription>
-                Edite os termos de uso que serão exibidos em /termos-de-uso. 
-                Use formatação Markdown para estruturar o conteúdo.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <MarkdownEditor
-                value={config.termos_de_uso || ''}
-                onChange={(value) => updateConfig('termos_de_uso', value)}
-                placeholder="# Termos de Uso\n\n## 1. Aceitação dos Termos\n..."
+                value={config.termos_de_uso || ""}
+                onChange={(value) => setConfig((prev) => (prev ? { ...prev, termos_de_uso: value } : null))}
+                placeholder="# Termos de Uso..."
                 minHeight="500px"
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* About Us Section */}
-        <TabsContent value="about" className="space-y-6 mt-6">
+        {/* About */}
+        <TabsContent value="about" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle>Sobre Nós</CardTitle>
-              <CardDescription>
-                Edite a página "Sobre Nós" que será exibida em /sobre-nos.
-                Use formatação Markdown para estruturar o conteúdo.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <MarkdownEditor
-                value={config.sobre_nos || ''}
-                onChange={(value) => updateConfig('sobre_nos', value)}
-                placeholder="# Sobre Nós\n\n## Nossa Missão\n..."
+                value={config.sobre_nos || ""}
+                onChange={(value) => setConfig((prev) => (prev ? { ...prev, sobre_nos: value } : null))}
+                placeholder="# Sobre Nós..."
                 minHeight="500px"
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Advanced Section */}
-        <TabsContent value="advanced" className="space-y-6 mt-6">
+        {/* Brand & CSS */}
+        <TabsContent value="brand" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Identidade da Marca</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nome da Empresa</label>
+                <input
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={config.company_name}
+                  onChange={(e) => setConfig((prev) => (prev ? { ...prev, company_name: e.target.value } : null))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Descrição</label>
+                <textarea
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={config.company_description}
+                  onChange={(e) => setConfig((prev) => (prev ? { ...prev, company_description: e.target.value } : null))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL do Logo</label>
+                <input
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={config.logo_url || ""}
+                  onChange={(e) => setConfig((prev) => (prev ? { ...prev, logo_url: e.target.value } : null))}
+                />
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>CSS Personalizado</CardTitle>
-              <CardDescription>
-                Adicione estilos CSS customizados (avançado)
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Textarea
-                value={config.custom_css || ''}
-                onChange={(e) => updateConfig('custom_css', e.target.value)}
-                placeholder="/* Seus estilos CSS personalizados aqui */"
-                rows={12}
-                className="font-mono text-sm"
+              <textarea
+                className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                value={config.custom_css || ""}
+                onChange={(e) => setConfig((prev) => (prev ? { ...prev, custom_css: e.target.value } : null))}
+                placeholder="/* CSS personalizado */"
               />
             </CardContent>
           </Card>

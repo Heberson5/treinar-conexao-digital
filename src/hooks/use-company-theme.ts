@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context";
 import { supabase } from "@/integrations/supabase/client";
-import { COLOR_PALETTES } from "@/components/empresa/color-palette-selector";
+import { COLOR_PALETTES, ColorPalette } from "@/components/empresa/color-palette-selector";
 
 interface CompanyTheme {
   primary: string;
@@ -16,7 +16,6 @@ export function useCompanyTheme() {
 
   useEffect(() => {
     const applyTheme = async () => {
-      // Se não é master ou não tem empresa selecionada, usar tema padrão
       if (!isMaster || !empresaSelecionada || empresaSelecionada === "todas") {
         resetToDefaultTheme();
         return;
@@ -24,7 +23,6 @@ export function useCompanyTheme() {
 
       setIsLoading(true);
       try {
-        // Buscar tema da empresa selecionada
         const { data: empresa } = await supabase
           .from("empresas")
           .select("tema_cor")
@@ -44,7 +42,6 @@ export function useCompanyTheme() {
           }
         }
 
-        // Se não tem tema ou não encontrou, volta ao padrão
         resetToDefaultTheme();
       } catch (error) {
         console.error("Erro ao aplicar tema da empresa:", error);
@@ -57,23 +54,62 @@ export function useCompanyTheme() {
     applyTheme();
   }, [empresaSelecionada, isMaster]);
 
-  const applyPaletteToCSS = (palette: typeof COLOR_PALETTES[0]) => {
+  const applyPaletteToCSS = (palette: ColorPalette) => {
     const root = document.documentElement;
+    
+    // Core colors
     root.style.setProperty("--primary", palette.primary);
     root.style.setProperty("--primary-foreground", palette.primaryForeground);
+    root.style.setProperty("--primary-light", palette.primaryLight);
+    root.style.setProperty("--primary-dark", palette.primaryDark);
+    
+    // Accent
     root.style.setProperty("--accent", palette.accent);
-    root.style.setProperty("--ring", palette.primary);
-    root.style.setProperty("--accent-foreground", palette.primary);
+    root.style.setProperty("--accent-foreground", palette.accentForeground);
+    
+    // Ring
+    root.style.setProperty("--ring", palette.ring);
+    
+    // Sidebar
+    root.style.setProperty("--sidebar-primary", palette.sidebarPrimary);
+    root.style.setProperty("--sidebar-primary-foreground", palette.primaryForeground);
+    root.style.setProperty("--sidebar-accent", palette.sidebarAccent);
+    root.style.setProperty("--sidebar-ring", palette.ring);
+    
+    // Dynamic gradients
+    root.style.setProperty("--gradient-primary", 
+      `linear-gradient(135deg, hsl(${palette.primary}), hsl(${palette.primaryLight}))`);
+    root.style.setProperty("--gradient-hero", 
+      `linear-gradient(135deg, hsl(${palette.primary}) 0%, hsl(${palette.primaryLight}) 50%, hsl(${palette.primaryDark}) 100%)`);
+    
+    // Shadows
+    root.style.setProperty("--shadow-elegant", 
+      `0 10px 25px -5px hsl(${palette.primary} / 0.1), 0 4px 6px -2px hsl(${palette.primary} / 0.05)`);
   };
 
   const resetToDefaultTheme = () => {
     const root = document.documentElement;
-    // Resetar para o tema padrão roxo
-    root.style.setProperty("--primary", "262 83% 58%");
-    root.style.setProperty("--primary-foreground", "0 0% 100%");
-    root.style.setProperty("--accent", "262 83% 95%");
-    root.style.setProperty("--ring", "262 83% 58%");
-    root.style.setProperty("--accent-foreground", "262 83% 58%");
+    const defaultPalette = COLOR_PALETTES.find(p => p.id === "purple")!;
+    
+    // Reset all themed properties
+    root.style.setProperty("--primary", defaultPalette.primary);
+    root.style.setProperty("--primary-foreground", defaultPalette.primaryForeground);
+    root.style.setProperty("--primary-light", defaultPalette.primaryLight);
+    root.style.setProperty("--primary-dark", defaultPalette.primaryDark);
+    root.style.setProperty("--accent", defaultPalette.accent);
+    root.style.setProperty("--accent-foreground", defaultPalette.accentForeground);
+    root.style.setProperty("--ring", defaultPalette.ring);
+    root.style.setProperty("--sidebar-primary", "240 5.9% 10%");
+    root.style.setProperty("--sidebar-primary-foreground", "0 0% 98%");
+    root.style.setProperty("--sidebar-accent", "240 4.8% 95.9%");
+    root.style.setProperty("--sidebar-ring", "217.2 91.2% 59.8%");
+    root.style.setProperty("--gradient-primary", 
+      `linear-gradient(135deg, hsl(${defaultPalette.primary}), hsl(${defaultPalette.primaryLight}))`);
+    root.style.setProperty("--gradient-hero", 
+      `linear-gradient(135deg, hsl(${defaultPalette.primary}) 0%, hsl(${defaultPalette.primaryLight}) 50%, hsl(${defaultPalette.primaryDark}) 100%)`);
+    root.style.setProperty("--shadow-elegant", 
+      `0 10px 25px -5px hsl(${defaultPalette.primary} / 0.1), 0 4px 6px -2px hsl(${defaultPalette.primary} / 0.05)`);
+    
     setTheme(null);
   };
 
