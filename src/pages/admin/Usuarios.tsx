@@ -1235,6 +1235,49 @@ export default function Usuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation */}
+      <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário "{deletingUser?.nome}"? 
+              O perfil será desativado permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deletingUser) return;
+                const { error } = await supabase
+                  .from("perfis")
+                  .update({ ativo: false })
+                  .eq("id", deletingUser.id);
+                
+                if (error) {
+                  toast({
+                    title: "Erro",
+                    description: "Não foi possível excluir o usuário.",
+                    variant: "destructive",
+                  });
+                } else {
+                  setUsuarios(prev => prev.filter(u => u.id !== deletingUser.id));
+                  toast({
+                    title: "Usuário excluído",
+                    description: "O usuário foi removido com sucesso.",
+                  });
+                }
+                setDeletingUser(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
