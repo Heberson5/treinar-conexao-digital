@@ -1863,6 +1863,13 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
       {/* Botão de conclusão */}
       <Card className="sticky bottom-4">
         <CardContent className="p-4">
+          {/* Quiz Section */}
+          {id && (
+            <div className="mb-6">
+              <QuizViewer treinamentoId={id} notaMinima={7} />
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
               {canComplete ? (
