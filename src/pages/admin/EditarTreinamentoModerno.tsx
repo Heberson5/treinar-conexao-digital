@@ -10,6 +10,8 @@ import {
 } from "@/components/training/modern-training-editor";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuizEditor } from "@/components/training/quiz-editor";
 
 interface TrainingDB {
   id: string;
