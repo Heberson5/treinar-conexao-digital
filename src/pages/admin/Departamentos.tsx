@@ -306,14 +306,16 @@ export default function Departamentos() {
                   >
                     <Edit3 className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(departamento.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {isMaster && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDelete(departamento.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

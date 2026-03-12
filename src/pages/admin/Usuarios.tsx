@@ -851,6 +851,18 @@ export default function Usuarios() {
                           <PlayCircle className="h-4 w-4" />
                         )}
                       </Button>
+
+                      {isMaster && (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => setDeletingUser(usuario)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Excluir usuário"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )

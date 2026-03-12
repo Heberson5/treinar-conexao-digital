@@ -114,26 +114,18 @@ export function useCompanyTheme() {
 
   const resetToDefaultTheme = () => {
     const root = document.documentElement;
-    const defaultPalette = COLOR_PALETTES.find(p => p.id === "purple")!;
     
-    // Reset all themed properties
-    root.style.setProperty("--primary", defaultPalette.primary);
-    root.style.setProperty("--primary-foreground", defaultPalette.primaryForeground);
-    root.style.setProperty("--primary-light", defaultPalette.primaryLight);
-    root.style.setProperty("--primary-dark", defaultPalette.primaryDark);
-    root.style.setProperty("--accent", defaultPalette.accent);
-    root.style.setProperty("--accent-foreground", defaultPalette.accentForeground);
-    root.style.setProperty("--ring", defaultPalette.ring);
-    root.style.setProperty("--sidebar-primary", "240 5.9% 10%");
-    root.style.setProperty("--sidebar-primary-foreground", "0 0% 98%");
-    root.style.setProperty("--sidebar-accent", "240 4.8% 95.9%");
-    root.style.setProperty("--sidebar-ring", "217.2 91.2% 59.8%");
-    root.style.setProperty("--gradient-primary", 
-      `linear-gradient(135deg, hsl(${defaultPalette.primary}), hsl(${defaultPalette.primaryLight}))`);
-    root.style.setProperty("--gradient-hero", 
-      `linear-gradient(135deg, hsl(${defaultPalette.primary}) 0%, hsl(${defaultPalette.primaryLight}) 50%, hsl(${defaultPalette.primaryDark}) 100%)`);
-    root.style.setProperty("--shadow-elegant", 
-      `0 10px 25px -5px hsl(${defaultPalette.primary} / 0.1), 0 4px 6px -2px hsl(${defaultPalette.primary} / 0.05)`);
+    // Remove all inline styles to revert to CSS defaults
+    const props = [
+      "--primary", "--primary-foreground", "--primary-light", "--primary-dark",
+      "--background", "--card", "--popover", "--secondary", "--secondary-foreground",
+      "--muted", "--muted-foreground", "--accent", "--accent-foreground",
+      "--border", "--input", "--ring",
+      "--sidebar-primary", "--sidebar-primary-foreground", "--sidebar-accent",
+      "--sidebar-ring", "--sidebar-background", "--sidebar-border",
+      "--gradient-primary", "--gradient-hero", "--shadow-elegant", "--shadow-card"
+    ];
+    props.forEach(prop => root.style.removeProperty(prop));
     
     setTheme(null);
   };
