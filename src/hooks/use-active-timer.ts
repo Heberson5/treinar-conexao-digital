@@ -18,7 +18,7 @@ export function useActiveTimer({
   const [isActive, setIsActive] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(!document.hidden);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const targetDurationSeconds = targetDuration * 60;
 
   // Check if page is visible/focused
