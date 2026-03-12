@@ -14,6 +14,7 @@ import {
   Users
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 
 interface Departamento {
   id: number
@@ -37,6 +38,7 @@ export default function Departamentos() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingDepartamento, setEditingDepartamento] = useState<Departamento | null>(null)
   const { toast } = useToast()
+  const { isMaster } = useEmpresaFilter()
 
   const [newDepartamento, setNewDepartamento] = useState({
     nome: "",
@@ -306,14 +308,16 @@ export default function Departamentos() {
                   >
                     <Edit3 className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(departamento.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {isMaster && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDelete(departamento.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

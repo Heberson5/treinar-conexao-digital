@@ -10,6 +10,8 @@ import {
 } from "@/components/training/modern-training-editor";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuizEditor } from "@/components/training/quiz-editor";
 
 interface TrainingDB {
   id: string;
@@ -520,12 +522,46 @@ export default function EditarTreinamentoModerno() {
     navigate("/admin/treinamentos");
   };
 
+  const handleQuizSettingsChange = async (settings: { avaliacao_obrigatoria: boolean; nota_minima: number }) => {
+    if (dbTraining) {
+      await supabase.from("treinamentos").update({
+        avaliacao_obrigatoria: settings.avaliacao_obrigatoria,
+        nota_minima: settings.nota_minima
+      }).eq("id", dbTraining.id);
+    }
+  };
+
   return (
-    <ModernTrainingEditor
-      initialData={initialData}
-      onSave={handleSave}
-      onCancel={handleCancel}
-      isEditing
-    />
+    <Tabs defaultValue="conteudo" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
+        <TabsTrigger value="avaliacao">Avaliação</TabsTrigger>
+      </TabsList>
+      <TabsContent value="conteudo">
+        <ModernTrainingEditor
+          initialData={initialData}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          isEditing
+        />
+      </TabsContent>
+      <TabsContent value="avaliacao">
+        {dbTraining ? (
+          <QuizEditor
+            treinamentoId={dbTraining.id}
+            avaliacaoObrigatoria={false}
+            notaMinima={7}
+            onSettingsChange={handleQuizSettingsChange}
+          />
+        ) : id ? (
+          <QuizEditor
+            treinamentoId={id}
+            onSettingsChange={() => {}}
+          />
+        ) : (
+          <p className="text-muted-foreground text-center py-8">Salve o treinamento primeiro para adicionar avaliações.</p>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }

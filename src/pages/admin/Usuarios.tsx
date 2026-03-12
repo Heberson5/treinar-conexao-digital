@@ -17,6 +17,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -183,6 +193,7 @@ export default function Usuarios() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<Usuario | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<Usuario | null>(null)
 
   // Form fields
   const [novoNome, setNovoNome] = useState("")
@@ -851,6 +862,18 @@ export default function Usuarios() {
                           <PlayCircle className="h-4 w-4" />
                         )}
                       </Button>
+
+                      {isMaster && (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => setDeletingUser(usuario)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Excluir usuário"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )
@@ -1222,6 +1245,49 @@ export default function Usuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation */}
+      <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário "{deletingUser?.nome}"? 
+              O perfil será desativado permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deletingUser) return;
+                const { error } = await supabase
+                  .from("perfis")
+                  .update({ ativo: false })
+                  .eq("id", deletingUser.id);
+                
+                if (error) {
+                  toast({
+                    title: "Erro",
+                    description: "Não foi possível excluir o usuário.",
+                    variant: "destructive",
+                  });
+                } else {
+                  setUsuarios(prev => prev.filter(u => u.id !== deletingUser.id));
+                  toast({
+                    title: "Usuário excluído",
+                    description: "O usuário foi removido com sucesso.",
+                  });
+                }
+                setDeletingUser(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

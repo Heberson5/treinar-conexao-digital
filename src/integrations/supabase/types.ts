@@ -689,9 +689,98 @@ export type Database = {
           },
         ]
       }
+      questoes_treinamento: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          id: string
+          opcao_a: string
+          opcao_b: string
+          opcao_c: string | null
+          opcao_d: string | null
+          ordem: number
+          pergunta: string
+          resposta_correta: string
+          treinamento_id: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          id?: string
+          opcao_a: string
+          opcao_b: string
+          opcao_c?: string | null
+          opcao_d?: string | null
+          ordem?: number
+          pergunta: string
+          resposta_correta?: string
+          treinamento_id: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          id?: string
+          opcao_a?: string
+          opcao_b?: string
+          opcao_c?: string | null
+          opcao_d?: string | null
+          ordem?: number
+          pergunta?: string
+          resposta_correta?: string
+          treinamento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questoes_treinamento_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tentativas_avaliacao: {
+        Row: {
+          aprovado: boolean
+          criado_em: string | null
+          id: string
+          nota: number
+          respostas: Json
+          treinamento_id: string
+          usuario_id: string
+        }
+        Insert: {
+          aprovado?: boolean
+          criado_em?: string | null
+          id?: string
+          nota?: number
+          respostas?: Json
+          treinamento_id: string
+          usuario_id: string
+        }
+        Update: {
+          aprovado?: boolean
+          criado_em?: string | null
+          id?: string
+          nota?: number
+          respostas?: Json
+          treinamento_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tentativas_avaliacao_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treinamentos: {
         Row: {
           atualizado_em: string | null
+          avaliacao_obrigatoria: boolean | null
           categoria: string | null
           conteudo_html: string | null
           criado_em: string | null
@@ -704,6 +793,7 @@ export type Database = {
           instrutor_id: string | null
           media_avaliacao: number | null
           nivel: string | null
+          nota_minima: number | null
           obrigatorio: boolean | null
           publicado: boolean | null
           thumbnail_url: string | null
@@ -712,6 +802,7 @@ export type Database = {
         }
         Insert: {
           atualizado_em?: string | null
+          avaliacao_obrigatoria?: boolean | null
           categoria?: string | null
           conteudo_html?: string | null
           criado_em?: string | null
@@ -724,6 +815,7 @@ export type Database = {
           instrutor_id?: string | null
           media_avaliacao?: number | null
           nivel?: string | null
+          nota_minima?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           thumbnail_url?: string | null
@@ -732,6 +824,7 @@ export type Database = {
         }
         Update: {
           atualizado_em?: string | null
+          avaliacao_obrigatoria?: boolean | null
           categoria?: string | null
           conteudo_html?: string | null
           criado_em?: string | null
@@ -744,6 +837,7 @@ export type Database = {
           instrutor_id?: string | null
           media_avaliacao?: number | null
           nivel?: string | null
+          nota_minima?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           thumbnail_url?: string | null

@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { QuizViewer } from "@/components/training/quiz-viewer";
 import {
   Dialog,
   DialogContent,
@@ -1862,6 +1863,13 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
       {/* Botão de conclusão */}
       <Card className="sticky bottom-4">
         <CardContent className="p-4">
+          {/* Quiz Section */}
+          {id && (
+            <div className="mb-6">
+              <QuizViewer treinamentoId={id} notaMinima={7} />
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
               {canComplete ? (
