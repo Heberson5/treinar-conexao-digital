@@ -183,6 +183,7 @@ export default function Usuarios() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<Usuario | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<Usuario | null>(null)
 
   // Form fields
   const [novoNome, setNovoNome] = useState("")
