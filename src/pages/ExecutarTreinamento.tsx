@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { QuizViewer } from "@/components/training/quiz-viewer";
 import {
   Dialog,
   DialogContent,
