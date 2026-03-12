@@ -523,11 +523,11 @@ export default function EditarTreinamentoModerno() {
   };
 
   const handleQuizSettingsChange = async (settings: { avaliacao_obrigatoria: boolean; nota_minima: number }) => {
-    if (supabaseTraining) {
+    if (dbTraining) {
       await supabase.from("treinamentos").update({
         avaliacao_obrigatoria: settings.avaliacao_obrigatoria,
         nota_minima: settings.nota_minima
-      }).eq("id", supabaseTraining.id);
+      }).eq("id", dbTraining.id);
     }
   };
 
@@ -546,9 +546,9 @@ export default function EditarTreinamentoModerno() {
         />
       </TabsContent>
       <TabsContent value="avaliacao">
-        {supabaseTraining ? (
+        {dbTraining ? (
           <QuizEditor
-            treinamentoId={supabaseTraining.id}
+            treinamentoId={dbTraining.id}
             avaliacaoObrigatoria={false}
             notaMinima={7}
             onSettingsChange={handleQuizSettingsChange}
