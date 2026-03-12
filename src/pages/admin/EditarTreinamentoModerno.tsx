@@ -522,12 +522,46 @@ export default function EditarTreinamentoModerno() {
     navigate("/admin/treinamentos");
   };
 
+  const handleQuizSettingsChange = async (settings: { avaliacao_obrigatoria: boolean; nota_minima: number }) => {
+    if (supabaseTraining) {
+      await supabase.from("treinamentos").update({
+        avaliacao_obrigatoria: settings.avaliacao_obrigatoria,
+        nota_minima: settings.nota_minima
+      }).eq("id", supabaseTraining.id);
+    }
+  };
+
   return (
-    <ModernTrainingEditor
-      initialData={initialData}
-      onSave={handleSave}
-      onCancel={handleCancel}
-      isEditing
-    />
+    <Tabs defaultValue="conteudo" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
+        <TabsTrigger value="avaliacao">Avaliação</TabsTrigger>
+      </TabsList>
+      <TabsContent value="conteudo">
+        <ModernTrainingEditor
+          initialData={initialData}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          isEditing
+        />
+      </TabsContent>
+      <TabsContent value="avaliacao">
+        {supabaseTraining ? (
+          <QuizEditor
+            treinamentoId={supabaseTraining.id}
+            avaliacaoObrigatoria={false}
+            notaMinima={7}
+            onSettingsChange={handleQuizSettingsChange}
+          />
+        ) : id ? (
+          <QuizEditor
+            treinamentoId={id}
+            onSettingsChange={() => {}}
+          />
+        ) : (
+          <p className="text-muted-foreground text-center py-8">Salve o treinamento primeiro para adicionar avaliações.</p>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
