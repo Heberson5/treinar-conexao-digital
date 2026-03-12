@@ -14,6 +14,7 @@ import {
   Users
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 
 interface Departamento {
   id: number
