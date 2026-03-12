@@ -37,6 +37,7 @@ export default function Departamentos() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingDepartamento, setEditingDepartamento] = useState<Departamento | null>(null)
   const { toast } = useToast()
+  const { isMaster } = useEmpresaFilter()
 
   const [newDepartamento, setNewDepartamento] = useState({
     nome: "",
