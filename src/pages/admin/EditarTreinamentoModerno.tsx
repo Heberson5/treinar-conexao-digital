@@ -441,14 +441,20 @@ export default function EditarTreinamentoModerno() {
     if (isFromDatabase && dbTraining) {
       // Converter duração para minutos
       let duracaoMinutos = 30;
-      const duracaoMatch = data.duracao.match(/(\d+)h?\s*(\d*)min?/);
-      if (duracaoMatch) {
-        const hours = parseInt(duracaoMatch[1]) || 0;
-        const mins = parseInt(duracaoMatch[2]) || 0;
-        if (data.duracao.includes("h")) {
-          duracaoMinutos = hours * 60 + mins;
-        } else {
-          duracaoMinutos = hours || mins;
+      // Handle 00:00 format
+      const timeMatch = data.duracao.match(/^(\d{1,2}):(\d{2})$/);
+      if (timeMatch) {
+        duracaoMinutos = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+      } else {
+        const duracaoMatch = data.duracao.match(/(\d+)h?\s*(\d*)min?/);
+        if (duracaoMatch) {
+          const hours = parseInt(duracaoMatch[1]) || 0;
+          const mins = parseInt(duracaoMatch[2]) || 0;
+          if (data.duracao.includes("h")) {
+            duracaoMinutos = hours * 60 + mins;
+          } else {
+            duracaoMinutos = hours || mins;
+          }
         }
       }
 
