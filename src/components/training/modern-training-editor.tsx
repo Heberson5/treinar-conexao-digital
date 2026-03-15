@@ -87,6 +87,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+} from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
