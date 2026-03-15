@@ -1580,12 +1580,24 @@ export function ModernTrainingEditor({
 
                 <div className="space-y-2">
                   <Label className="text-xs">Duração estimada</Label>
-                  <Input
-                    value={formData.duracao}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, duracao: e.target.value }))}
-                    placeholder="Ex: 30min, 1h"
-                    className="h-8 text-sm"
-                  />
+                  <div className="relative">
+                    <Clock className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={formData.duracao}
+                      onChange={(e) => {
+                        // Auto-format to 00:00
+                        let val = e.target.value.replace(/[^0-9:]/g, "");
+                        if (val.length === 2 && !val.includes(":") && formData.duracao.length < val.length) {
+                          val = val + ":";
+                        }
+                        if (val.length > 5) val = val.slice(0, 5);
+                        setFormData((prev) => ({ ...prev, duracao: val }));
+                      }}
+                      placeholder="00:00"
+                      maxLength={5}
+                      className="h-8 text-sm pl-7"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
