@@ -229,13 +229,10 @@ function parseTextToSections(texto: string): TrainingSection[] {
 }
 
 function formatDuration(minutes: number | null): string {
-  if (!minutes) return "30min";
+  if (!minutes) return "00:30";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours > 0) {
-    return `${hours}h ${mins}min`;
-  }
-  return `${mins}min`;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
 export default function EditarTreinamentoModerno() {
