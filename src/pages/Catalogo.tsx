@@ -167,11 +167,11 @@ export default function Catalogo() {
     }
   }
 
-  const handleStartTraining = async (trainingId: string) => {
+  const handleSelectTraining = async (trainingId: string) => {
     if (!user) {
       toast({
         title: "Faça login",
-        description: "Você precisa estar logado para iniciar um treinamento.",
+        description: "Você precisa estar logado para selecionar um treinamento.",
         variant: "destructive"
       })
       return
@@ -187,27 +187,38 @@ export default function Catalogo() {
         .eq("usuario_id", user.id)
         .single()
 
-      if (!existingProgress) {
-        // Criar novo progresso
-        const { error } = await supabase
-          .from("progresso_treinamentos")
-          .insert({
-            treinamento_id: trainingId,
-            usuario_id: user.id,
-            percentual_concluido: 0,
-            tempo_assistido_minutos: 0
-          })
-
-        if (error) throw error
+      if (existingProgress) {
+        toast({
+          title: "Treinamento já selecionado",
+          description: "Este treinamento já está em Meus Treinamentos.",
+        })
+        return
       }
 
-      // Navegar para a página de execução do treinamento
-      navigate(`/executar-treinamento/${trainingId}`)
-    } catch (error) {
-      console.error("Erro ao iniciar treinamento:", error)
+      // Criar progresso (selecionar)
+      const { error } = await supabase
+        .from("progresso_treinamentos")
+        .insert({
+          treinamento_id: trainingId,
+          usuario_id: user.id,
+          percentual_concluido: 0,
+          tempo_assistido_minutos: 0
+        })
+
+      if (error) throw error
+
       toast({
-        title: "Erro ao iniciar",
-        description: "Não foi possível iniciar o treinamento. Tente novamente.",
+        title: "Treinamento selecionado!",
+        description: "O treinamento foi adicionado a Meus Treinamentos."
+      })
+      
+      // Remove from catalog list
+      setTrainings(prev => prev.filter(t => t.id !== trainingId))
+    } catch (error) {
+      console.error("Erro ao selecionar treinamento:", error)
+      toast({
+        title: "Erro ao selecionar",
+        description: "Não foi possível selecionar o treinamento. Tente novamente.",
         variant: "destructive"
       })
     } finally {
