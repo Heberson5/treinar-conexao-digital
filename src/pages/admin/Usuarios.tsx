@@ -863,7 +863,7 @@ export default function Usuarios() {
                         )}
                       </Button>
 
-                      {isMaster && (
+                      {isMaster && usuario.id !== user?.id && (
                         <Button
                           size="icon"
                           variant="outline"
