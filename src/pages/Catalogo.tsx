@@ -77,6 +77,20 @@ export default function Catalogo() {
 
         if (error) throw error
 
+        // Buscar progresso do usuário para filtrar já selecionados
+        let selectedIds: string[] = []
+        if (user) {
+          const { data: progressData } = await supabase
+            .from("progresso_treinamentos")
+            .select("treinamento_id")
+            .eq("usuario_id", user.id)
+          
+          selectedIds = (progressData || []).map(p => p.treinamento_id)
+        }
+
+        // Filtrar treinamentos já selecionados
+        const availableTrainings = (treinamentos || []).filter(t => !selectedIds.includes(t.id))
+
         // Buscar instrutores
         const instrutorIds = (treinamentos || []).map(t => t.instrutor_id).filter(Boolean)
         const { data: instrutores } = await supabase
