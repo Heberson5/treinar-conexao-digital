@@ -1490,13 +1490,17 @@ export function ModernTrainingEditor({
             </ScrollArea>
 
             {/* Settings panel */}
+            <Collapsible defaultOpen>
             <div className="border-t p-4 space-y-4">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Configurações
-              </h3>
+              <CollapsibleTrigger className="w-full flex items-center justify-between">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </h3>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
 
-              <div className="space-y-3">
+              <CollapsibleContent className="space-y-3">
                 {/* Seleção de empresa para master */}
                 {user?.role === "master" && (
                   <div className="space-y-2">
