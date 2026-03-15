@@ -1653,6 +1653,7 @@ export function ModernTrainingEditor({
               </CollapsibleContent>
             </div>
             </Collapsible>
+          </div>
         )}
 
         {/* Main editor area */}
