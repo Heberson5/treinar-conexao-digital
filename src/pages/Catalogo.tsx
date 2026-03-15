@@ -466,15 +466,15 @@ export default function Catalogo() {
                 
                 <Button 
                   className="w-full group-hover:bg-primary/90 transition-colors"
-                  onClick={() => handleStartTraining(training.id)}
+                  onClick={() => handleSelectTraining(training.id)}
                   disabled={isStarting === training.id}
                 >
                   {isStarting === training.id ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <PlayCircle className="mr-2 h-4 w-4" />
+                    <BookOpen className="mr-2 h-4 w-4" />
                   )}
-                  Iniciar Treinamento
+                  Selecionar
                 </Button>
               </CardContent>
             </Card>
