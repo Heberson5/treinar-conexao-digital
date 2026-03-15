@@ -1650,9 +1650,9 @@ export function ModernTrainingEditor({
                     className="h-8 text-sm"
                   />
                 </div>
-              </div>
+              </CollapsibleContent>
             </div>
-          </div>
+            </Collapsible>
         )}
 
         {/* Main editor area */}
