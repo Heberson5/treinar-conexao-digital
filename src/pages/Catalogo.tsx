@@ -104,7 +104,7 @@ export default function Catalogo() {
           .select("treinamento_id, nota_avaliacao")
 
         // Processar dados
-        const processedTrainings: TrainingCatalog[] = (treinamentos || []).map(training => {
+        const processedTrainings: TrainingCatalog[] = availableTrainings.map(training => {
           const trainingProgress = (progressoData || []).filter(p => p.treinamento_id === training.id)
           const participantes = trainingProgress.length
           const avgRating = trainingProgress.length > 0
