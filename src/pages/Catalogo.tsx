@@ -77,6 +77,20 @@ export default function Catalogo() {
 
         if (error) throw error
 
+        // Buscar progresso do usuário para filtrar já selecionados
+        let selectedIds: string[] = []
+        if (user) {
+          const { data: progressData } = await supabase
+            .from("progresso_treinamentos")
+            .select("treinamento_id")
+            .eq("usuario_id", user.id)
+          
+          selectedIds = (progressData || []).map(p => p.treinamento_id)
+        }
+
+        // Filtrar treinamentos já selecionados
+        const availableTrainings = (treinamentos || []).filter(t => !selectedIds.includes(t.id))
+
         // Buscar instrutores
         const instrutorIds = (treinamentos || []).map(t => t.instrutor_id).filter(Boolean)
         const { data: instrutores } = await supabase
@@ -90,7 +104,7 @@ export default function Catalogo() {
           .select("treinamento_id, nota_avaliacao")
 
         // Processar dados
-        const processedTrainings: TrainingCatalog[] = (treinamentos || []).map(training => {
+        const processedTrainings: TrainingCatalog[] = availableTrainings.map(training => {
           const trainingProgress = (progressoData || []).filter(p => p.treinamento_id === training.id)
           const participantes = trainingProgress.length
           const avgRating = trainingProgress.length > 0
@@ -167,11 +181,11 @@ export default function Catalogo() {
     }
   }
 
-  const handleStartTraining = async (trainingId: string) => {
+  const handleSelectTraining = async (trainingId: string) => {
     if (!user) {
       toast({
         title: "Faça login",
-        description: "Você precisa estar logado para iniciar um treinamento.",
+        description: "Você precisa estar logado para selecionar um treinamento.",
         variant: "destructive"
       })
       return
@@ -187,27 +201,38 @@ export default function Catalogo() {
         .eq("usuario_id", user.id)
         .single()
 
-      if (!existingProgress) {
-        // Criar novo progresso
-        const { error } = await supabase
-          .from("progresso_treinamentos")
-          .insert({
-            treinamento_id: trainingId,
-            usuario_id: user.id,
-            percentual_concluido: 0,
-            tempo_assistido_minutos: 0
-          })
-
-        if (error) throw error
+      if (existingProgress) {
+        toast({
+          title: "Treinamento já selecionado",
+          description: "Este treinamento já está em Meus Treinamentos.",
+        })
+        return
       }
 
-      // Navegar para a página de execução do treinamento
-      navigate(`/executar-treinamento/${trainingId}`)
-    } catch (error) {
-      console.error("Erro ao iniciar treinamento:", error)
+      // Criar progresso (selecionar)
+      const { error } = await supabase
+        .from("progresso_treinamentos")
+        .insert({
+          treinamento_id: trainingId,
+          usuario_id: user.id,
+          percentual_concluido: 0,
+          tempo_assistido_minutos: 0
+        })
+
+      if (error) throw error
+
       toast({
-        title: "Erro ao iniciar",
-        description: "Não foi possível iniciar o treinamento. Tente novamente.",
+        title: "Treinamento selecionado!",
+        description: "O treinamento foi adicionado a Meus Treinamentos."
+      })
+      
+      // Remove from catalog list
+      setTrainings(prev => prev.filter(t => t.id !== trainingId))
+    } catch (error) {
+      console.error("Erro ao selecionar treinamento:", error)
+      toast({
+        title: "Erro ao selecionar",
+        description: "Não foi possível selecionar o treinamento. Tente novamente.",
         variant: "destructive"
       })
     } finally {
@@ -455,15 +480,15 @@ export default function Catalogo() {
                 
                 <Button 
                   className="w-full group-hover:bg-primary/90 transition-colors"
-                  onClick={() => handleStartTraining(training.id)}
+                  onClick={() => handleSelectTraining(training.id)}
                   disabled={isStarting === training.id}
                 >
                   {isStarting === training.id ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <PlayCircle className="mr-2 h-4 w-4" />
+                    <BookOpen className="mr-2 h-4 w-4" />
                   )}
-                  Iniciar Treinamento
+                  Selecionar
                 </Button>
               </CardContent>
             </Card>

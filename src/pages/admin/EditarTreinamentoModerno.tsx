@@ -229,13 +229,10 @@ function parseTextToSections(texto: string): TrainingSection[] {
 }
 
 function formatDuration(minutes: number | null): string {
-  if (!minutes) return "30min";
+  if (!minutes) return "00:30";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours > 0) {
-    return `${hours}h ${mins}min`;
-  }
-  return `${mins}min`;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
 export default function EditarTreinamentoModerno() {
@@ -444,14 +441,20 @@ export default function EditarTreinamentoModerno() {
     if (isFromDatabase && dbTraining) {
       // Converter duração para minutos
       let duracaoMinutos = 30;
-      const duracaoMatch = data.duracao.match(/(\d+)h?\s*(\d*)min?/);
-      if (duracaoMatch) {
-        const hours = parseInt(duracaoMatch[1]) || 0;
-        const mins = parseInt(duracaoMatch[2]) || 0;
-        if (data.duracao.includes("h")) {
-          duracaoMinutos = hours * 60 + mins;
-        } else {
-          duracaoMinutos = hours || mins;
+      // Handle 00:00 format
+      const timeMatch = data.duracao.match(/^(\d{1,2}):(\d{2})$/);
+      if (timeMatch) {
+        duracaoMinutos = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+      } else {
+        const duracaoMatch = data.duracao.match(/(\d+)h?\s*(\d*)min?/);
+        if (duracaoMatch) {
+          const hours = parseInt(duracaoMatch[1]) || 0;
+          const mins = parseInt(duracaoMatch[2]) || 0;
+          if (data.duracao.includes("h")) {
+            duracaoMinutos = hours * 60 + mins;
+          } else {
+            duracaoMinutos = hours || mins;
+          }
         }
       }
 

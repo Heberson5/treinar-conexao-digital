@@ -388,14 +388,14 @@ export default function Cargos() {
                 <div className="space-y-2">
                   <Label htmlFor="empresa">Empresa</Label>
                   <Select
-                    value={newCargo.empresa_id}
-                    onValueChange={(value) => setNewCargo({...newCargo, empresa_id: value})}
+                    value={newCargo.empresa_id || "global"}
+                    onValueChange={(value) => setNewCargo({...newCargo, empresa_id: value === "global" ? "" : value})}
                   >
                     <SelectTrigger id="empresa">
                       <SelectValue placeholder="Global (todas empresas)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Global (todas empresas)</SelectItem>
+                      <SelectItem value="global">Global (todas empresas)</SelectItem>
                       {empresas.map((empresa) => (
                         <SelectItem key={empresa.id} value={empresa.id}>
                           {empresa.nome_fantasia || empresa.nome}
