@@ -152,6 +152,8 @@ const createEmptyBlock = (type: ContentBlock["type"] = "text"): ContentBlock => 
   level: type === "heading" ? 2 : undefined,
   listItems: type === "list" || type === "numbered-list" ? [""] : undefined,
   checkItems: type === "checklist" ? [{ text: "", checked: false }] : undefined,
+  tableHeaders: type === "table" ? ["Coluna 1", "Coluna 2", "Coluna 3"] : undefined,
+  tableData: type === "table" ? [["", "", ""], ["", "", ""]] : undefined,
   fontSize: "base",
 });
 
