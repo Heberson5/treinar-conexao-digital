@@ -97,7 +97,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Types
 export interface ContentBlock {
   id: string;
-  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist" | "numbered-list";
+  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist" | "numbered-list" | "table";
   content: string;
   level?: 1 | 2 | 3;
   align?: "left" | "center" | "right";
