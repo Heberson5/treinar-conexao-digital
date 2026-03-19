@@ -97,7 +97,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Types
 export interface ContentBlock {
   id: string;
-  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist" | "numbered-list";
+  type: "text" | "heading" | "image" | "video" | "divider" | "quote" | "list" | "checklist" | "numbered-list" | "table";
   content: string;
   level?: 1 | 2 | 3;
   align?: "left" | "center" | "right";
@@ -105,6 +105,8 @@ export interface ContentBlock {
   caption?: string;
   listItems?: string[];
   checkItems?: { text: string; checked: boolean }[];
+  tableData?: string[][];
+  tableHeaders?: string[];
   // Estilos de texto
   fontSize?: "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
   textColor?: string;
@@ -150,6 +152,8 @@ const createEmptyBlock = (type: ContentBlock["type"] = "text"): ContentBlock => 
   level: type === "heading" ? 2 : undefined,
   listItems: type === "list" || type === "numbered-list" ? [""] : undefined,
   checkItems: type === "checklist" ? [{ text: "", checked: false }] : undefined,
+  tableHeaders: type === "table" ? ["Coluna 1", "Coluna 2", "Coluna 3"] : undefined,
+  tableData: type === "table" ? [["", "", ""], ["", "", ""]] : undefined,
   fontSize: "base",
 });
 
@@ -1037,6 +1041,77 @@ export function ModernTrainingEditor({
                   />
                 </div>
               ))}
+            </div>
+          );
+
+        case "table":
+          return (
+            <div className="space-y-2 overflow-x-auto">
+              <table className="w-full border-collapse border border-border rounded-lg">
+                <thead>
+                  <tr>
+                    {(block.tableHeaders || ["Col 1", "Col 2"]).map((header, hi) => (
+                      <th key={hi} className="border border-border p-1">
+                        <Input
+                          value={header}
+                          onChange={(e) => {
+                            const newHeaders = [...(block.tableHeaders || [])];
+                            newHeaders[hi] = e.target.value;
+                            updateBlock(sectionIndex, block.id, { tableHeaders: newHeaders });
+                          }}
+                          className="border-none shadow-none focus-visible:ring-0 bg-transparent font-semibold text-center h-8"
+                          placeholder={`Coluna ${hi + 1}`}
+                        />
+                      </th>
+                    ))}
+                    <th className="w-8 border border-border">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                        const newHeaders = [...(block.tableHeaders || []), `Col ${(block.tableHeaders?.length || 0) + 1}`];
+                        const newData = (block.tableData || []).map(row => [...row, ""]);
+                        updateBlock(sectionIndex, block.id, { tableHeaders: newHeaders, tableData: newData });
+                      }}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(block.tableData || [[]]).map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => (
+                        <td key={ci} className="border border-border p-1">
+                          <Input
+                            value={cell}
+                            onChange={(e) => {
+                              const newData = (block.tableData || []).map(r => [...r]);
+                              newData[ri][ci] = e.target.value;
+                              updateBlock(sectionIndex, block.id, { tableData: newData });
+                            }}
+                            className="border-none shadow-none focus-visible:ring-0 bg-transparent h-8"
+                            placeholder="..."
+                          />
+                        </td>
+                      ))}
+                      <td className="w-8 border border-border">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => {
+                          const newData = (block.tableData || []).filter((_, i) => i !== ri);
+                          if (newData.length === 0) newData.push(Array(block.tableHeaders?.length || 2).fill(""));
+                          updateBlock(sectionIndex, block.id, { tableData: newData });
+                        }}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Button variant="outline" size="sm" onClick={() => {
+                const cols = block.tableHeaders?.length || 2;
+                const newData = [...(block.tableData || []), Array(cols).fill("")];
+                updateBlock(sectionIndex, block.id, { tableData: newData });
+              }}>
+                <Plus className="h-3 w-3 mr-1" /> Linha
+              </Button>
             </div>
           );
 
