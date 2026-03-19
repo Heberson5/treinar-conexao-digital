@@ -698,10 +698,15 @@ export type Database = {
           opcao_b: string
           opcao_c: string | null
           opcao_d: string | null
+          opcoes: Json | null
           ordem: number
+          passo: number | null
           pergunta: string
           resposta_correta: string
+          tipo: string
           treinamento_id: string
+          valor_maximo: number | null
+          valor_minimo: number | null
         }
         Insert: {
           atualizado_em?: string | null
@@ -711,10 +716,15 @@ export type Database = {
           opcao_b: string
           opcao_c?: string | null
           opcao_d?: string | null
+          opcoes?: Json | null
           ordem?: number
+          passo?: number | null
           pergunta: string
           resposta_correta?: string
+          tipo?: string
           treinamento_id: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
         }
         Update: {
           atualizado_em?: string | null
@@ -724,10 +734,15 @@ export type Database = {
           opcao_b?: string
           opcao_c?: string | null
           opcao_d?: string | null
+          opcoes?: Json | null
           ordem?: number
+          passo?: number | null
           pergunta?: string
           resposta_correta?: string
+          tipo?: string
           treinamento_id?: string
+          valor_maximo?: number | null
+          valor_minimo?: number | null
         }
         Relationships: [
           {
@@ -796,6 +811,7 @@ export type Database = {
           nota_minima: number | null
           obrigatorio: boolean | null
           publicado: boolean | null
+          tempo_avaliacao_minutos: number | null
           thumbnail_url: string | null
           titulo: string
           total_avaliacoes: number | null
@@ -818,6 +834,7 @@ export type Database = {
           nota_minima?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
+          tempo_avaliacao_minutos?: number | null
           thumbnail_url?: string | null
           titulo: string
           total_avaliacoes?: number | null
@@ -840,6 +857,7 @@ export type Database = {
           nota_minima?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
+          tempo_avaliacao_minutos?: number | null
           thumbnail_url?: string | null
           titulo?: string
           total_avaliacoes?: number | null
