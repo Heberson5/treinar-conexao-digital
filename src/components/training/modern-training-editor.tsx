@@ -105,6 +105,8 @@ export interface ContentBlock {
   caption?: string;
   listItems?: string[];
   checkItems?: { text: string; checked: boolean }[];
+  tableData?: string[][];
+  tableHeaders?: string[];
   // Estilos de texto
   fontSize?: "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
   textColor?: string;
