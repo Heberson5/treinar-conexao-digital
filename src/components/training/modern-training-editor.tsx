@@ -88,6 +88,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  Table2,
 } from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
