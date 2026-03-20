@@ -1431,6 +1431,10 @@ export function ModernTrainingEditor({
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "checklist", blockIndex)}>
                     <CheckSquare className="h-4 w-4 mr-2" /> Checklist
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addBlock(sectionIndex, "table", blockIndex)}>
+                    <Table2 className="h-4 w-4 mr-2" /> Tabela
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "divider", blockIndex)}>
                     <Minus className="h-4 w-4 mr-2" /> Divisor
                   </DropdownMenuItem>
