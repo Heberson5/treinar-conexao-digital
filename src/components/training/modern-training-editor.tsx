@@ -88,6 +88,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  Table2,
 } from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
@@ -650,6 +651,34 @@ export function ModernTrainingEditor({
           </div>
         ) : null;
       
+      case "table":
+        return (block.tableHeaders && block.tableData) ? (
+          <div key={block.id} className="overflow-x-auto my-4">
+            <table className="w-full border-collapse border border-border rounded-lg text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  {block.tableHeaders.map((header, hi) => (
+                    <th key={hi} className="border border-border px-3 py-2 text-left font-semibold">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.tableData.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "" : "bg-muted/20"}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="border border-border px-3 py-2">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null;
+
       case "divider":
         return <Separator key={block.id} className="my-6" />;
       
@@ -1402,6 +1431,10 @@ export function ModernTrainingEditor({
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "checklist", blockIndex)}>
                     <CheckSquare className="h-4 w-4 mr-2" /> Checklist
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addBlock(sectionIndex, "table", blockIndex)}>
+                    <Table2 className="h-4 w-4 mr-2" /> Tabela
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => addBlock(sectionIndex, "divider", blockIndex)}>
                     <Minus className="h-4 w-4 mr-2" /> Divisor
                   </DropdownMenuItem>

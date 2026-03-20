@@ -2129,6 +2129,49 @@ function renderTextSection(text: string) {
       return;
     }
 
+    // Tabela markdown
+    if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+      flushList();
+      // Coletar todas as linhas da tabela
+      const tableLines: string[] = [trimmedLine];
+      let nextIdx = index + 1;
+      while (nextIdx < lines.length && lines[nextIdx].trim().startsWith('|') && lines[nextIdx].trim().endsWith('|')) {
+        tableLines.push(lines[nextIdx].trim());
+        nextIdx++;
+      }
+      if (tableLines.length >= 2) {
+        const parseRow = (row: string) => row.split('|').filter(Boolean).map(c => c.trim());
+        const headers = parseRow(tableLines[0]);
+        const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row);
+        const dataStart = isSeparator(tableLines[1]) ? 2 : 1;
+        const dataRows = tableLines.slice(dataStart).map(parseRow);
+        
+        elements.push(
+          <div key={`table-${index}`} className="overflow-x-auto my-4">
+            <table className="w-full border-collapse border border-border rounded-lg text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  {headers.map((h, hi) => (
+                    <th key={hi} className="border border-border px-3 py-2 text-left font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataRows.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "" : "bg-muted/20"}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="border border-border px-3 py-2">{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      return;
+    }
+
     // Texto em negrito **texto**
     flushList();
     let processedText = trimmedLine
