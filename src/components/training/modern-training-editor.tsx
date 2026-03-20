@@ -651,6 +651,34 @@ export function ModernTrainingEditor({
           </div>
         ) : null;
       
+      case "table":
+        return (block.tableHeaders && block.tableData) ? (
+          <div key={block.id} className="overflow-x-auto my-4">
+            <table className="w-full border-collapse border border-border rounded-lg text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  {block.tableHeaders.map((header, hi) => (
+                    <th key={hi} className="border border-border px-3 py-2 text-left font-semibold">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.tableData.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "" : "bg-muted/20"}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="border border-border px-3 py-2">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null;
+
       case "divider":
         return <Separator key={block.id} className="my-6" />;
       
