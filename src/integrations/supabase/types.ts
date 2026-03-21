@@ -41,6 +41,48 @@ export type Database = {
         }
         Relationships: []
       }
+      auditoria: {
+        Row: {
+          acao: string
+          criado_em: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          descricao: string
+          id: string
+          ip_address: string | null
+          local: string | null
+          menu: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Insert: {
+          acao: string
+          criado_em?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          descricao: string
+          id?: string
+          ip_address?: string | null
+          local?: string | null
+          menu: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Update: {
+          acao?: string
+          criado_em?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          descricao?: string
+          id?: string
+          ip_address?: string | null
+          local?: string | null
+          menu?: string
+          usuario_id?: string
+          usuario_nome?: string
+        }
+        Relationships: []
+      }
       avaliacoes_treinamentos: {
         Row: {
           atualizado_em: string
@@ -198,6 +240,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      configuracoes_sistema: {
+        Row: {
+          atualizado_em: string | null
+          favicon_url: string | null
+          id: string
+          logo_sidebar_url: string | null
+          nome_sistema: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          favicon_url?: string | null
+          id?: string
+          logo_sidebar_url?: string | null
+          nome_sistema?: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          favicon_url?: string | null
+          id?: string
+          logo_sidebar_url?: string | null
+          nome_sistema?: string
+        }
+        Relationships: []
       }
       departamentos: {
         Row: {
@@ -383,6 +449,53 @@ export type Database = {
           termos_de_uso?: string | null
         }
         Relationships: []
+      }
+      lembretes: {
+        Row: {
+          criado_em: string | null
+          data_lembrete: string
+          descricao: string | null
+          evento_id: string | null
+          id: string
+          notificado: boolean | null
+          tipo: string
+          titulo: string
+          treinamento_id: string | null
+          usuario_id: string
+        }
+        Insert: {
+          criado_em?: string | null
+          data_lembrete: string
+          descricao?: string | null
+          evento_id?: string | null
+          id?: string
+          notificado?: boolean | null
+          tipo?: string
+          titulo: string
+          treinamento_id?: string | null
+          usuario_id: string
+        }
+        Update: {
+          criado_em?: string | null
+          data_lembrete?: string
+          descricao?: string | null
+          evento_id?: string | null
+          id?: string
+          notificado?: boolean | null
+          tipo?: string
+          titulo?: string
+          treinamento_id?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lembretes_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos: {
         Row: {
