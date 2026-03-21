@@ -1,37 +1,18 @@
+import { useState, useEffect } from "react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar"
 import {
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  Building2,
-  Settings,
-  BarChart3,
-  Shield,
-  GraduationCap,
-  FileText,
-  Calendar,
-  Briefcase,
-  CreditCard,
-  Zap,
-  Sparkles,
-  Palette,
-  DollarSign,
+  LayoutDashboard, BookOpen, Users, Building2, Settings, BarChart3,
+  Shield, GraduationCap, FileText, Calendar, Briefcase, CreditCard,
+  Zap, Sparkles, Palette, DollarSign,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/integrations/supabase/client"
 
-// Menu principal - filtrado por role
 const getMainMenuItems = (role: string) => {
   const items = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["master", "admin", "instrutor"] },
@@ -43,7 +24,6 @@ const getMainMenuItems = (role: string) => {
   return items.filter(item => item.roles.includes(role))
 }
 
-// Menu administrativo - com controle de permissão por item
 const getAdminMenuItems = (role: string) => {
   const items = [
     { title: "Dashboard Executivo", url: "/admin/executivo", icon: Sparkles, roles: ["master", "admin"] },
@@ -58,11 +38,9 @@ const getAdminMenuItems = (role: string) => {
     { title: "Permissões", url: "/admin/permissoes", icon: Shield, roles: ["master"] },
     { title: "Configurações", url: "/admin/configuracoes", icon: Settings, roles: ["master"] },
   ]
-
   return items.filter(item => item.roles.includes(role))
 }
 
-// Itens exclusivos para Master
 const masterMenuItems = [
   { title: "Editor Landing Page", url: "/admin/landing-page", icon: Palette },
   { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
@@ -79,35 +57,58 @@ export function AppSidebar() {
   const mainMenuItems = getMainMenuItems(userRole)
   const adminMenuItems = getAdminMenuItems(userRole)
 
+  const [systemName, setSystemName] = useState("Portal")
+  const [systemSubtitle] = useState("Treinamentos")
+  const [sidebarLogo, setSidebarLogo] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadSystemConfig = async () => {
+      const { data } = await supabase
+        .from("configuracoes_sistema" as any)
+        .select("nome_sistema, logo_sidebar_url, favicon_url")
+        .limit(1)
+        .single()
+      
+      if (data) {
+        const d = data as any
+        if (d.nome_sistema) {
+          const parts = d.nome_sistema.split(" ")
+          setSystemName(parts[0] || "Portal")
+        }
+        if (d.logo_sidebar_url) setSidebarLogo(d.logo_sidebar_url)
+        if (d.favicon_url) {
+          const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+          if (link) link.href = d.favicon_url
+        }
+        if (d.nome_sistema) document.title = d.nome_sistema
+      }
+    }
+    loadSystemConfig()
+  }, [])
+
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"
 
   return (
     <Sidebar className={open ? "w-64" : "w-16"} collapsible="icon">
       <SidebarContent className="bg-card border-r">
-        {/* Logo */}
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
-            <img 
-              src={logoImage} 
-              alt="Logo" 
-              className="h-8 w-8 object-contain"
-            />
+            <img src={sidebarLogo || logoImage} alt="Logo" className="h-8 w-8 object-contain" />
             {open && (
               <div>
-                <h2 className="font-bold text-lg">Portal</h2>
-                <p className="text-xs text-muted-foreground">Treinamentos</p>
+                <h2 className="font-bold text-lg">{systemName}</h2>
+                <p className="text-xs text-muted-foreground">{systemSubtitle}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Menu Principal */}
         <SidebarGroup>
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
+              {mainMenuItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavClass}>
@@ -121,13 +122,12 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Menu Administrativo - apenas para admin, instrutor e master */}
         {isAdminOrHigher && adminMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {adminMenuItems.map((item) => (
+                {adminMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} end className={getNavClass}>
@@ -142,13 +142,12 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Menu Master (apenas para usuários Master) */}
         {isMaster && (
           <SidebarGroup>
             <SidebarGroupLabel>Master</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {masterMenuItems.map((item) => (
+                {masterMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} end className={getNavClass}>
