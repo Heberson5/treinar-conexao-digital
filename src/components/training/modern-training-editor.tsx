@@ -272,6 +272,17 @@ export function ModernTrainingEditor({
           setDepartamentos(depData || []);
         }
 
+        // Carregar instrutores (perfis com role instrutor, admin ou master)
+        const { data: instData } = await supabase
+          .from("perfis")
+          .select("id, nome")
+          .eq("ativo", true)
+          .order("nome");
+        
+        if (instData) {
+          setInstrutores(instData);
+        }
+
         // Carregar empresas (apenas para master)
         if (user?.role === "master") {
           const { data: empData, error: empError } = await supabase
