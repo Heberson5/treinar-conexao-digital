@@ -1683,8 +1683,11 @@ export function ModernTrainingEditor({
                 <div className="space-y-2">
                   <Label className="text-xs">Departamento</Label>
                   <Select
-                    value={formData.departamento}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, departamento: value }))}
+                    value={formData.departamento_id || formData.departamento}
+                    onValueChange={(value) => {
+                      const dep = departamentosFiltrados.find(d => d.id === value);
+                      setFormData((prev) => ({ ...prev, departamento: dep?.nome || value, departamento_id: value }));
+                    }}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Selecione" />
