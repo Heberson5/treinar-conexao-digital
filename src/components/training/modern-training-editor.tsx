@@ -1639,7 +1639,8 @@ export function ModernTrainingEditor({
                         setFormData((prev) => ({
                           ...prev,
                           empresa_id: value,
-                          departamento: "", // Limpar departamento ao mudar empresa
+                          departamento: "",
+                          departamento_id: "",
                         }));
                       }}
                     >
