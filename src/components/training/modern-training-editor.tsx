@@ -220,8 +220,9 @@ export function ModernTrainingEditor({
     type: "image" | "video";
   } | null>(null);
 
-  // Departamentos e empresas do Supabase
+  // Departamentos, instrutores e empresas do Supabase
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [instrutores, setInstrutores] = useState<{ id: string; nome: string }[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
