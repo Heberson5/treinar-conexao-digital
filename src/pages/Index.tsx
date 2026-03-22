@@ -68,7 +68,7 @@ export default function Index() {
           .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, media_avaliacao, total_avaliacoes")
           .is("empresa_id", null)
           .eq("publicado", false)
-          .limit(6)
+          .limit(5)
 
         if (error) {
           console.error("Erro ao buscar modelos:", error)
