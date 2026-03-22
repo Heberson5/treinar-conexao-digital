@@ -297,6 +297,14 @@ export function ModernTrainingEditor({
             setEmpresas(empData || []);
           }
         }
+
+        // Carregar categorias
+        const { data: catData } = await supabase
+          .from("categorias" as any)
+          .select("id, nome")
+          .eq("ativo", true)
+          .order("nome");
+        if (catData) setCategorias(catData as any);
       } finally {
         setLoadingData(false);
       }
