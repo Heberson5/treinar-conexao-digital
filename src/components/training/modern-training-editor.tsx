@@ -1677,15 +1677,22 @@ export function ModernTrainingEditor({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Onboarding">Onboarding</SelectItem>
-                      <SelectItem value="Segurança">Segurança</SelectItem>
-                      <SelectItem value="Compliance">Compliance</SelectItem>
-                      <SelectItem value="Vendas">Vendas</SelectItem>
-                      <SelectItem value="Atendimento">Atendimento</SelectItem>
-                      <SelectItem value="Liderança">Liderança</SelectItem>
-                      <SelectItem value="Técnico">Técnico</SelectItem>
-                      <SelectItem value="Soft Skills">Soft Skills</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
+                      {categorias.length > 0 ? (
+                        categorias.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.nome}>
+                            {cat.nome}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="Onboarding">Onboarding</SelectItem>
+                          <SelectItem value="Segurança">Segurança</SelectItem>
+                          <SelectItem value="Compliance">Compliance</SelectItem>
+                          <SelectItem value="Vendas">Vendas</SelectItem>
+                          <SelectItem value="Técnico">Técnico</SelectItem>
+                          <SelectItem value="Outros">Outros</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
