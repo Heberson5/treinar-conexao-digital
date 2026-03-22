@@ -7,7 +7,7 @@ import {
 import {
   LayoutDashboard, BookOpen, Users, Building2, Settings, BarChart3,
   Shield, GraduationCap, FileText, Calendar, Briefcase, CreditCard,
-  Zap, Sparkles, Palette, DollarSign,
+  Zap, Sparkles, Palette, DollarSign, Tag,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
