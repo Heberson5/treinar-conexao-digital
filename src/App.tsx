@@ -40,6 +40,7 @@ import Integracoes from "./pages/admin/Integracoes";
 import DashboardExecutivo from "./pages/admin/DashboardExecutivo";
 import LandingPageEditor from "./pages/admin/LandingPageEditor";
 import Financeiro from "./pages/admin/Financeiro";
+import Categorias from "./pages/admin/Categorias";
 
 const queryClient = new QueryClient();
 
