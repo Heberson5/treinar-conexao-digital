@@ -1678,7 +1678,7 @@ export function ModernTrainingEditor({
                     <SelectContent>
                       {departamentosFiltrados.length > 0 ? (
                         departamentosFiltrados.map((dep) => (
-                          <SelectItem key={dep.id} value={dep.nome}>
+                          <SelectItem key={dep.id} value={dep.id}>
                             {dep.nome}
                           </SelectItem>
                         ))
