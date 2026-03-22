@@ -1754,12 +1754,24 @@ export function ModernTrainingEditor({
 
                 <div className="space-y-2">
                   <Label className="text-xs">Instrutor</Label>
-                  <Input
-                    value={formData.instrutor}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, instrutor: e.target.value }))}
-                    placeholder="Nome do instrutor"
-                    className="h-8 text-sm"
-                  />
+                  <Select
+                    value={formData.instrutor_id || ""}
+                    onValueChange={(value) => {
+                      const perfil = instrutores.find(i => i.id === value);
+                      setFormData((prev) => ({ ...prev, instrutor_id: value, instrutor: perfil?.nome || "" }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione o instrutor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instrutores.map((inst) => (
+                        <SelectItem key={inst.id} value={inst.id}>
+                          {inst.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CollapsibleContent>
             </div>
