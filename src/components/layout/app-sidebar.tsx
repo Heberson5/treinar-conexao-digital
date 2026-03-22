@@ -7,7 +7,7 @@ import {
 import {
   LayoutDashboard, BookOpen, Users, Building2, Settings, BarChart3,
   Shield, GraduationCap, FileText, Calendar, Briefcase, CreditCard,
-  Zap, Sparkles, Palette, DollarSign,
+  Zap, Sparkles, Palette, DollarSign, Tag,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
@@ -31,6 +31,7 @@ const getAdminMenuItems = (role: string) => {
     { title: "Usuários", url: "/admin/usuarios", icon: Users, roles: ["master", "admin"] },
     { title: "Cargos", url: "/admin/cargos", icon: Briefcase, roles: ["master", "admin"] },
     { title: "Departamentos", url: "/admin/departamentos", icon: Building2, roles: ["master", "admin"] },
+    { title: "Categorias", url: "/admin/categorias", icon: Tag, roles: ["master", "admin"] },
     { title: "Empresas", url: "/admin/empresas", icon: Building2, roles: ["master"] },
     { title: "Planos", url: "/admin/planos", icon: CreditCard, roles: ["master"] },
     { title: "Integrações", url: "/admin/integracoes", icon: Zap, roles: ["master", "admin"] },

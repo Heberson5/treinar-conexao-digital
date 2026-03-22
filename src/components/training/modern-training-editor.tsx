@@ -224,6 +224,7 @@ export function ModernTrainingEditor({
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [instrutores, setInstrutores] = useState<{ id: string; nome: string }[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [categorias, setCategorias] = useState<{ id: string; nome: string }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Editor state
@@ -296,6 +297,14 @@ export function ModernTrainingEditor({
             setEmpresas(empData || []);
           }
         }
+
+        // Carregar categorias
+        const { data: catData } = await supabase
+          .from("categorias" as any)
+          .select("id, nome")
+          .eq("ativo", true)
+          .order("nome");
+        if (catData) setCategorias(catData as any);
       } finally {
         setLoadingData(false);
       }
@@ -1668,15 +1677,22 @@ export function ModernTrainingEditor({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Onboarding">Onboarding</SelectItem>
-                      <SelectItem value="Segurança">Segurança</SelectItem>
-                      <SelectItem value="Compliance">Compliance</SelectItem>
-                      <SelectItem value="Vendas">Vendas</SelectItem>
-                      <SelectItem value="Atendimento">Atendimento</SelectItem>
-                      <SelectItem value="Liderança">Liderança</SelectItem>
-                      <SelectItem value="Técnico">Técnico</SelectItem>
-                      <SelectItem value="Soft Skills">Soft Skills</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
+                      {categorias.length > 0 ? (
+                        categorias.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.nome}>
+                            {cat.nome}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="Onboarding">Onboarding</SelectItem>
+                          <SelectItem value="Segurança">Segurança</SelectItem>
+                          <SelectItem value="Compliance">Compliance</SelectItem>
+                          <SelectItem value="Vendas">Vendas</SelectItem>
+                          <SelectItem value="Técnico">Técnico</SelectItem>
+                          <SelectItem value="Outros">Outros</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1701,14 +1717,7 @@ export function ModernTrainingEditor({
                           </SelectItem>
                         ))
                       ) : (
-                        <>
-                          <SelectItem value="Todos">Todos</SelectItem>
-                          <SelectItem value="TI">TI</SelectItem>
-                          <SelectItem value="RH">RH</SelectItem>
-                          <SelectItem value="Vendas">Vendas</SelectItem>
-                          <SelectItem value="Financeiro">Financeiro</SelectItem>
-                          <SelectItem value="Marketing">Marketing</SelectItem>
-                        </>
+                        <SelectItem value="__none" disabled>Nenhum departamento encontrado</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
