@@ -130,7 +130,9 @@ export interface TrainingData {
   duracao: string;
   status: "ativo" | "inativo" | "rascunho";
   instrutor: string;
+  instrutor_id?: string;
   departamento: string;
+  departamento_id?: string;
   empresa_id?: string;
   capa?: string;
   sections: TrainingSection[];
@@ -218,8 +220,9 @@ export function ModernTrainingEditor({
     type: "image" | "video";
   } | null>(null);
 
-  // Departamentos e empresas do Supabase
+  // Departamentos, instrutores e empresas do Supabase
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [instrutores, setInstrutores] = useState<{ id: string; nome: string }[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -244,7 +247,9 @@ export function ModernTrainingEditor({
     duracao: initialData?.duracao || "",
     status: initialData?.status || "rascunho",
     instrutor: initialData?.instrutor || "",
+    instrutor_id: initialData?.instrutor_id || "",
     departamento: initialData?.departamento || "",
+    departamento_id: initialData?.departamento_id || "",
     empresa_id: initialData?.empresa_id || user?.empresa_id || "",
     capa: initialData?.capa,
     sections: initialData?.sections || [createEmptySection("Introdução")],
@@ -265,6 +270,17 @@ export function ModernTrainingEditor({
           console.error("Erro ao carregar departamentos:", depError);
         } else {
           setDepartamentos(depData || []);
+        }
+
+        // Carregar instrutores (perfis com role instrutor, admin ou master)
+        const { data: instData } = await supabase
+          .from("perfis")
+          .select("id, nome")
+          .eq("ativo", true)
+          .order("nome");
+        
+        if (instData) {
+          setInstrutores(instData);
         }
 
         // Carregar empresas (apenas para master)
@@ -1623,7 +1639,8 @@ export function ModernTrainingEditor({
                         setFormData((prev) => ({
                           ...prev,
                           empresa_id: value,
-                          departamento: "", // Limpar departamento ao mudar empresa
+                          departamento: "",
+                          departamento_id: "",
                         }));
                       }}
                     >
@@ -1667,8 +1684,11 @@ export function ModernTrainingEditor({
                 <div className="space-y-2">
                   <Label className="text-xs">Departamento</Label>
                   <Select
-                    value={formData.departamento}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, departamento: value }))}
+                    value={formData.departamento_id || formData.departamento}
+                    onValueChange={(value) => {
+                      const dep = departamentosFiltrados.find(d => d.id === value);
+                      setFormData((prev) => ({ ...prev, departamento: dep?.nome || value, departamento_id: value }));
+                    }}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Selecione" />
@@ -1676,7 +1696,7 @@ export function ModernTrainingEditor({
                     <SelectContent>
                       {departamentosFiltrados.length > 0 ? (
                         departamentosFiltrados.map((dep) => (
-                          <SelectItem key={dep.id} value={dep.nome}>
+                          <SelectItem key={dep.id} value={dep.id}>
                             {dep.nome}
                           </SelectItem>
                         ))
@@ -1752,12 +1772,24 @@ export function ModernTrainingEditor({
 
                 <div className="space-y-2">
                   <Label className="text-xs">Instrutor</Label>
-                  <Input
-                    value={formData.instrutor}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, instrutor: e.target.value }))}
-                    placeholder="Nome do instrutor"
-                    className="h-8 text-sm"
-                  />
+                  <Select
+                    value={formData.instrutor_id || ""}
+                    onValueChange={(value) => {
+                      const perfil = instrutores.find(i => i.id === value);
+                      setFormData((prev) => ({ ...prev, instrutor_id: value, instrutor: perfil?.nome || "" }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecione o instrutor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instrutores.map((inst) => (
+                        <SelectItem key={inst.id} value={inst.id}>
+                          {inst.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CollapsibleContent>
             </div>

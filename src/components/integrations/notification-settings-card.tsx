@@ -31,7 +31,7 @@ export function NotificationSettingsCard() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Nota:</strong> As notificações por email requerem configuração do serviço de email (Resend) no Lovable Cloud.
+            <strong>Nota:</strong> As notificações por email requerem configuração do serviço de email (Resend) no backend.
           </AlertDescription>
         </Alert>
 

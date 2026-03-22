@@ -1,8 +1,8 @@
 /**
- * Serviço de e-mail - Preparado para integração com Lovable Cloud + Resend
+ * Serviço de e-mail - Preparado para integração com Resend
  * 
  * IMPORTANTE: Este serviço requer:
- * 1. Lovable Cloud ativo
+ * 1. Backend ativo
  * 2. Conta Resend.com configurada
  * 3. Secret RESEND_API_KEY configurada
  * 

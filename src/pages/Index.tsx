@@ -68,7 +68,7 @@ export default function Index() {
           .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, media_avaliacao, total_avaliacoes")
           .is("empresa_id", null)
           .eq("publicado", false)
-          .limit(6)
+          .limit(5)
 
         if (error) {
           console.error("Erro ao buscar modelos:", error)
@@ -437,9 +437,9 @@ export default function Index() {
                 ))}
               </div>
             ) : trainingModels.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {trainingModels.slice(0, 6).map((training) => (
-                  <Card key={training.id} className="hover:shadow-lg transition-shadow group overflow-hidden">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                {trainingModels.slice(0, 5).map((training) => (
+                  <Card key={training.id} className="overflow-hidden opacity-90 pointer-events-none select-none">
                     <div className="aspect-video bg-gradient-primary rounded-t-lg flex items-center justify-center relative overflow-hidden">
                       {training.thumbnail_url ? (
                         <img 
@@ -448,60 +448,36 @@ export default function Index() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Play className="h-12 w-12 text-white group-hover:scale-110 transition-transform" />
+                        <BookOpen className="h-10 w-10 text-white/70" />
                       )}
                       {training.categoria && (
-                        <Badge className="absolute top-3 left-3 bg-white/20 text-white border-white/30">
+                        <Badge className="absolute top-2 left-2 bg-white/20 text-white border-white/30 text-xs">
                           {training.categoria}
                         </Badge>
                       )}
                     </div>
                     
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                          {training.titulo}
-                        </CardTitle>
-                      </div>
-                      <CardDescription className="line-clamp-2">
-                        {training.descricao || "Treinamento profissional completo"}
+                    <CardHeader className="p-3">
+                      <CardTitle className="text-sm line-clamp-2">
+                        {training.titulo}
+                      </CardTitle>
+                      <CardDescription className="line-clamp-1 text-xs">
+                        {training.descricao || "Treinamento profissional"}
                       </CardDescription>
                     </CardHeader>
                     
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <CardContent className="p-3 pt-0">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
+                          <Clock className="h-3 w-3" />
                           {formatDuration(training.duracao_minutos)}
                         </span>
-                        {training.media_avaliacao && (
-                          <span className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            {training.media_avaliacao.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
                         {training.nivel && (
-                          <Badge variant="secondary">
+                          <Badge variant="secondary" className="text-xs py-0">
                             {training.nivel}
                           </Badge>
                         )}
-                        {training.total_avaliacoes && training.total_avaliacoes > 0 && (
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            {training.total_avaliacoes}
-                          </span>
-                        )}
                       </div>
-                      
-                      <Link to="/login">
-                        <Button className="w-full group-hover:bg-primary/90 transition-colors">
-                          <Play className="mr-2 h-4 w-4" />
-                          Saiba Mais
-                        </Button>
-                      </Link>
                     </CardContent>
                   </Card>
                 ))}
