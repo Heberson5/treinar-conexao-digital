@@ -1,4 +1,4 @@
-// Seletor de paleta de cores para empresas - Estilo Lovable
+// Seletor de paleta de cores para empresas
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"

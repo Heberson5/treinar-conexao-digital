@@ -140,7 +140,7 @@ export function PaymentIntegrationCard() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Atenção:</strong> Para ativar pagamentos, é necessário configurar o Lovable Cloud e armazenar as credenciais de forma segura como secrets.
+            <strong>Atenção:</strong> Para ativar pagamentos, é necessário configurar o backend e armazenar as credenciais de forma segura como secrets.
           </AlertDescription>
         </Alert>
 
