@@ -1717,14 +1717,7 @@ export function ModernTrainingEditor({
                           </SelectItem>
                         ))
                       ) : (
-                        <>
-                          <SelectItem value="Todos">Todos</SelectItem>
-                          <SelectItem value="TI">TI</SelectItem>
-                          <SelectItem value="RH">RH</SelectItem>
-                          <SelectItem value="Vendas">Vendas</SelectItem>
-                          <SelectItem value="Financeiro">Financeiro</SelectItem>
-                          <SelectItem value="Marketing">Marketing</SelectItem>
-                        </>
+                        <SelectItem value="__none" disabled>Nenhum departamento encontrado</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
