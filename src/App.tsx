@@ -110,6 +110,7 @@ function AppContent() {
         <Route path="/admin/usuarios" element={isAdminOrMaster ? <Usuarios /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/cargos" element={isAdminOrMaster ? <Cargos /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/departamentos" element={isAdminOrMaster ? <Departamentos /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/categorias" element={isAdminOrMaster ? <Categorias /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/integracoes" element={isAdminOrMaster ? <Integracoes /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/analytics" element={isAdminOrMaster ? <Analytics /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/executivo" element={isAdminOrMaster ? <DashboardExecutivo /> : <Navigate to="/meus-treinamentos" replace />} />
