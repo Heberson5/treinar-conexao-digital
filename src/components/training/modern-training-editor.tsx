@@ -224,6 +224,7 @@ export function ModernTrainingEditor({
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [instrutores, setInstrutores] = useState<{ id: string; nome: string }[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [categorias, setCategorias] = useState<{ id: string; nome: string }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Editor state
