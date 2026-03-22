@@ -471,6 +471,8 @@ export default function EditarTreinamentoModerno() {
           publicado: data.status === "ativo",
           thumbnail_url: capa || null,
           empresa_id: data.empresa_id || dbTraining.empresa_id,
+          departamento_id: data.departamento_id || null,
+          instrutor_id: data.instrutor_id || null,
           atualizado_em: new Date().toISOString(),
         })
         .eq("id", dbTraining.id);
