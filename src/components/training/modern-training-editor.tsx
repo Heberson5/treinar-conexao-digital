@@ -130,7 +130,9 @@ export interface TrainingData {
   duracao: string;
   status: "ativo" | "inativo" | "rascunho";
   instrutor: string;
+  instrutor_id?: string;
   departamento: string;
+  departamento_id?: string;
   empresa_id?: string;
   capa?: string;
   sections: TrainingSection[];
