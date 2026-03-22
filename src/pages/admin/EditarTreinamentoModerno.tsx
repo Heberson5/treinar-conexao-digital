@@ -460,6 +460,10 @@ export default function EditarTreinamentoModerno() {
         }
       }
 
+      // Validar UUIDs - valores como "Todos" ou nomes não são UUIDs válidos
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const safeUuid = (val: string | undefined | null) => val && uuidRegex.test(val) ? val : null;
+
       const { error } = await supabase
         .from("treinamentos")
         .update({
@@ -470,9 +474,10 @@ export default function EditarTreinamentoModerno() {
           duracao_minutos: duracaoMinutos,
           publicado: data.status === "ativo",
           thumbnail_url: capa || null,
-          empresa_id: data.empresa_id || dbTraining.empresa_id,
-          departamento_id: data.departamento_id || null,
-          instrutor_id: data.instrutor_id || null,
+          empresa_id: safeUuid(data.empresa_id) || dbTraining.empresa_id,
+          departamento_id: safeUuid(data.departamento_id),
+          instrutor_id: safeUuid(data.instrutor_id),
+          nivel: data.nivel || null,
           atualizado_em: new Date().toISOString(),
         })
         .eq("id", dbTraining.id);
