@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Calendar as CalendarIcon, Plus, Clock, Users, MapPin, BookOpen,
-  ChevronLeft, ChevronRight, Filter, Bell, Download
+  ChevronLeft, ChevronRight, Filter, Bell, Edit3, Trash2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
@@ -19,7 +19,7 @@ import { AddToCalendarButton } from "@/components/training/AddToCalendarButton"
 import { registrarAuditoria } from "@/lib/audit-utils"
 
 interface CalendarEvent {
-  id: number
+  id: string
   title: string
   description: string
   date: string
@@ -30,20 +30,32 @@ interface CalendarEvent {
   instructor?: string
   location?: string
   status: "agendado" | "em-andamento" | "concluido" | "cancelado"
+  cor: string
+  usuario_id?: string
+  criado_por_role?: string
 }
 
-const eventos: CalendarEvent[] = [
-  { id: 1, title: "Treinamento de Segurança", description: "Treinamento obrigatório de segurança no trabalho", date: "2024-01-25", time: "09:00", duration: "4h", type: "treinamento", participants: 15, instructor: "Carlos Silva", location: "Sala A", status: "agendado" },
-  { id: 2, title: "Avaliação Final - Vendas", description: "Prova final do módulo de vendas", date: "2024-01-26", time: "14:00", duration: "2h", type: "prova", participants: 8, instructor: "Ana Santos", location: "Lab 1", status: "agendado" },
-  { id: 3, title: "Certificação em Liderança", description: "Cerimônia de entrega de certificados", date: "2024-01-28", time: "16:00", duration: "1h", type: "certificacao", participants: 12, location: "Auditório", status: "agendado" },
-  { id: 4, title: "Workshop de Inovação", description: "Workshop sobre metodologias ágeis", date: "2024-01-30", time: "08:30", duration: "6h", type: "evento", participants: 25, instructor: "Pedro Costa", location: "Centro de Convenções", status: "agendado" },
+const EVENT_COLORS = [
+  { value: "blue", label: "Azul", class: "bg-blue-500" },
+  { value: "red", label: "Vermelho", class: "bg-red-500" },
+  { value: "green", label: "Verde", class: "bg-green-500" },
+  { value: "purple", label: "Roxo", class: "bg-purple-500" },
+  { value: "amber", label: "Âmbar", class: "bg-amber-500" },
+  { value: "pink", label: "Rosa", class: "bg-pink-500" },
+  { value: "teal", label: "Teal", class: "bg-teal-500" },
+  { value: "indigo", label: "Índigo", class: "bg-indigo-500" },
 ]
 
+const getColorClass = (cor: string) => {
+  return EVENT_COLORS.find(c => c.value === cor)?.class || "bg-blue-500"
+}
+
 export default function Calendario() {
-  const [events, setEvents] = useState<CalendarEvent[]>(eventos)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isReminderOpen, setIsReminderOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month")
   const [filterType, setFilterType] = useState<string>("todos")
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -51,28 +63,95 @@ export default function Calendario() {
   const { formatDate } = useBrazilianDate()
   const { user } = useAuth()
 
+  const canEditEvents = user?.role === "master" || user?.role === "admin" || user?.role === "instrutor"
+
   const [newEvent, setNewEvent] = useState({
     title: "", description: "", date: "", time: "", duration: "",
-    type: "treinamento" as CalendarEvent["type"], participants: 0, instructor: "", location: ""
+    type: "treinamento" as CalendarEvent["type"], participants: 0, instructor: "", location: "", cor: "blue"
   })
 
   const [newReminder, setNewReminder] = useState({
-    titulo: "", descricao: "", data: "", hora: "", tipo: "revisao"
+    titulo: "", descricao: "", data: "", hora: "", tipo: "revisao", cor: "amber"
   })
 
-  const resetForm = () => setNewEvent({ title: "", description: "", date: "", time: "", duration: "", type: "treinamento", participants: 0, instructor: "", location: "" })
+  const resetForm = () => {
+    setNewEvent({ title: "", description: "", date: "", time: "", duration: "", type: "treinamento", participants: 0, instructor: "", location: "", cor: "blue" })
+    setEditingEvent(null)
+  }
 
-  const handleCreateEvent = () => {
+  // Load events from lembretes table
+  const loadEvents = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from("lembretes")
+      .select("*")
+      .order("data_lembrete", { ascending: true })
+
+    if (data) {
+      const mapped: CalendarEvent[] = data.map((l: any) => {
+        const dt = new Date(l.data_lembrete)
+        return {
+          id: l.id,
+          title: l.titulo,
+          description: l.descricao || "",
+          date: dt.toISOString().split("T")[0],
+          time: dt.toTimeString().slice(0, 5),
+          duration: "1h",
+          type: (l.tipo || "evento") as CalendarEvent["type"],
+          status: "agendado" as const,
+          cor: l.cor || "blue",
+          usuario_id: l.usuario_id,
+          criado_por_role: l.criado_por_role || "usuario",
+        }
+      })
+      setEvents(mapped)
+    }
+  }
+
+  useEffect(() => { loadEvents() }, [user])
+
+  const canEditEvent = (event: CalendarEvent) => {
+    if (canEditEvents) return true
+    // Users can edit their own reminders
+    return event.usuario_id === user?.id
+  }
+
+  const handleCreateEvent = async () => {
     if (!newEvent.title || !newEvent.date || !newEvent.time) {
       toast({ title: "Campos obrigatórios", description: "Título, data e horário são obrigatórios", variant: "destructive" })
       return
     }
-    const event: CalendarEvent = { id: Date.now(), ...newEvent, status: "agendado" }
-    setEvents([...events, event])
+    if (!user) return
+
+    const dataLembrete = new Date(`${newEvent.date}T${newEvent.time}`)
+    
+    if (editingEvent) {
+      await supabase.from("lembretes").update({
+        titulo: newEvent.title,
+        descricao: newEvent.description || null,
+        data_lembrete: dataLembrete.toISOString(),
+        tipo: newEvent.type,
+        cor: newEvent.cor,
+      } as any).eq("id", editingEvent.id)
+      toast({ title: "Evento atualizado!" })
+      registrarAuditoria({ acao: "editar", menu: "calendario", descricao: `Editou evento: ${newEvent.title}` })
+    } else {
+      await supabase.from("lembretes").insert({
+        usuario_id: user.id,
+        titulo: newEvent.title,
+        descricao: newEvent.description || null,
+        data_lembrete: dataLembrete.toISOString(),
+        tipo: newEvent.type,
+        cor: newEvent.cor,
+        criado_por_role: user.role,
+      } as any)
+      toast({ title: "Evento criado!", description: "Evento adicionado ao calendário." })
+      registrarAuditoria({ acao: "criar", menu: "calendario", descricao: `Criou evento: ${newEvent.title}` })
+    }
+
     setIsCreateOpen(false)
     resetForm()
-    toast({ title: "Evento criado!", description: "Evento adicionado ao calendário." })
-    registrarAuditoria({ acao: "criar", menu: "calendario", descricao: `Criou evento: ${newEvent.title}` })
+    loadEvents()
   }
 
   const handleCreateReminder = async () => {
@@ -80,47 +159,43 @@ export default function Calendario() {
       toast({ title: "Campos obrigatórios", description: "Título, data e hora são obrigatórios", variant: "destructive" })
       return
     }
+    if (!user) return
 
     const dataLembrete = new Date(`${newReminder.data}T${newReminder.hora}`)
     
-    // Save to DB
-    if (user) {
-      await supabase.from("lembretes" as any).insert({
-        usuario_id: user.id,
-        titulo: newReminder.titulo,
-        descricao: newReminder.descricao || null,
-        data_lembrete: dataLembrete.toISOString(),
-        tipo: newReminder.tipo,
-      } as any)
-    }
+    await supabase.from("lembretes").insert({
+      usuario_id: user.id,
+      titulo: newReminder.titulo,
+      descricao: newReminder.descricao || null,
+      data_lembrete: dataLembrete.toISOString(),
+      tipo: newReminder.tipo,
+      cor: newReminder.cor,
+      criado_por_role: user.role,
+    } as any)
 
-    // Also add to calendar view
-    const reminderEvent: CalendarEvent = {
-      id: Date.now(),
-      title: `🔔 ${newReminder.titulo}`,
-      description: newReminder.descricao || "Alerta de revisão",
-      date: newReminder.data,
-      time: newReminder.hora,
-      duration: "30min",
-      type: "revisao",
-      status: "agendado",
-    }
-    setEvents([...events, reminderEvent])
     setIsReminderOpen(false)
-    setNewReminder({ titulo: "", descricao: "", data: "", hora: "", tipo: "revisao" })
-    toast({ title: "Lembrete criado!", description: "Salvo no sistema. Use o botão de calendário para adicionar ao seu dispositivo." })
-    registrarAuditoria({ acao: "criar", menu: "calendario", local: "lembretes", descricao: `Criou lembrete de revisão: ${newReminder.titulo}` })
+    setNewReminder({ titulo: "", descricao: "", data: "", hora: "", tipo: "revisao", cor: "amber" })
+    toast({ title: "Lembrete criado!", description: "Salvo no sistema e disponível no calendário." })
+    registrarAuditoria({ acao: "criar", menu: "calendario", local: "lembretes", descricao: `Criou lembrete: ${newReminder.titulo}` })
+    loadEvents()
   }
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "treinamento": return "bg-blue-500"
-      case "prova": return "bg-red-500"
-      case "certificacao": return "bg-green-500"
-      case "evento": return "bg-purple-500"
-      case "revisao": return "bg-amber-500"
-      default: return "bg-gray-500"
-    }
+  const handleDeleteEvent = async (id: string) => {
+    await supabase.from("lembretes").delete().eq("id", id)
+    toast({ title: "Evento removido" })
+    setSelectedEvent(null)
+    loadEvents()
+  }
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event)
+    setNewEvent({
+      title: event.title, description: event.description, date: event.date,
+      time: event.time, duration: event.duration, type: event.type,
+      participants: event.participants || 0, instructor: event.instructor || "",
+      location: event.location || "", cor: event.cor,
+    })
+    setIsCreateOpen(true)
   }
 
   const getTypeLabel = (type: string) => {
@@ -134,19 +209,10 @@ export default function Calendario() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "agendado": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-      case "em-andamento": return "bg-yellow-100 text-yellow-800"
-      case "concluido": return "bg-green-100 text-green-800"
-      case "cancelado": return "bg-red-100 text-red-800"
-      default: return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const filteredEvents = filterType === "todos" ? events : events.filter(e => e.type === filterType)
 
-  const generateCalendar = () => {
+  // Calendar generation
+  const generateMonthCalendar = () => {
     const year = selectedDate.getFullYear()
     const month = selectedDate.getMonth()
     const firstDay = new Date(year, month, 1)
@@ -156,14 +222,39 @@ export default function Calendario() {
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate)
       date.setDate(startDate.getDate() + i)
-      const dayEvents = filteredEvents.filter(e => new Date(e.date).toDateString() === date.toDateString())
+      const dateStr = date.toISOString().split("T")[0]
+      const dayEvents = filteredEvents.filter(e => e.date === dateStr)
       calendar.push({ date, isCurrentMonth: date.getMonth() === month, events: dayEvents })
     }
     return calendar
   }
 
-  const calendar = generateCalendar()
-  const changeMonth = (dir: number) => { const d = new Date(selectedDate); d.setMonth(d.getMonth() + dir); setSelectedDate(d) }
+  const generateWeekCalendar = () => {
+    const startOfWeek = new Date(selectedDate)
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+    const days = []
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
+      const dateStr = date.toISOString().split("T")[0]
+      const dayEvents = filteredEvents.filter(e => e.date === dateStr)
+      days.push({ date, events: dayEvents })
+    }
+    return days
+  }
+
+  const generateDayEvents = () => {
+    const dateStr = selectedDate.toISOString().split("T")[0]
+    return filteredEvents.filter(e => e.date === dateStr)
+  }
+
+  const changeDate = (dir: number) => {
+    const d = new Date(selectedDate)
+    if (viewMode === "month") d.setMonth(d.getMonth() + dir)
+    else if (viewMode === "week") d.setDate(d.getDate() + dir * 7)
+    else d.setDate(d.getDate() + dir)
+    setSelectedDate(d)
+  }
 
   const parseDuration = (dur: string): number => {
     const hMatch = dur.match(/(\d+)\s*h/)
@@ -171,14 +262,43 @@ export default function Calendario() {
     return (hMatch ? parseInt(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0) || 60
   }
 
+  const headerLabel = () => {
+    if (viewMode === "month") return selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    if (viewMode === "week") {
+      const start = new Date(selectedDate)
+      start.setDate(start.getDate() - start.getDay())
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6)
+      return `${start.getDate()}/${start.getMonth()+1} - ${end.getDate()}/${end.getMonth()+1}/${end.getFullYear()}`
+    }
+    return selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  const ColorPicker = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <div className="flex gap-2 flex-wrap">
+      {EVENT_COLORS.map(c => (
+        <button key={c.value} type="button" onClick={() => onChange(c.value)}
+          className={`w-7 h-7 rounded-full ${c.class} transition-all ${value === c.value ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'opacity-70 hover:opacity-100'}`}
+          title={c.label} />
+      ))}
+    </div>
+  )
+
+  const DurationInput = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <div className="relative">
+      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="1h 30min" className="pl-10" />
+    </div>
+  )
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Calendário</h1>
-          <p className="text-muted-foreground mt-2">Gerencie eventos, treinamentos e lembretes de revisão</p>
+          <p className="text-muted-foreground mt-1">Gerencie eventos, treinamentos e lembretes</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-[140px]"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -191,18 +311,17 @@ export default function Calendario() {
             </SelectContent>
           </Select>
 
-          {/* Reminder button */}
           <Dialog open={isReminderOpen} onOpenChange={setIsReminderOpen}>
             <DialogTrigger asChild>
               <Button variant="outline"><Bell className="mr-2 h-4 w-4" /> Lembrete</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Criar Lembrete de Revisão</DialogTitle>
-                <DialogDescription>Crie um alerta que será salvo no sistema e poderá ser adicionado ao calendário do seu dispositivo.</DialogDescription>
+                <DialogTitle>Criar Lembrete</DialogTitle>
+                <DialogDescription>Crie um alerta que será salvo no sistema.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2"><Label>Título *</Label><Input value={newReminder.titulo} onChange={(e) => setNewReminder({...newReminder, titulo: e.target.value})} placeholder="Ex: Revisar Segurança do Trabalho" /></div>
+                <div className="space-y-2"><Label>Título *</Label><Input value={newReminder.titulo} onChange={(e) => setNewReminder({...newReminder, titulo: e.target.value})} placeholder="Ex: Revisar Segurança" /></div>
                 <div className="space-y-2"><Label>Descrição</Label><Textarea value={newReminder.descricao} onChange={(e) => setNewReminder({...newReminder, descricao: e.target.value})} rows={2} /></div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Data *</Label><Input type="date" value={newReminder.data} onChange={(e) => setNewReminder({...newReminder, data: e.target.value})} /></div>
@@ -219,6 +338,7 @@ export default function Calendario() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2"><Label>Cor</Label><ColorPicker value={newReminder.cor} onChange={(v) => setNewReminder({...newReminder, cor: v})} /></div>
               </div>
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setIsReminderOpen(false)}>Cancelar</Button>
@@ -227,166 +347,178 @@ export default function Calendario() {
             </DialogContent>
           </Dialog>
 
-          {/* New event */}
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild><Button className="bg-gradient-primary"><Plus className="mr-2 h-4 w-4" /> Novo Evento</Button></DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Criar Novo Evento</DialogTitle><DialogDescription>Adicione um evento ao calendário.</DialogDescription></DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Título *</Label><Input value={newEvent.title} onChange={(e) => setNewEvent({...newEvent, title: e.target.value})} /></div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select value={newEvent.type} onValueChange={(v: any) => setNewEvent({...newEvent, type: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="treinamento">Treinamento</SelectItem>
-                        <SelectItem value="prova">Prova</SelectItem>
-                        <SelectItem value="certificacao">Certificação</SelectItem>
-                        <SelectItem value="evento">Evento</SelectItem>
-                      </SelectContent>
-                    </Select>
+          {canEditEvents && (
+            <Dialog open={isCreateOpen} onOpenChange={(o) => { setIsCreateOpen(o); if (!o) resetForm() }}>
+              <DialogTrigger asChild><Button className="bg-gradient-primary"><Plus className="mr-2 h-4 w-4" /> Novo Evento</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{editingEvent ? "Editar Evento" : "Criar Novo Evento"}</DialogTitle>
+                  <DialogDescription>{editingEvent ? "Atualize as informações do evento." : "Adicione um evento ao calendário."}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Título *</Label><Input value={newEvent.title} onChange={(e) => setNewEvent({...newEvent, title: e.target.value})} /></div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select value={newEvent.type} onValueChange={(v: any) => setNewEvent({...newEvent, type: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="treinamento">Treinamento</SelectItem>
+                          <SelectItem value="prova">Prova</SelectItem>
+                          <SelectItem value="certificacao">Certificação</SelectItem>
+                          <SelectItem value="evento">Evento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  <div className="space-y-2"><Label>Descrição</Label><Textarea value={newEvent.description} onChange={(e) => setNewEvent({...newEvent, description: e.target.value})} rows={2} /></div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2"><Label>Data *</Label><Input type="date" value={newEvent.date} onChange={(e) => setNewEvent({...newEvent, date: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Horário *</Label><Input type="time" value={newEvent.time} onChange={(e) => setNewEvent({...newEvent, time: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>Duração</Label><DurationInput value={newEvent.duration} onChange={(v) => setNewEvent({...newEvent, duration: v})} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Cor do evento</Label><ColorPicker value={newEvent.cor} onChange={(v) => setNewEvent({...newEvent, cor: v})} /></div>
                 </div>
-                <div className="space-y-2"><Label>Descrição</Label><Textarea value={newEvent.description} onChange={(e) => setNewEvent({...newEvent, description: e.target.value})} rows={3} /></div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2"><Label>Data *</Label><Input type="date" value={newEvent.date} onChange={(e) => setNewEvent({...newEvent, date: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Horário *</Label><Input type="time" value={newEvent.time} onChange={(e) => setNewEvent({...newEvent, time: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Duração</Label><Input value={newEvent.duration} onChange={(e) => setNewEvent({...newEvent, duration: e.target.value})} placeholder="2h 30min" /></div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm() }}>Cancelar</Button>
+                  <Button onClick={handleCreateEvent} className="bg-gradient-primary">{editingEvent ? "Atualizar" : "Criar Evento"}</Button>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2"><Label>Participantes</Label><Input type="number" value={newEvent.participants || ""} onChange={(e) => setNewEvent({...newEvent, participants: parseInt(e.target.value) || 0})} /></div>
-                  <div className="space-y-2"><Label>Instrutor</Label><Input value={newEvent.instructor} onChange={(e) => setNewEvent({...newEvent, instructor: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Local</Label><Input value={newEvent.location} onChange={(e) => setNewEvent({...newEvent, location: e.target.value})} /></div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreateEvent} className="bg-gradient-primary">Criar Evento</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
-      {/* Calendar Navigation */}
+      {/* Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <h2 className="text-xl font-semibold">{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h2>
-          <Button variant="outline" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => changeDate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <h2 className="text-xl font-semibold capitalize">{headerLabel()}</h2>
+          <Button variant="outline" size="icon" onClick={() => changeDate(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedDate(new Date())}>Hoje</Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 bg-muted rounded-lg p-1">
           {(["month", "week", "day"] as const).map(m => (
-            <Button key={m} variant={viewMode === m ? "default" : "outline"} size="sm" onClick={() => setViewMode(m)}>
+            <Button key={m} variant={viewMode === m ? "default" : "ghost"} size="sm" onClick={() => setViewMode(m)} className="px-4">
               {m === "month" ? "Mês" : m === "week" ? "Semana" : "Dia"}
             </Button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="lg:col-span-3">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-7 gap-1 mb-4">
+      {/* MONTH VIEW */}
+      {viewMode === "month" && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-7 gap-1 mb-2">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                 <div key={d} className="p-2 text-center text-sm font-medium text-muted-foreground">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
-              {calendar.map((day, i) => (
-                <div key={i} className={`min-h-[100px] p-1 border rounded-lg ${day.isCurrentMonth ? 'bg-background' : 'bg-muted/20'} ${day.date.toDateString() === new Date().toDateString() ? 'ring-2 ring-primary' : ''}`}>
-                  <div className="text-sm font-medium mb-1">{day.date.getDate()}</div>
-                  <div className="space-y-1">
-                    {day.events.slice(0, 2).map(e => (
-                      <div key={e.id} className={`text-xs p-1 rounded text-white truncate cursor-pointer ${getTypeColor(e.type)}`} onClick={() => setSelectedEvent(e)}>
-                        {e.title}
+              {generateMonthCalendar().map((day, i) => (
+                <div key={i} onClick={() => { setSelectedDate(day.date); setViewMode("day") }}
+                  className={`min-h-[90px] p-1 border rounded-lg cursor-pointer transition-colors hover:bg-accent/30
+                    ${day.isCurrentMonth ? 'bg-background' : 'bg-muted/20 opacity-50'}
+                    ${day.date.toDateString() === new Date().toDateString() ? 'ring-2 ring-primary' : ''}`}>
+                  <div className="text-sm font-medium mb-1 px-1">{day.date.getDate()}</div>
+                  <div className="space-y-0.5">
+                    {day.events.slice(0, 3).map(e => (
+                      <div key={e.id} className={`text-[10px] px-1.5 py-0.5 rounded text-white truncate ${getColorClass(e.cor)}`}
+                        onClick={(ev) => { ev.stopPropagation(); setSelectedEvent(e) }}>
+                        {e.time} {e.title}
                       </div>
                     ))}
-                    {day.events.length > 2 && <div className="text-xs text-muted-foreground">+{day.events.length - 2} mais</div>}
+                    {day.events.length > 3 && <div className="text-[10px] text-muted-foreground px-1">+{day.events.length - 3} mais</div>}
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+      )}
 
+      {/* WEEK VIEW */}
+      {viewMode === "week" && (
         <Card>
-          <CardHeader><CardTitle>Próximos Eventos</CardTitle><CardDescription>Eventos agendados</CardDescription></CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5).map(event => (
-                <div key={event.id} className="p-3 border rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge className={`${getTypeColor(event.type)} text-white`}>{getTypeLabel(event.type)}</Badge>
-                    <span className="text-xs text-muted-foreground">{formatDate(event.date)}</span>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-7 gap-2">
+              {generateWeekCalendar().map((day, i) => (
+                <div key={i} className={`border rounded-lg p-2 min-h-[300px] ${day.date.toDateString() === new Date().toDateString() ? 'ring-2 ring-primary' : ''}`}>
+                  <div className="text-center mb-2">
+                    <div className="text-xs text-muted-foreground">{['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][day.date.getDay()]}</div>
+                    <div className="text-lg font-bold">{day.date.getDate()}</div>
                   </div>
-                  <h4 className="font-medium text-sm">{event.title}</h4>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2"><Clock className="h-3 w-3" /> {event.time} {event.duration && `(${event.duration})`}</div>
-                    {event.location && <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> {event.location}</div>}
+                  <div className="space-y-1">
+                    {day.events.map(e => (
+                      <div key={e.id} className={`text-xs p-1.5 rounded text-white cursor-pointer ${getColorClass(e.cor)}`}
+                        onClick={() => setSelectedEvent(e)}>
+                        <div className="font-medium truncate">{e.time}</div>
+                        <div className="truncate">{e.title}</div>
+                      </div>
+                    ))}
                   </div>
-                  {/* Add to calendar button */}
-                  <AddToCalendarButton
-                    courseName={event.title}
-                    courseDescription={event.description}
-                    startDate={new Date(`${event.date}T${event.time}`)}
-                    endDate={new Date(new Date(`${event.date}T${event.time}`).getTime() + parseDuration(event.duration) * 60000)}
-                    location={event.location}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs h-7"
-                  />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      {/* Events List */}
-      <Card>
-        <CardHeader><CardTitle>Todos os Eventos</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredEvents.map(event => (
-              <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${getTypeColor(event.type)} flex items-center justify-center`}>
-                    <BookOpen className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium">{event.title}</h4>
-                      <Badge className={`${getTypeColor(event.type)} text-white`}>{getTypeLabel(event.type)}</Badge>
-                      <Badge className={getStatusColor(event.status)}>{event.status}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
-                    <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {formatDate(event.date)} às {event.time}</span>
-                      {event.duration && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {event.duration}</span>}
-                      {event.participants && <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {event.participants}</span>}
-                      {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.location}</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <AddToCalendarButton
-                    courseName={event.title}
-                    courseDescription={event.description}
-                    startDate={new Date(`${event.date}T${event.time}`)}
-                    endDate={new Date(new Date(`${event.date}T${event.time}`).getTime() + parseDuration(event.duration) * 60000)}
-                    location={event.location}
-                    variant="outline"
-                    size="sm"
-                  />
-                  <Button variant="outline" size="sm">Editar</Button>
-                </div>
+      {/* DAY VIEW */}
+      {viewMode === "day" && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-lg font-semibold mb-4 capitalize">
+              {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h3>
+            {generateDayEvents().length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                <p>Nenhum evento neste dia</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="space-y-3">
+                {generateDayEvents().sort((a,b) => a.time.localeCompare(b.time)).map(event => (
+                  <div key={event.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/30 transition-colors">
+                    <div className={`w-1 self-stretch rounded-full ${getColorClass(event.cor)}`} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold">{event.time}</span>
+                        <span className="text-lg font-medium">{event.title}</span>
+                        <Badge variant="secondary" className="text-xs">{getTypeLabel(event.type)}</Badge>
+                      </div>
+                      {event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      {canEditEvent(event) && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditEvent(event)}>
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(event.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <AddToCalendarButton
+                        courseName={event.title}
+                        courseDescription={event.description}
+                        startDate={new Date(`${event.date}T${event.time}`)}
+                        endDate={new Date(new Date(`${event.date}T${event.time}`).getTime() + parseDuration(event.duration) * 60000)}
+                        location={event.location}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Event detail dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -394,28 +526,40 @@ export default function Calendario() {
           {selectedEvent && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedEvent.title}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${getColorClass(selectedEvent.cor)}`} />
+                  {selectedEvent.title}
+                </DialogTitle>
                 <DialogDescription>{selectedEvent.description}</DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Badge className={`${getTypeColor(selectedEvent.type)} text-white`}>{getTypeLabel(selectedEvent.type)}</Badge>
-                  <Badge className={getStatusColor(selectedEvent.status)}>{selectedEvent.status}</Badge>
-                </div>
+                <Badge variant="secondary">{getTypeLabel(selectedEvent.type)}</Badge>
                 <div className="text-sm space-y-1 text-muted-foreground">
                   <p className="flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> {formatDate(selectedEvent.date)} às {selectedEvent.time}</p>
                   {selectedEvent.duration && <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> Duração: {selectedEvent.duration}</p>}
                   {selectedEvent.location && <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {selectedEvent.location}</p>}
-                  {selectedEvent.instructor && <p className="flex items-center gap-2"><Users className="h-4 w-4" /> Instrutor: {selectedEvent.instructor}</p>}
                 </div>
-                <AddToCalendarButton
-                  courseName={selectedEvent.title}
-                  courseDescription={selectedEvent.description}
-                  startDate={new Date(`${selectedEvent.date}T${selectedEvent.time}`)}
-                  endDate={new Date(new Date(`${selectedEvent.date}T${selectedEvent.time}`).getTime() + parseDuration(selectedEvent.duration) * 60000)}
-                  location={selectedEvent.location}
-                  className="w-full"
-                />
+                <div className="flex gap-2">
+                  {canEditEvent(selectedEvent) && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedEvent(null); handleEditEvent(selectedEvent) }}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Editar
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-destructive" onClick={() => handleDeleteEvent(selectedEvent.id)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                      </Button>
+                    </>
+                  )}
+                  <AddToCalendarButton
+                    courseName={selectedEvent.title}
+                    courseDescription={selectedEvent.description}
+                    startDate={new Date(`${selectedEvent.date}T${selectedEvent.time}`)}
+                    endDate={new Date(new Date(`${selectedEvent.date}T${selectedEvent.time}`).getTime() + parseDuration(selectedEvent.duration) * 60000)}
+                    location={selectedEvent.location}
+                    variant="outline"
+                    size="sm"
+                  />
+                </div>
               </div>
             </>
           )}
