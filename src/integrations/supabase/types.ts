@@ -490,7 +490,9 @@ export type Database = {
       }
       lembretes: {
         Row: {
+          cor: string | null
           criado_em: string | null
+          criado_por_role: string | null
           data_lembrete: string
           descricao: string | null
           evento_id: string | null
@@ -502,7 +504,9 @@ export type Database = {
           usuario_id: string
         }
         Insert: {
+          cor?: string | null
           criado_em?: string | null
+          criado_por_role?: string | null
           data_lembrete: string
           descricao?: string | null
           evento_id?: string | null
@@ -514,7 +518,9 @@ export type Database = {
           usuario_id: string
         }
         Update: {
+          cor?: string | null
           criado_em?: string | null
+          criado_por_role?: string | null
           data_lembrete?: string
           descricao?: string | null
           evento_id?: string | null
