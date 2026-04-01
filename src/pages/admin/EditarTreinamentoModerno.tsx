@@ -375,14 +375,7 @@ export default function EditarTreinamentoModerno() {
       return;
     }
 
-    if (!data.departamento || data.departamento.trim() === "") {
-      toast({
-        title: "Campo obrigatório",
-        description: "Selecione um departamento para o treinamento.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Departamento é opcional - pode não haver departamentos cadastrados
 
     if (!data.duracao || data.duracao.trim() === "") {
       toast({
