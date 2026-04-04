@@ -527,6 +527,11 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
           </DialogHeader>
           
           <div className="space-y-3 py-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+              <span className="flex-1">Tipo de questão</span>
+              <span className="w-20 text-center">Quantidade</span>
+              <span className="w-8" />
+            </div>
             {aiConfig.map((config, index) => (
               <div key={index} className="flex items-center gap-2">
                 <Select value={config.tipo} onValueChange={(v) => {
@@ -543,18 +548,22 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
                     ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={config.quantidade}
-                  onChange={(e) => {
-                    const newConfig = [...aiConfig]
-                    newConfig[index] = { ...newConfig[index], quantidade: parseInt(e.target.value) || 1 }
-                    setAiConfig(newConfig)
-                  }}
-                  className="w-20"
-                />
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Qtd:</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={config.quantidade}
+                    onChange={(e) => {
+                      const newConfig = [...aiConfig]
+                      newConfig[index] = { ...newConfig[index], quantidade: parseInt(e.target.value) || 1 }
+                      setAiConfig(newConfig)
+                    }}
+                    className="w-20"
+                    title="Quantidade de questões deste tipo"
+                  />
+                </div>
                 {aiConfig.length > 1 && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeAiConfigLine(index)}>
                     <Trash2 className="h-3 w-3" />
