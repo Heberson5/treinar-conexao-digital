@@ -527,6 +527,11 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
           </DialogHeader>
           
           <div className="space-y-3 py-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+              <span className="flex-1">Tipo de questão</span>
+              <span className="w-20 text-center">Quantidade</span>
+              <span className="w-8" />
+            </div>
             {aiConfig.map((config, index) => (
               <div key={index} className="flex items-center gap-2">
                 <Select value={config.tipo} onValueChange={(v) => {
