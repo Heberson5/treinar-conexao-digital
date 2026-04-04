@@ -556,6 +556,7 @@ export default function EditarTreinamentoModerno() {
             treinamentoId={dbTraining.id}
             avaliacaoObrigatoria={false}
             notaMinima={7}
+            conteudoTreinamento={dbTraining.conteudo_html || ""}
             onSettingsChange={handleQuizSettingsChange}
           />
         ) : id ? (
