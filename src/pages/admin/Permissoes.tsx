@@ -20,7 +20,6 @@ import {
   Crown,
   UserCheck,
   User,
-  Settings,
   Eye,
   EyeOff
 } from "lucide-react"
@@ -44,62 +43,60 @@ interface Role {
   ativo: boolean
 }
 
+const coresDisponiveis = [
+  { value: "bg-blue-500", label: "Azul", hex: "#3b82f6" },
+  { value: "bg-green-500", label: "Verde", hex: "#22c55e" },
+  { value: "bg-purple-500", label: "Roxo", hex: "#a855f7" },
+  { value: "bg-red-500", label: "Vermelho", hex: "#ef4444" },
+  { value: "bg-yellow-500", label: "Amarelo", hex: "#eab308" },
+  { value: "bg-gray-500", label: "Cinza", hex: "#6b7280" },
+  { value: "bg-orange-500", label: "Laranja", hex: "#f97316" },
+  { value: "bg-pink-500", label: "Rosa", hex: "#ec4899" },
+  { value: "bg-teal-500", label: "Teal", hex: "#14b8a6" },
+  { value: "bg-indigo-500", label: "Índigo", hex: "#6366f1" },
+]
+
 const permissoesDisponiveis: Permission[] = [
-  // Treinamentos
-  { id: "trainings.view", nome: "Visualizar Treinamentos", descricao: "Acesso para visualizar a lista de treinamentos disponíveis, incluindo detalhes, descrições e materiais de apoio", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.create", nome: "Criar Treinamentos", descricao: "Permite criar novos treinamentos, adicionar conteúdo, vídeos, blocos de texto e materiais complementares", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.edit", nome: "Editar Treinamentos", descricao: "Autoriza a edição de treinamentos existentes, incluindo alteração de título, descrição, conteúdo e status", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.delete", nome: "Excluir Treinamentos", descricao: "Permite remover treinamentos permanentemente do sistema (ação irreversível)", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso completo para gerenciar todos os aspectos dos treinamentos, incluindo publicação e atribuição a departamentos", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.assign", nome: "Atribuir Treinamentos", descricao: "Permite atribuir treinamentos obrigatórios a usuários ou departamentos específicos", categoria: "Treinamentos", ativo: true },
-  { id: "trainings.certificates", nome: "Gerenciar Certificados", descricao: "Acesso para visualizar, emitir e invalidar certificados de conclusão de treinamentos", categoria: "Treinamentos", ativo: true },
-  
-  // Usuários
-  { id: "users.view", nome: "Visualizar Usuários", descricao: "Permite visualizar a lista de usuários cadastrados, incluindo dados básicos e status", categoria: "Usuários", ativo: true },
-  { id: "users.create", nome: "Criar Usuários", descricao: "Autoriza a criação de novos usuários no sistema, definindo perfil, departamento e permissões iniciais", categoria: "Usuários", ativo: true },
-  { id: "users.edit", nome: "Editar Usuários", descricao: "Permite alterar dados de usuários existentes, incluindo nome, email, departamento e cargo", categoria: "Usuários", ativo: true },
-  { id: "users.delete", nome: "Excluir Usuários", descricao: "Autoriza a remoção ou desativação de usuários do sistema", categoria: "Usuários", ativo: true },
-  { id: "users.roles", nome: "Gerenciar Papéis", descricao: "Permite alterar o papel/função de usuários (ex: de usuário para instrutor)", categoria: "Usuários", ativo: true },
-  { id: "users.import", nome: "Importar Usuários", descricao: "Permite importar usuários em massa via arquivo CSV ou integração", categoria: "Usuários", ativo: true },
-  { id: "users.progress", nome: "Ver Progresso de Usuários", descricao: "Acesso para visualizar o progresso individual de cada usuário nos treinamentos", categoria: "Usuários", ativo: true },
-  
-  // Relatórios
-  { id: "reports.view", nome: "Visualizar Relatórios", descricao: "Acesso para visualizar relatórios básicos de progresso e conclusão de treinamentos", categoria: "Relatórios", ativo: true },
-  { id: "reports.export", nome: "Exportar Relatórios", descricao: "Permite exportar dados e relatórios em formatos como PDF, Excel e CSV", categoria: "Relatórios", ativo: true },
-  { id: "reports.advanced", nome: "Relatórios Avançados", descricao: "Acesso a relatórios completos com análises de desempenho, tendências e métricas detalhadas", categoria: "Relatórios", ativo: true },
-  { id: "reports.department", nome: "Relatórios por Departamento", descricao: "Visualização de relatórios filtrados por departamento específico", categoria: "Relatórios", ativo: true },
-  { id: "reports.compliance", nome: "Relatórios de Conformidade", descricao: "Acesso a relatórios de conformidade e treinamentos obrigatórios pendentes", categoria: "Relatórios", ativo: true },
-  
-  // Departamentos
-  { id: "departments.view", nome: "Visualizar Departamentos", descricao: "Permite visualizar a lista de departamentos e suas informações", categoria: "Departamentos", ativo: true },
-  { id: "departments.create", nome: "Criar Departamentos", descricao: "Autoriza a criação de novos departamentos na estrutura organizacional", categoria: "Departamentos", ativo: true },
-  { id: "departments.edit", nome: "Editar Departamentos", descricao: "Permite alterar dados de departamentos existentes", categoria: "Departamentos", ativo: true },
-  { id: "departments.delete", nome: "Excluir Departamentos", descricao: "Autoriza a remoção de departamentos (requer que não haja usuários vinculados)", categoria: "Departamentos", ativo: true },
-  
-  // Empresas (para Master)
-  { id: "companies.view", nome: "Visualizar Empresas", descricao: "Acesso para visualizar todas as empresas cadastradas no sistema", categoria: "Empresas", ativo: true },
-  { id: "companies.create", nome: "Criar Empresas", descricao: "Permite cadastrar novas empresas/clientes no sistema", categoria: "Empresas", ativo: true },
-  { id: "companies.edit", nome: "Editar Empresas", descricao: "Autoriza a edição de dados das empresas, incluindo plano e limites", categoria: "Empresas", ativo: true },
-  { id: "companies.delete", nome: "Excluir Empresas", descricao: "Permite remover empresas do sistema (ação crítica)", categoria: "Empresas", ativo: true },
-  { id: "companies.switch", nome: "Alternar entre Empresas", descricao: "Permite visualizar e gerenciar dados de diferentes empresas", categoria: "Empresas", ativo: true },
-  
-  // Integrações
-  { id: "integrations.view", nome: "Visualizar Integrações", descricao: "Acesso para visualizar as integrações configuradas (calendário, IA, etc.)", categoria: "Integrações", ativo: true },
-  { id: "integrations.configure", nome: "Configurar Integrações", descricao: "Permite configurar e alterar integrações com serviços externos", categoria: "Integrações", ativo: true },
-  { id: "integrations.ai", nome: "Usar Recursos de IA", descricao: "Autoriza o uso de funcionalidades de IA como reescrita de textos", categoria: "Integrações", ativo: true },
-  
-  // Sistema
-  { id: "system.settings", nome: "Configurações Gerais", descricao: "Acesso às configurações gerais do sistema como tema, idioma e preferências", categoria: "Sistema", ativo: true },
-  { id: "system.backup", nome: "Backup e Restore", descricao: "Permite realizar backup dos dados e restaurar versões anteriores", categoria: "Sistema", ativo: true },
-  { id: "system.logs", nome: "Visualizar Logs", descricao: "Acesso aos logs de atividades e auditoria do sistema", categoria: "Sistema", ativo: true },
-  { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança, senhas e autenticação", categoria: "Sistema", ativo: true },
-  { id: "system.notifications", nome: "Gerenciar Notificações", descricao: "Configurar templates e regras de notificações automáticas", categoria: "Sistema", ativo: true },
-  
-  // Financeiro
-  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros, faturas e cobranças", categoria: "Financeiro", ativo: true },
-  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças, alterar planos e processar pagamentos", categoria: "Financeiro", ativo: true },
-  { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir, cancelar e reenviar faturas", categoria: "Financeiro", ativo: true },
-  { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar, editar e atribuir planos de assinatura às empresas", categoria: "Financeiro", ativo: true }
+  { id: "trainings.view", nome: "Visualizar Treinamentos", descricao: "Acesso para visualizar a lista de treinamentos disponíveis", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.create", nome: "Criar Treinamentos", descricao: "Permite criar novos treinamentos com conteúdo e materiais", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.edit", nome: "Editar Treinamentos", descricao: "Autoriza a edição de treinamentos existentes", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.delete", nome: "Excluir Treinamentos", descricao: "Permite remover treinamentos permanentemente", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso completo para gerenciar todos os aspectos dos treinamentos", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.assign", nome: "Atribuir Treinamentos", descricao: "Permite atribuir treinamentos a usuários ou departamentos", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.certificates", nome: "Gerenciar Certificados", descricao: "Acesso para visualizar e emitir certificados", categoria: "Treinamentos", ativo: true },
+  { id: "users.view", nome: "Visualizar Usuários", descricao: "Permite visualizar a lista de usuários cadastrados", categoria: "Usuários", ativo: true },
+  { id: "users.create", nome: "Criar Usuários", descricao: "Autoriza a criação de novos usuários no sistema", categoria: "Usuários", ativo: true },
+  { id: "users.edit", nome: "Editar Usuários", descricao: "Permite alterar dados de usuários existentes", categoria: "Usuários", ativo: true },
+  { id: "users.delete", nome: "Excluir Usuários", descricao: "Autoriza a remoção ou desativação de usuários", categoria: "Usuários", ativo: true },
+  { id: "users.roles", nome: "Gerenciar Papéis", descricao: "Permite alterar o papel de usuários", categoria: "Usuários", ativo: true },
+  { id: "users.import", nome: "Importar Usuários", descricao: "Permite importar usuários em massa via CSV", categoria: "Usuários", ativo: true },
+  { id: "users.progress", nome: "Ver Progresso de Usuários", descricao: "Acesso para visualizar o progresso individual", categoria: "Usuários", ativo: true },
+  { id: "reports.view", nome: "Visualizar Relatórios", descricao: "Acesso para visualizar relatórios básicos", categoria: "Relatórios", ativo: true },
+  { id: "reports.export", nome: "Exportar Relatórios", descricao: "Permite exportar dados em PDF, Excel e CSV", categoria: "Relatórios", ativo: true },
+  { id: "reports.advanced", nome: "Relatórios Avançados", descricao: "Acesso a relatórios completos com análises", categoria: "Relatórios", ativo: true },
+  { id: "reports.department", nome: "Relatórios por Departamento", descricao: "Visualização de relatórios filtrados por departamento", categoria: "Relatórios", ativo: true },
+  { id: "reports.compliance", nome: "Relatórios de Conformidade", descricao: "Acesso a relatórios de conformidade", categoria: "Relatórios", ativo: true },
+  { id: "departments.view", nome: "Visualizar Departamentos", descricao: "Permite visualizar a lista de departamentos", categoria: "Departamentos", ativo: true },
+  { id: "departments.create", nome: "Criar Departamentos", descricao: "Autoriza a criação de novos departamentos", categoria: "Departamentos", ativo: true },
+  { id: "departments.edit", nome: "Editar Departamentos", descricao: "Permite alterar dados de departamentos", categoria: "Departamentos", ativo: true },
+  { id: "departments.delete", nome: "Excluir Departamentos", descricao: "Autoriza a remoção de departamentos", categoria: "Departamentos", ativo: true },
+  { id: "companies.view", nome: "Visualizar Empresas", descricao: "Acesso para visualizar todas as empresas", categoria: "Empresas", ativo: true },
+  { id: "companies.create", nome: "Criar Empresas", descricao: "Permite cadastrar novas empresas", categoria: "Empresas", ativo: true },
+  { id: "companies.edit", nome: "Editar Empresas", descricao: "Autoriza a edição de dados das empresas", categoria: "Empresas", ativo: true },
+  { id: "companies.delete", nome: "Excluir Empresas", descricao: "Permite remover empresas do sistema", categoria: "Empresas", ativo: true },
+  { id: "companies.switch", nome: "Alternar entre Empresas", descricao: "Permite visualizar dados de diferentes empresas", categoria: "Empresas", ativo: true },
+  { id: "integrations.view", nome: "Visualizar Integrações", descricao: "Acesso para ver integrações configuradas", categoria: "Integrações", ativo: true },
+  { id: "integrations.configure", nome: "Configurar Integrações", descricao: "Permite configurar integrações externas", categoria: "Integrações", ativo: true },
+  { id: "integrations.ai", nome: "Usar Recursos de IA", descricao: "Autoriza o uso de funcionalidades de IA", categoria: "Integrações", ativo: true },
+  { id: "system.settings", nome: "Configurações Gerais", descricao: "Acesso às configurações gerais do sistema", categoria: "Sistema", ativo: true },
+  { id: "system.backup", nome: "Backup e Restore", descricao: "Permite realizar backup e restauração", categoria: "Sistema", ativo: true },
+  { id: "system.logs", nome: "Visualizar Logs", descricao: "Acesso aos logs de auditoria", categoria: "Sistema", ativo: true },
+  { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança", categoria: "Sistema", ativo: true },
+  { id: "system.notifications", nome: "Gerenciar Notificações", descricao: "Configurar notificações automáticas", categoria: "Sistema", ativo: true },
+  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros", categoria: "Financeiro", ativo: true },
+  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças e pagamentos", categoria: "Financeiro", ativo: true },
+  { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir e gerenciar faturas", categoria: "Financeiro", ativo: true },
+  { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar e atribuir planos", categoria: "Financeiro", ativo: true },
 ]
 
 const rolesIniciais: Role[] = [
@@ -148,9 +145,7 @@ const rolesIniciais: Role[] = [
     nome: "Usuário",
     descricao: "Acesso para realizar treinamentos - visualiza conteúdos e certificados próprios",
     cor: "bg-gray-500",
-    permissoes: [
-      "trainings.view"
-    ],
+    permissoes: ["trainings.view"],
     usuariosCount: 156,
     ativo: true
   }
@@ -158,7 +153,6 @@ const rolesIniciais: Role[] = [
 
 export default function Permissoes() {
   const [roles, setRoles] = useState<Role[]>(rolesIniciais)
-  const [permissions, setPermissions] = useState<Permission[]>(permissoesDisponiveis)
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
@@ -176,88 +170,47 @@ export default function Permissoes() {
     permissoes: []
   })
 
+  const categorias = [...new Set(permissoesDisponiveis.map(p => p.categoria))]
+
   const resetForm = () => {
-    setNewRole({
-      nome: "",
-      descricao: "",
-      cor: "bg-blue-500",
-      permissoes: []
-    })
+    setNewRole({ nome: "", descricao: "", cor: "bg-blue-500", permissoes: [] })
     setEditingRole(null)
   }
 
   const handleCreateRole = () => {
     if (!newRole.nome) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Nome do papel é obrigatório",
-        variant: "destructive"
-      })
+      toast({ title: "Campo obrigatório", description: "Nome do papel é obrigatório", variant: "destructive" })
       return
     }
-
-    const role: Role = {
-      id: Date.now(),
-      ...newRole,
-      usuariosCount: 0,
-      ativo: true
-    }
-
+    const role: Role = { id: Date.now(), ...newRole, usuariosCount: 0, ativo: true }
     setRoles([...roles, role])
     setIsCreateRoleOpen(false)
     resetForm()
-    
-    toast({
-      title: "Papel criado!",
-      description: "O papel foi criado com sucesso."
-    })
+    toast({ title: "Papel criado!", description: "O papel foi criado com sucesso." })
   }
 
   const handleEditRole = (role: Role) => {
     setEditingRole(role)
-    setNewRole({
-      nome: role.nome,
-      descricao: role.descricao,
-      cor: role.cor,
-      permissoes: [...role.permissoes]
-    })
+    setNewRole({ nome: role.nome, descricao: role.descricao, cor: role.cor, permissoes: [...role.permissoes] })
     setIsCreateRoleOpen(true)
   }
 
   const handleUpdateRole = () => {
     if (!editingRole) return
-
-    setRoles(roles.map(r => 
-      r.id === editingRole.id 
-        ? { ...editingRole, ...newRole }
-        : r
-    ))
-    
+    setRoles(roles.map(r => r.id === editingRole.id ? { ...editingRole, ...newRole } : r))
     setIsCreateRoleOpen(false)
     resetForm()
-    
-    toast({
-      title: "Papel atualizado!",
-      description: "O papel foi atualizado com sucesso."
-    })
+    toast({ title: "Papel atualizado!", description: "O papel foi atualizado com sucesso." })
   }
 
   const handleDeleteRole = (id: number) => {
     const role = roles.find(r => r.id === id)
     if (role && role.usuariosCount > 0) {
-      toast({
-        title: "Não é possível excluir",
-        description: "Este papel possui usuários associados",
-        variant: "destructive"
-      })
+      toast({ title: "Não é possível excluir", description: "Este papel possui usuários associados", variant: "destructive" })
       return
     }
-
     setRoles(roles.filter(r => r.id !== id))
-    toast({
-      title: "Papel excluído",
-      description: "O papel foi removido com sucesso."
-    })
+    toast({ title: "Papel excluído", description: "O papel foi removido com sucesso." })
   }
 
   const togglePermission = (permissionId: string) => {
@@ -270,11 +223,7 @@ export default function Permissoes() {
   }
 
   const toggleRoleStatus = (id: number) => {
-    setRoles(roles.map(role => 
-      role.id === id 
-        ? { ...role, ativo: !role.ativo }
-        : role
-    ))
+    setRoles(roles.map(role => role.id === id ? { ...role, ativo: !role.ativo } : role))
   }
 
   const getRoleIcon = (nome: string) => {
@@ -287,21 +236,23 @@ export default function Permissoes() {
     }
   }
 
-  const categorias = [...new Set(permissions.map(p => p.categoria))]
-
   const filteredRoles = roles.filter(role =>
     role.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     role.descricao.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const getPermissionNameById = (id: string) => {
+    return permissoesDisponiveis.find(p => p.id === id)?.nome || id
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Permissões</h1>
+          <h1 className="text-3xl font-bold">Gestão de Papéis</h1>
           <p className="text-muted-foreground mt-2">
-            Configure papéis e permissões do sistema
+            Configure papéis e suas permissões no sistema
           </p>
         </div>
         
@@ -326,7 +277,7 @@ export default function Permissoes() {
             </DialogHeader>
             
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome do Papel *</Label>
                   <Input
@@ -337,19 +288,21 @@ export default function Permissoes() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cor">Cor</Label>
-                  <select 
-                    className="w-full p-2 border rounded-md"
-                    value={newRole.cor}
-                    onChange={(e) => setNewRole({...newRole, cor: e.target.value})}
-                  >
-                    <option value="bg-blue-500">Azul</option>
-                    <option value="bg-green-500">Verde</option>
-                    <option value="bg-purple-500">Roxo</option>
-                    <option value="bg-red-500">Vermelho</option>
-                    <option value="bg-yellow-500">Amarelo</option>
-                    <option value="bg-gray-500">Cinza</option>
-                  </select>
+                  <Label>Cor do Papel</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {coresDisponiveis.map((cor) => (
+                      <button
+                        key={cor.value}
+                        type="button"
+                        onClick={() => setNewRole({...newRole, cor: cor.value})}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                          newRole.cor === cor.value ? "border-foreground scale-110 ring-2 ring-offset-2 ring-foreground/30" : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: cor.hex }}
+                        title={cor.label}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
               
@@ -367,7 +320,7 @@ export default function Permissoes() {
               <div className="space-y-4">
                 <Label>Permissões</Label>
                 <Tabs defaultValue={categorias[0]} className="w-full">
-                  <TabsList className="grid grid-cols-8 w-full">
+                  <TabsList className="flex flex-wrap h-auto gap-1">
                     {categorias.map((categoria) => (
                       <TabsTrigger key={categoria} value={categoria} className="text-xs">
                         {categoria}
@@ -377,13 +330,13 @@ export default function Permissoes() {
                   
                   {categorias.map((categoria) => (
                     <TabsContent key={categoria} value={categoria} className="space-y-2">
-                      {permissions
+                      {permissoesDisponiveis
                         .filter(p => p.categoria === categoria)
                         .map((permission) => (
                           <div key={permission.id} className="flex items-center justify-between p-3 border rounded-lg">
                             <div className="flex-1">
-                              <h4 className="font-medium">{permission.nome}</h4>
-                              <p className="text-sm text-muted-foreground">{permission.descricao}</p>
+                              <h4 className="font-medium text-sm">{permission.nome}</h4>
+                              <p className="text-xs text-muted-foreground">{permission.descricao}</p>
                             </div>
                             <Switch
                               checked={newRole.permissoes.includes(permission.id)}
@@ -458,142 +411,94 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Permissões</p>
-                <p className="text-2xl font-bold">{permissions.length}</p>
+                <p className="text-2xl font-bold">{permissoesDisponiveis.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="papeis" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="papeis">Papéis</TabsTrigger>
-          <TabsTrigger value="permissoes">Permissões</TabsTrigger>
-        </TabsList>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar papéis..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
 
-        {/* Papéis Tab */}
-        <TabsContent value="papeis" className="space-y-6">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar papéis..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Roles List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredRoles.map((role) => (
-              <Card key={role.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 ${role.cor} rounded-lg text-white`}>
-                        {getRoleIcon(role.nome)}
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{role.nome}</CardTitle>
-                        <CardDescription>{role.descricao}</CardDescription>
-                      </div>
-                    </div>
-                    <Badge variant={role.ativo ? "default" : "secondary"}>
-                      {role.ativo ? "Ativo" : "Inativo"}
-                    </Badge>
+      {/* Roles List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {filteredRoles.map((role) => (
+          <Card key={role.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 ${role.cor} rounded-lg text-white`}>
+                    {getRoleIcon(role.nome)}
                   </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Usuários:</span>
-                    <span className="font-medium">{role.usuariosCount}</span>
+                  <div>
+                    <CardTitle className="text-lg">{role.nome}</CardTitle>
+                    <CardDescription className="text-xs">{role.descricao}</CardDescription>
                   </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Permissões:</span>
-                    <span className="font-medium">{role.permissoes.length}</span>
-                  </div>
-                  
-                  <div className="flex justify-between pt-2">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toggleRoleStatus(role.id)}
-                      >
-                        {role.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditRole(role)}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDeleteRole(role.id)}
-                      className="text-destructive hover:text-destructive"
-                      disabled={role.usuariosCount > 0}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Permissões Tab */}
-        <TabsContent value="permissoes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lista de Permissões</CardTitle>
-              <CardDescription>
-                Todas as permissões disponíveis no sistema
-              </CardDescription>
+                </div>
+                <Badge variant={role.ativo ? "default" : "secondary"}>
+                  {role.ativo ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent>
-              <Tabs defaultValue={categorias[0]} className="w-full">
-                <TabsList className="grid grid-cols-5 w-full">
-                  {categorias.map((categoria) => (
-                    <TabsTrigger key={categoria} value={categoria}>
-                      {categoria}
-                    </TabsTrigger>
+            
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Usuários:</span>
+                <span className="font-medium">{role.usuariosCount}</span>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Permissões:</span>
+                  <span className="font-medium">{role.permissoes.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {role.permissoes.slice(0, 5).map((pId) => (
+                    <Badge key={pId} variant="outline" className="text-[10px] py-0">
+                      {getPermissionNameById(pId)}
+                    </Badge>
                   ))}
-                </TabsList>
+                  {role.permissoes.length > 5 && (
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      +{role.permissoes.length - 5} mais
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-between pt-2">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => toggleRoleStatus(role.id)}>
+                    {role.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleEditRole(role)}>
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                </div>
                 
-                {categorias.map((categoria) => (
-                  <TabsContent key={categoria} value={categoria} className="space-y-4">
-                    {permissions
-                      .filter(p => p.categoria === categoria)
-                      .map((permission) => (
-                        <div key={permission.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <h4 className="font-medium">{permission.nome}</h4>
-                            <p className="text-sm text-muted-foreground">{permission.descricao}</p>
-                            <Badge variant="outline" className="mt-2">
-                              {permission.id}
-                            </Badge>
-                          </div>
-                          <Badge variant={permission.ativo ? "default" : "secondary"}>
-                            {permission.ativo ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </div>
-                      ))}
-                  </TabsContent>
-                ))}
-              </Tabs>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleDeleteRole(role.id)}
+                  className="text-destructive hover:text-destructive"
+                  disabled={role.usuariosCount > 0}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        ))}
+      </div>
     </div>
   )
 }
