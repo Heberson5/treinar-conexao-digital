@@ -562,6 +562,7 @@ export default function EditarTreinamentoModerno() {
         ) : id ? (
           <QuizEditor
             treinamentoId={id}
+            conteudoTreinamento={training?.texto || ""}
             onSettingsChange={() => {}}
           />
         ) : (
