@@ -116,7 +116,7 @@ export function useAIRewrite(options?: UseAIRewriteOptions) {
       if (!enabled) {
         toast({
           title: "IA não disponível",
-          description: "A integração com IA não está habilitada para sua empresa. Verifique seu plano ou as configurações de integrações.",
+          description: "Configure a integração com IA em Integrações, com uma chave de API válida. Disponível nos planos Premium e Enterprise.",
           variant: "destructive"
         });
         return null;
