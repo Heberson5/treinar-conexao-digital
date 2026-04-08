@@ -1,0 +1,1 @@
+UPDATE public.perfis SET ativo = true WHERE id IN ('98d967cd-1be9-40c7-a12e-040c795a625a', '34bf81d0-e3d8-4e8a-8bf1-e80c509ff1db');
