@@ -1702,14 +1702,19 @@ export function ModernTrainingEditor({
                   <Select
                     value={formData.departamento_id || formData.departamento}
                     onValueChange={(value) => {
-                      const dep = departamentosFiltrados.find(d => d.id === value);
-                      setFormData((prev) => ({ ...prev, departamento: dep?.nome || value, departamento_id: value }));
+                      if (value === "todos") {
+                        setFormData((prev) => ({ ...prev, departamento: "Todos", departamento_id: "" }));
+                      } else {
+                        const dep = departamentosFiltrados.find(d => d.id === value);
+                        setFormData((prev) => ({ ...prev, departamento: dep?.nome || value, departamento_id: value }));
+                      }
                     }}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="todos">Todos os Departamentos</SelectItem>
                       {departamentosFiltrados.length > 0 ? (
                         departamentosFiltrados.map((dep) => (
                           <SelectItem key={dep.id} value={dep.id}>
