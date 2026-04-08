@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -97,8 +97,7 @@ export default function Analytics() {
     }
   }
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
       setIsLoading(true)
       const startDate = getStartDate().toISOString()
 
