@@ -87,6 +87,7 @@ function createDefaultQuestion(tipo: QuestionType, ordem: number): Questao {
 
 export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMinima = 7, tempoAvaliacao = 0, conteudoTreinamento, onSettingsChange }: QuizEditorProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [questoes, setQuestoes] = useState<Questao[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -94,11 +95,71 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
   const [tempo, setTempo] = useState(tempoAvaliacao)
   const [showAIDialog, setShowAIDialog] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [aiAccessEnabled, setAiAccessEnabled] = useState(false)
+  const [aiAccessChecked, setAiAccessChecked] = useState(false)
   const [aiConfig, setAiConfig] = useState<{ tipo: QuestionType; quantidade: number }[]>([
     { tipo: "quiz", quantidade: 5 }
   ])
 
   useEffect(() => { loadQuestoes() }, [treinamentoId])
+  
+  useEffect(() => { checkAIAccess() }, [user])
+  
+  const checkAIAccess = async () => {
+    // Master sempre tem acesso (usa Lovable AI Gateway)
+    if (user?.role === "master") {
+      setAiAccessEnabled(true)
+      setAiAccessChecked(true)
+      return
+    }
+    
+    if (!user?.empresa_id) {
+      setAiAccessEnabled(false)
+      setAiAccessChecked(true)
+      return
+    }
+    
+    try {
+      // Verificar plano
+      const { data: contrato } = await supabase
+        .from("plano_contratos")
+        .select("nome_plano")
+        .eq("empresa_id", user.empresa_id)
+        .eq("ativo", true)
+        .single()
+      
+      if (!contrato || !["Premium", "Enterprise"].includes(contrato.nome_plano)) {
+        setAiAccessEnabled(false)
+        setAiAccessChecked(true)
+        return
+      }
+      
+      // Verificar config IA com chave
+      const { data: configIA } = await supabase
+        .from("configuracoes_ia_empresa")
+        .select("provedor_ia, habilitado, api_key_gemini, api_key_chatgpt, api_key_deepseek")
+        .eq("empresa_id", user.empresa_id)
+        .single()
+      
+      if (!configIA || !configIA.habilitado) {
+        setAiAccessEnabled(false)
+        setAiAccessChecked(true)
+        return
+      }
+      
+      const provedor = configIA.provedor_ia || "gemini"
+      const temChave = 
+        (provedor === "gemini" && !!(configIA as any).api_key_gemini) ||
+        (provedor === "chatgpt" && !!(configIA as any).api_key_chatgpt) ||
+        (provedor === "deepseek" && !!(configIA as any).api_key_deepseek)
+      
+      setAiAccessEnabled(temChave)
+    } catch {
+      setAiAccessEnabled(false)
+    } finally {
+      setAiAccessChecked(true)
+    }
+  }
 
   const loadQuestoes = async () => {
     setIsLoading(true)
