@@ -283,7 +283,14 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
               {Object.values(resultado.detalhes).filter(Boolean).length} de {questoes.length} corretas
             </p>
             {!resultado.aprovado && (
-              <Button onClick={handleRetry} size="lg">Tentar Novamente</Button>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Você precisa revisar o conteúdo antes de tentar novamente.
+                </p>
+                <Button onClick={handleRetry} size="lg" variant="outline">
+                  Voltar ao Estudo e Tentar Novamente
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
