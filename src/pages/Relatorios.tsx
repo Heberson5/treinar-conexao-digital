@@ -215,10 +215,11 @@ export default function Relatorios() {
       } finally {
         setIsLoading(false)
       }
-    }
-
-    fetchReportDataInner()
   }, [selectedPeriod, empresaSelecionada, isMasterFilter])
+
+  useEffect(() => {
+    fetchReportData()
+  }, [fetchReportData])
 
   // Realtime subscription
   useEffect(() => {
