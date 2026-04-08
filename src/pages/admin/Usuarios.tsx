@@ -527,11 +527,41 @@ export default function Usuarios() {
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
 
+      // Atualizar e-mail se foi alterado
+      if (novoEmail.trim() && novoEmail.trim() !== editingUser.email) {
+        const emailRegex = /\S+@\S+\.\S+/
+        if (!emailRegex.test(novoEmail.trim())) {
+          toast({
+            title: "E-mail inválido",
+            description: "Informe um e-mail válido.",
+            variant: "destructive",
+          })
+          setIsSaving(false)
+          return
+        }
+
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+          "update-user-email",
+          { body: { userId: editingUser.id, newEmail: novoEmail.trim() } }
+        )
+
+        if (emailError || emailResult?.error) {
+          toast({
+            title: "Erro ao atualizar e-mail",
+            description: emailResult?.error || emailError?.message || "Não foi possível atualizar o e-mail.",
+            variant: "destructive",
+          })
+          setIsSaving(false)
+          return
+        }
+      }
+
       // Atualizar perfil
       const { error: updateError } = await supabase
         .from("perfis")
         .update({
           nome: novoNome.trim(),
+          email: novoEmail.trim(),
           empresa_id: novaEmpresa || null,
           departamento_id: novoDepartamento || null,
           cargo: novoCargo || null,
@@ -572,6 +602,7 @@ export default function Usuarios() {
             ? {
                 ...u,
                 nome: novoNome.trim(),
+                email: novoEmail.trim(),
                 empresa_id: novaEmpresa || null,
                 departamento_id: novoDepartamento || null,
                 cargo: novoCargo || null,
@@ -1090,12 +1121,9 @@ export default function Usuarios() {
                 id="editEmail"
                 type="email"
                 value={novoEmail}
-                disabled
-                className="bg-muted"
+                onChange={(e) => setNovoEmail(e.target.value)}
+                placeholder="E-mail do usuário"
               />
-              <p className="text-xs text-muted-foreground">
-                O e-mail não pode ser alterado.
-              </p>
             </div>
 
             <div className="space-y-2">
