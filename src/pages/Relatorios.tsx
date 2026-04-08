@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -217,8 +217,25 @@ export default function Relatorios() {
       }
     }
 
-    fetchReportData()
+    fetchReportDataInner()
   }, [selectedPeriod, empresaSelecionada, isMasterFilter])
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('relatorios-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => {
+        fetchReportData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => {
+        fetchReportData()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [fetchReportData])
 
   const exportReport = (format: 'pdf' | 'excel', type: string) => {
     const periodLabel = selectedPeriod === "7d" ? "Últimos 7 dias" : 
