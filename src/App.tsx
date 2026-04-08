@@ -41,6 +41,7 @@ import DashboardExecutivo from "./pages/admin/DashboardExecutivo";
 import LandingPageEditor from "./pages/admin/LandingPageEditor";
 import Financeiro from "./pages/admin/Financeiro";
 import Categorias from "./pages/admin/Categorias";
+import ArquiteturaSistema from "./pages/admin/ArquiteturaSistema";
 
 const queryClient = new QueryClient();
 
@@ -122,6 +123,7 @@ function AppContent() {
         <Route path="/admin/configuracoes" element={isMaster ? <Configuracoes /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/landing-page" element={isMaster ? <LandingPageEditor /> : <Navigate to="/meus-treinamentos" replace />} />
         <Route path="/admin/financeiro" element={isMaster ? <Financeiro /> : <Navigate to="/meus-treinamentos" replace />} />
+        <Route path="/admin/arquitetura" element={isMaster ? <ArquiteturaSistema /> : <Navigate to="/meus-treinamentos" replace />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
