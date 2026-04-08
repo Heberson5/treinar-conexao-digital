@@ -188,10 +188,15 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
   }, [questoes, respostas, notaMinima, user, treinamentoId, onAprovado, toast])
 
   const handleRetry = () => {
+    // Redirecionar de volta ao conteúdo para re-estudo
     setRespostas({})
     setResultado(null)
     setCurrentIndex(0)
     setQuizStarted(false)
+    toast({
+      title: "Estude novamente",
+      description: "Revise o conteúdo do treinamento antes de tentar novamente.",
+    })
   }
 
   const movePuzzleItem = (qId: string, from: number, to: number) => {
