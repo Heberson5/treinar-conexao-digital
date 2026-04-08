@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO, subDays } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -16,7 +16,9 @@ import {
   Calendar,
   Target,
   Building2,
-  Loader2
+  Loader2,
+  FileText,
+  RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context";
@@ -53,6 +55,15 @@ interface ActivityData {
   criado_em: string;
 }
 
+interface UserAttemptData {
+  usuario_nome: string;
+  usuario_id: string;
+  treinamento_titulo: string;
+  tentativas: number;
+  notas: number[];
+  aprovado: boolean;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { empresaSelecionada, isMaster } = useEmpresaFilter();
@@ -68,156 +79,205 @@ export default function Dashboard() {
   });
   const [trainings, setTrainings] = useState<TrainingData[]>([]);
   const [activities, setActivities] = useState<ActivityData[]>([]);
+  const [userAttempts, setUserAttempts] = useState<UserAttemptData[]>([]);
   
   const [filters, setFilters] = useState<DashboardFiltersState>({
     period: "month",
     departmentId: "",
   });
 
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const now = new Date();
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      
+      switch (filters.period) {
+        case "today":
+          startDate = startOfDay(now);
+          endDate = endOfDay(now);
+          break;
+        case "week":
+          startDate = startOfWeek(now, { weekStartsOn: 0 });
+          endDate = endOfWeek(now, { weekStartsOn: 0 });
+          break;
+        case "month":
+          startDate = startOfMonth(now);
+          endDate = endOfMonth(now);
+          break;
+        default:
+          startDate = subDays(now, 365);
+          endDate = now;
+      }
+
+      // Buscar treinamentos
+      let treinamentosQuery = supabase
+        .from("treinamentos")
+        .select("*")
+        .eq("publicado", true);
+      
+      if (isMaster && empresaSelecionada) {
+        treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaSelecionada);
+      } else if (!isMaster && user?.empresa_id) {
+        treinamentosQuery = treinamentosQuery.eq("empresa_id", user.empresa_id);
+      }
+
+      if (filters.departmentId) {
+        treinamentosQuery = treinamentosQuery.eq("departamento_id", filters.departmentId);
+      }
+
+      const { data: treinamentosData, error: treinamentosError } = await treinamentosQuery;
+      
+      if (treinamentosError) {
+        console.error("Erro ao buscar treinamentos:", treinamentosError);
+      }
+
+      // Buscar progresso
+      let progressoQuery = supabase.from("progresso_treinamentos").select("*");
+      if (treinamentosData && treinamentosData.length > 0) {
+        progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
+      }
+      const { data: progressoData } = await progressoQuery;
+
+      // Buscar atividades recentes
+      const { data: atividadesData } = await supabase
+        .from("atividades")
+        .select("*")
+        .order("criado_em", { ascending: false })
+        .limit(10);
+
+      // Buscar tentativas de avaliação por usuário
+      let tentativasQuery = supabase
+        .from("tentativas_avaliacao")
+        .select("*")
+        .order("criado_em", { ascending: false });
+
+      if (treinamentosData && treinamentosData.length > 0) {
+        tentativasQuery = tentativasQuery.in("treinamento_id", treinamentosData.map(t => t.id));
+      }
+
+      const { data: tentativasData } = await tentativasQuery;
+
+      // Buscar perfis dos usuários que fizeram tentativas
+      const userIds = [...new Set((tentativasData || []).map(t => t.usuario_id))];
+      let perfisMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: perfisData } = await supabase
+          .from("perfis")
+          .select("id, nome")
+          .in("id", userIds);
+        if (perfisData) {
+          perfisMap = perfisData.reduce((acc, p) => {
+            acc[p.id] = p.nome;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      // Mapear treinamento IDs para nomes
+      const treinamentoNomes: Record<string, string> = {};
+      (treinamentosData || []).forEach(t => {
+        treinamentoNomes[t.id] = t.titulo;
+      });
+
+      // Agrupar tentativas por usuario + treinamento
+      const attemptGroups: Record<string, UserAttemptData> = {};
+      (tentativasData || []).forEach(t => {
+        const key = `${t.usuario_id}-${t.treinamento_id}`;
+        if (!attemptGroups[key]) {
+          attemptGroups[key] = {
+            usuario_nome: perfisMap[t.usuario_id] || "Usuário",
+            usuario_id: t.usuario_id,
+            treinamento_titulo: treinamentoNomes[t.treinamento_id] || "Treinamento",
+            tentativas: 0,
+            notas: [],
+            aprovado: false
+          };
+        }
+        attemptGroups[key].tentativas++;
+        attemptGroups[key].notas.push(Number(t.nota));
+        if (t.aprovado) attemptGroups[key].aprovado = true;
+      });
+
+      setUserAttempts(Object.values(attemptGroups));
+
+      // Calcular estatísticas
+      const totalTreinamentos = treinamentosData?.length || 0;
+      const treinamentosAtivos = treinamentosData?.filter(t => t.publicado).length || 0;
+      
+      const progressoPorTreinamento = (progressoData || []).reduce((acc, p) => {
+        if (!acc[p.treinamento_id]) acc[p.treinamento_id] = [];
+        acc[p.treinamento_id].push(p);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      const participantesUnicos = new Set((progressoData || []).map(p => p.usuario_id));
+      const totalParticipantes = participantesUnicos.size;
+      const conclusoes = (progressoData || []).filter(p => p.concluido).length;
+      const totalProgressos = (progressoData || []).length;
+      const taxaConclusao = totalProgressos > 0 ? Math.round((conclusoes / totalProgressos) * 100) : 0;
+      const horasTreinamento = (progressoData || []).reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0);
+
+      const treinamentosComStats: TrainingData[] = (treinamentosData || []).map(t => {
+        const progressos = progressoPorTreinamento[t.id] || [];
+        const participantes = progressos.length;
+        const conclusoesTreinamento = progressos.filter(p => p.concluido).length;
+        const taxa = participantes > 0 ? Math.round((conclusoesTreinamento / participantes) * 100) : 0;
+        return {
+          id: t.id,
+          titulo: t.titulo,
+          categoria: t.categoria,
+          participantes,
+          conclusoes: conclusoesTreinamento,
+          taxa,
+          departamento: t.departamento_id
+        };
+      });
+
+      setStats({
+        totalTreinamentos,
+        treinamentosAtivos,
+        totalParticipantes,
+        taxaConclusao,
+        horasTreinamento: Math.round(horasTreinamento / 60),
+        certificadosEmitidos: conclusoes
+      });
+
+      setTrainings(treinamentosComStats.slice(0, 5));
+      setActivities(atividadesData || []);
+
+    } catch (error) {
+      console.error("Erro ao buscar dados do dashboard:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, empresaSelecionada, isMaster, filters]);
+
   // Buscar dados do dashboard
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        // Definir período de filtro
-        const now = new Date();
-        let startDate: Date | undefined;
-        let endDate: Date | undefined;
-        
-        switch (filters.period) {
-          case "today":
-            startDate = startOfDay(now);
-            endDate = endOfDay(now);
-            break;
-          case "week":
-            startDate = startOfWeek(now, { weekStartsOn: 0 });
-            endDate = endOfWeek(now, { weekStartsOn: 0 });
-            break;
-          case "month":
-            startDate = startOfMonth(now);
-            endDate = endOfMonth(now);
-            break;
-          default:
-            startDate = subDays(now, 365);
-            endDate = now;
-        }
-
-        // Buscar treinamentos
-        let treinamentosQuery = supabase
-          .from("treinamentos")
-          .select("*")
-          .eq("publicado", true);
-        
-        // Filtro por empresa
-        if (isMaster && empresaSelecionada) {
-          treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaSelecionada);
-        } else if (!isMaster && user?.empresa_id) {
-          treinamentosQuery = treinamentosQuery.eq("empresa_id", user.empresa_id);
-        }
-
-        // Filtro por departamento
-        if (filters.departmentId) {
-          treinamentosQuery = treinamentosQuery.eq("departamento_id", filters.departmentId);
-        }
-
-        const { data: treinamentosData, error: treinamentosError } = await treinamentosQuery;
-        
-        if (treinamentosError) {
-          console.error("Erro ao buscar treinamentos:", treinamentosError);
-        }
-
-        // Buscar progresso dos treinamentos
-        let progressoQuery = supabase
-          .from("progresso_treinamentos")
-          .select("*");
-
-        if (treinamentosData && treinamentosData.length > 0) {
-          progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
-        }
-
-        const { data: progressoData, error: progressoError } = await progressoQuery;
-        
-        if (progressoError) {
-          console.error("Erro ao buscar progresso:", progressoError);
-        }
-
-        // Buscar atividades recentes
-        let atividadesQuery = supabase
-          .from("atividades")
-          .select("*")
-          .order("criado_em", { ascending: false })
-          .limit(10);
-
-        const { data: atividadesData, error: atividadesError } = await atividadesQuery;
-        
-        if (atividadesError) {
-          console.error("Erro ao buscar atividades:", atividadesError);
-        }
-
-        // Calcular estatísticas
-        const totalTreinamentos = treinamentosData?.length || 0;
-        const treinamentosAtivos = treinamentosData?.filter(t => t.publicado).length || 0;
-        
-        // Agrupar progresso por treinamento
-        const progressoPorTreinamento = (progressoData || []).reduce((acc, p) => {
-          if (!acc[p.treinamento_id]) {
-            acc[p.treinamento_id] = [];
-          }
-          acc[p.treinamento_id].push(p);
-          return acc;
-        }, {} as Record<string, any[]>);
-
-        // Calcular participantes únicos
-        const participantesUnicos = new Set((progressoData || []).map(p => p.usuario_id));
-        const totalParticipantes = participantesUnicos.size;
-
-        // Calcular conclusões
-        const conclusoes = (progressoData || []).filter(p => p.concluido).length;
-        const totalProgressos = (progressoData || []).length;
-        const taxaConclusao = totalProgressos > 0 ? Math.round((conclusoes / totalProgressos) * 100) : 0;
-
-        // Calcular horas
-        const horasTreinamento = (progressoData || []).reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0);
-
-        // Preparar dados de treinamentos para exibição
-        const treinamentosComStats: TrainingData[] = (treinamentosData || []).map(t => {
-          const progressos = progressoPorTreinamento[t.id] || [];
-          const participantes = progressos.length;
-          const conclusoesTreinamento = progressos.filter(p => p.concluido).length;
-          const taxa = participantes > 0 ? Math.round((conclusoesTreinamento / participantes) * 100) : 0;
-          
-          return {
-            id: t.id,
-            titulo: t.titulo,
-            categoria: t.categoria,
-            participantes,
-            conclusoes: conclusoesTreinamento,
-            taxa,
-            departamento: t.departamento_id
-          };
-        });
-
-        setStats({
-          totalTreinamentos,
-          treinamentosAtivos,
-          totalParticipantes,
-          taxaConclusao,
-          horasTreinamento: Math.round(horasTreinamento / 60), // Converter para horas
-          certificadosEmitidos: conclusoes
-        });
-
-        setTrainings(treinamentosComStats.slice(0, 5));
-        setActivities(atividadesData || []);
-
-      } catch (error) {
-        console.error("Erro ao buscar dados do dashboard:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchDashboardData();
-  }, [user, empresaSelecionada, isMaster, filters]);
+  }, [fetchDashboardData]);
+
+  // Realtime subscriptions
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => {
+        fetchDashboardData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => {
+        fetchDashboardData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'atividades' }, () => {
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchDashboardData]);
 
   const getDashboardTitle = () => {
     if (isMaster) {
@@ -431,7 +491,61 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Gráfico de Progresso */}
+      {/* Tentativas de Avaliação por Usuário */}
+      {userAttempts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Tentativas de Avaliação por Usuário
+            </CardTitle>
+            <CardDescription>
+              Número de tentativas e notas de cada usuário nas avaliações
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2 font-medium">Usuário</th>
+                    <th className="text-left p-2 font-medium">Treinamento</th>
+                    <th className="text-center p-2 font-medium">Tentativas</th>
+                    <th className="text-center p-2 font-medium">Notas</th>
+                    <th className="text-center p-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userAttempts.slice(0, 20).map((attempt, idx) => (
+                    <tr key={idx} className="border-b last:border-0">
+                      <td className="p-2">{attempt.usuario_nome}</td>
+                      <td className="p-2 max-w-[200px] truncate">{attempt.treinamento_titulo}</td>
+                      <td className="p-2 text-center">
+                        <Badge variant="secondary">{attempt.tentativas}x</Badge>
+                      </td>
+                      <td className="p-2 text-center">
+                        <div className="flex gap-1 justify-center flex-wrap">
+                          {attempt.notas.map((nota, ni) => (
+                            <Badge key={ni} variant={nota >= 7 ? "default" : "destructive"} className="text-xs">
+                              {nota.toFixed(1)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-2 text-center">
+                        <Badge variant={attempt.aprovado ? "default" : "destructive"}>
+                          {attempt.aprovado ? "Aprovado" : "Reprovado"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
