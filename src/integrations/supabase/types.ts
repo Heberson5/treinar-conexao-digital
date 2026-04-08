@@ -20,6 +20,7 @@ export type Database = {
           descricao: string
           id: string
           metadata: Json | null
+          numero: number | null
           tipo: string
           usuario_id: string | null
         }
@@ -28,6 +29,7 @@ export type Database = {
           descricao: string
           id?: string
           metadata?: Json | null
+          numero?: number | null
           tipo: string
           usuario_id?: string | null
         }
@@ -36,6 +38,7 @@ export type Database = {
           descricao?: string
           id?: string
           metadata?: Json | null
+          numero?: number | null
           tipo?: string
           usuario_id?: string | null
         }
@@ -52,6 +55,7 @@ export type Database = {
           ip_address: string | null
           local: string | null
           menu: string
+          numero: number | null
           usuario_id: string
           usuario_nome: string
         }
@@ -65,6 +69,7 @@ export type Database = {
           ip_address?: string | null
           local?: string | null
           menu: string
+          numero?: number | null
           usuario_id: string
           usuario_nome: string
         }
@@ -78,6 +83,7 @@ export type Database = {
           ip_address?: string | null
           local?: string | null
           menu?: string
+          numero?: number | null
           usuario_id?: string
           usuario_nome?: string
         }
@@ -90,6 +96,7 @@ export type Database = {
           criado_em: string
           id: string
           nota: number
+          numero: number | null
           treinamento_id: string
           usuario_id: string
         }
@@ -99,6 +106,7 @@ export type Database = {
           criado_em?: string
           id?: string
           nota: number
+          numero?: number | null
           treinamento_id: string
           usuario_id: string
         }
@@ -108,6 +116,7 @@ export type Database = {
           criado_em?: string
           id?: string
           nota?: number
+          numero?: number | null
           treinamento_id?: string
           usuario_id?: string
         }
@@ -130,6 +139,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           nome: string
+          numero: number | null
         }
         Insert: {
           ativo?: boolean | null
@@ -139,6 +149,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome: string
+          numero?: number | null
         }
         Update: {
           ativo?: boolean | null
@@ -148,6 +159,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome?: string
+          numero?: number | null
         }
         Relationships: [
           {
@@ -168,6 +180,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           nome: string
+          numero: number | null
         }
         Insert: {
           ativo?: boolean | null
@@ -177,6 +190,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome: string
+          numero?: number | null
         }
         Update: {
           ativo?: boolean | null
@@ -186,6 +200,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome?: string
+          numero?: number | null
         }
         Relationships: [
           {
@@ -203,6 +218,7 @@ export type Database = {
           criado_em: string
           empresa_id: string | null
           id: string
+          numero: number | null
           usado_em: string
         }
         Insert: {
@@ -210,6 +226,7 @@ export type Database = {
           criado_em?: string
           empresa_id?: string | null
           id?: string
+          numero?: number | null
           usado_em?: string
         }
         Update: {
@@ -217,6 +234,7 @@ export type Database = {
           criado_em?: string
           empresa_id?: string | null
           id?: string
+          numero?: number | null
           usado_em?: string
         }
         Relationships: [
@@ -241,6 +259,7 @@ export type Database = {
           habilitado: boolean | null
           id: string
           modelo_ia: string | null
+          numero: number | null
           provedor_ia: string
         }
         Insert: {
@@ -254,6 +273,7 @@ export type Database = {
           habilitado?: boolean | null
           id?: string
           modelo_ia?: string | null
+          numero?: number | null
           provedor_ia?: string
         }
         Update: {
@@ -267,6 +287,7 @@ export type Database = {
           habilitado?: boolean | null
           id?: string
           modelo_ia?: string | null
+          numero?: number | null
           provedor_ia?: string
         }
         Relationships: [
@@ -286,6 +307,7 @@ export type Database = {
           id: string
           logo_sidebar_url: string | null
           nome_sistema: string
+          numero: number | null
         }
         Insert: {
           atualizado_em?: string | null
@@ -293,6 +315,7 @@ export type Database = {
           id?: string
           logo_sidebar_url?: string | null
           nome_sistema?: string
+          numero?: number | null
         }
         Update: {
           atualizado_em?: string | null
@@ -300,6 +323,7 @@ export type Database = {
           id?: string
           logo_sidebar_url?: string | null
           nome_sistema?: string
+          numero?: number | null
         }
         Relationships: []
       }
@@ -312,6 +336,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           nome: string
+          numero: number | null
         }
         Insert: {
           ativo?: boolean | null
@@ -321,6 +346,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome: string
+          numero?: number | null
         }
         Update: {
           ativo?: boolean | null
@@ -330,6 +356,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome?: string
+          numero?: number | null
         }
         Relationships: [
           {
@@ -360,6 +387,7 @@ export type Database = {
           motivo_bloqueio: string | null
           nome: string
           nome_fantasia: string | null
+          numero: number | null
           plano_id: string | null
           razao_social: string | null
           responsavel: string | null
@@ -384,6 +412,7 @@ export type Database = {
           motivo_bloqueio?: string | null
           nome: string
           nome_fantasia?: string | null
+          numero?: number | null
           plano_id?: string | null
           razao_social?: string | null
           responsavel?: string | null
@@ -408,6 +437,7 @@ export type Database = {
           motivo_bloqueio?: string | null
           nome?: string
           nome_fantasia?: string | null
+          numero?: number | null
           plano_id?: string | null
           razao_social?: string | null
           responsavel?: string | null
@@ -435,6 +465,7 @@ export type Database = {
           hero_title: string | null
           id: string
           logo_url: string | null
+          numero: number | null
           show_annual_toggle: boolean | null
           sobre_nos: string | null
           stats_section: Json | null
@@ -458,6 +489,7 @@ export type Database = {
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          numero?: number | null
           show_annual_toggle?: boolean | null
           sobre_nos?: string | null
           stats_section?: Json | null
@@ -481,6 +513,7 @@ export type Database = {
           hero_title?: string | null
           id?: string
           logo_url?: string | null
+          numero?: number | null
           show_annual_toggle?: boolean | null
           sobre_nos?: string | null
           stats_section?: Json | null
@@ -498,6 +531,7 @@ export type Database = {
           evento_id: string | null
           id: string
           notificado: boolean | null
+          numero: number | null
           tipo: string
           titulo: string
           treinamento_id: string | null
@@ -512,6 +546,7 @@ export type Database = {
           evento_id?: string | null
           id?: string
           notificado?: boolean | null
+          numero?: number | null
           tipo?: string
           titulo: string
           treinamento_id?: string | null
@@ -526,6 +561,7 @@ export type Database = {
           evento_id?: string | null
           id?: string
           notificado?: boolean | null
+          numero?: number | null
           tipo?: string
           titulo?: string
           treinamento_id?: string | null
@@ -551,6 +587,7 @@ export type Database = {
           empresa_id: string
           id: string
           metodo_pagamento: string | null
+          numero: number | null
           observacoes: string | null
           referencia: string | null
           status: string
@@ -565,6 +602,7 @@ export type Database = {
           empresa_id: string
           id?: string
           metodo_pagamento?: string | null
+          numero?: number | null
           observacoes?: string | null
           referencia?: string | null
           status?: string
@@ -579,6 +617,7 @@ export type Database = {
           empresa_id?: string
           id?: string
           metodo_pagamento?: string | null
+          numero?: number | null
           observacoes?: string | null
           referencia?: string | null
           status?: string
@@ -616,6 +655,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           nome: string
+          numero: number | null
           telefone: string | null
           trocar_senha_primeiro_login: boolean | null
         }
@@ -633,6 +673,7 @@ export type Database = {
           empresa_id?: string | null
           id: string
           nome: string
+          numero?: number | null
           telefone?: string | null
           trocar_senha_primeiro_login?: boolean | null
         }
@@ -650,6 +691,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome?: string
+          numero?: number | null
           telefone?: string | null
           trocar_senha_primeiro_login?: boolean | null
         }
@@ -683,6 +725,7 @@ export type Database = {
           limite_treinamentos: number
           limite_usuarios: number
           nome_plano: string
+          numero: number | null
           plano_id: string | null
           preco_contratado: number
           recursos_contratados: Json | null
@@ -700,6 +743,7 @@ export type Database = {
           limite_treinamentos: number
           limite_usuarios: number
           nome_plano: string
+          numero?: number | null
           plano_id?: string | null
           preco_contratado: number
           recursos_contratados?: Json | null
@@ -717,6 +761,7 @@ export type Database = {
           limite_treinamentos?: number
           limite_usuarios?: number
           nome_plano?: string
+          numero?: number | null
           plano_id?: string | null
           preco_contratado?: number
           recursos_contratados?: Json | null
@@ -752,6 +797,7 @@ export type Database = {
           limite_treinamentos: number
           limite_usuarios: number
           nome: string
+          numero: number | null
           ordem: number | null
           periodo: string | null
           popular: boolean | null
@@ -770,6 +816,7 @@ export type Database = {
           limite_treinamentos?: number
           limite_usuarios?: number
           nome: string
+          numero?: number | null
           ordem?: number | null
           periodo?: string | null
           popular?: boolean | null
@@ -788,6 +835,7 @@ export type Database = {
           limite_treinamentos?: number
           limite_usuarios?: number
           nome?: string
+          numero?: number | null
           ordem?: number | null
           periodo?: string | null
           popular?: boolean | null
@@ -805,6 +853,7 @@ export type Database = {
           data_inicio: string | null
           id: string
           nota_avaliacao: number | null
+          numero: number | null
           percentual_concluido: number | null
           tempo_assistido_minutos: number | null
           treinamento_id: string
@@ -818,6 +867,7 @@ export type Database = {
           data_inicio?: string | null
           id?: string
           nota_avaliacao?: number | null
+          numero?: number | null
           percentual_concluido?: number | null
           tempo_assistido_minutos?: number | null
           treinamento_id: string
@@ -831,6 +881,7 @@ export type Database = {
           data_inicio?: string | null
           id?: string
           nota_avaliacao?: number | null
+          numero?: number | null
           percentual_concluido?: number | null
           tempo_assistido_minutos?: number | null
           treinamento_id?: string
@@ -851,6 +902,7 @@ export type Database = {
           atualizado_em: string | null
           criado_em: string | null
           id: string
+          numero: number | null
           opcao_a: string
           opcao_b: string
           opcao_c: string | null
@@ -869,6 +921,7 @@ export type Database = {
           atualizado_em?: string | null
           criado_em?: string | null
           id?: string
+          numero?: number | null
           opcao_a: string
           opcao_b: string
           opcao_c?: string | null
@@ -887,6 +940,7 @@ export type Database = {
           atualizado_em?: string | null
           criado_em?: string | null
           id?: string
+          numero?: number | null
           opcao_a?: string
           opcao_b?: string
           opcao_c?: string | null
@@ -917,6 +971,7 @@ export type Database = {
           criado_em: string | null
           id: string
           nota: number
+          numero: number | null
           respostas: Json
           treinamento_id: string
           usuario_id: string
@@ -926,6 +981,7 @@ export type Database = {
           criado_em?: string | null
           id?: string
           nota?: number
+          numero?: number | null
           respostas?: Json
           treinamento_id: string
           usuario_id: string
@@ -935,6 +991,7 @@ export type Database = {
           criado_em?: string | null
           id?: string
           nota?: number
+          numero?: number | null
           respostas?: Json
           treinamento_id?: string
           usuario_id?: string
@@ -966,6 +1023,7 @@ export type Database = {
           media_avaliacao: number | null
           nivel: string | null
           nota_minima: number | null
+          numero: number | null
           obrigatorio: boolean | null
           publicado: boolean | null
           tempo_avaliacao_minutos: number | null
@@ -989,6 +1047,7 @@ export type Database = {
           media_avaliacao?: number | null
           nivel?: string | null
           nota_minima?: number | null
+          numero?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           tempo_avaliacao_minutos?: number | null
@@ -1012,6 +1071,7 @@ export type Database = {
           media_avaliacao?: number | null
           nivel?: string | null
           nota_minima?: number | null
+          numero?: number | null
           obrigatorio?: boolean | null
           publicado?: boolean | null
           tempo_avaliacao_minutos?: number | null
@@ -1042,6 +1102,7 @@ export type Database = {
           atualizado_em: string | null
           empresa_id: string
           id: string
+          numero: number | null
           treinamentos_criados: number | null
           usuarios_ativos: number | null
         }
@@ -1050,6 +1111,7 @@ export type Database = {
           atualizado_em?: string | null
           empresa_id: string
           id?: string
+          numero?: number | null
           treinamentos_criados?: number | null
           usuarios_ativos?: number | null
         }
@@ -1058,6 +1120,7 @@ export type Database = {
           atualizado_em?: string | null
           empresa_id?: string
           id?: string
+          numero?: number | null
           treinamentos_criados?: number | null
           usuarios_ativos?: number | null
         }
@@ -1075,18 +1138,21 @@ export type Database = {
         Row: {
           criado_em: string | null
           id: string
+          numero: number | null
           role: Database["public"]["Enums"]["tipo_role"]
           usuario_id: string
         }
         Insert: {
           criado_em?: string | null
           id?: string
+          numero?: number | null
           role?: Database["public"]["Enums"]["tipo_role"]
           usuario_id: string
         }
         Update: {
           criado_em?: string | null
           id?: string
+          numero?: number | null
           role?: Database["public"]["Enums"]["tipo_role"]
           usuario_id?: string
         }
