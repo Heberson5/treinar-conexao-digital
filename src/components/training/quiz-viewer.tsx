@@ -344,18 +344,18 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
         <CardContent className="space-y-4">
           {/* Quiz / Multiple choice - Kahoot grid */}
           {(currentQ.tipo === "quiz" || currentQ.tipo === "verdadeiro-falso") && (
-            <div className={cn("grid gap-3", currentQ.opcoes.length <= 2 ? "grid-cols-2" : "grid-cols-2")}>
+            <div className={cn("grid gap-2 sm:gap-3", currentQ.opcoes.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
               {currentQ.opcoes.map((opt, oi) => (
                 <button
                   key={oi}
                   onClick={() => setRespostas({ ...respostas, [currentQ.id]: letterKeys[oi] })}
                   className={cn(
-                    "p-4 rounded-xl text-white font-semibold text-lg transition-all transform hover:scale-[1.02] active:scale-95",
+                    "p-3 sm:p-4 rounded-xl text-white font-semibold text-sm sm:text-lg transition-all transform hover:scale-[1.02] active:scale-95 text-left break-words min-h-[48px]",
                     KAHOOT_COLORS[oi % KAHOOT_COLORS.length],
                     respostas[currentQ.id] === letterKeys[oi] && "ring-4 ring-white shadow-lg scale-[1.02]"
                   )}
                 >
-                  <span className="text-white/70 text-sm mr-2">{letterKeys[oi].toUpperCase()}</span>
+                  <span className="text-white/70 text-xs sm:text-sm mr-2">{letterKeys[oi].toUpperCase()}</span>
                   {opt}
                 </button>
               ))}
