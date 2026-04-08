@@ -11,7 +11,6 @@ import { Plus, Trash2, GripVertical, HelpCircle, Sparkles, Loader2, Clock, Lock 
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { useToast } from "@/hooks/use-toast"
 import {
   Select,
   SelectContent,
