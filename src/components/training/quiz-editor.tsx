@@ -560,14 +560,27 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
             </SelectContent>
           </Select>
 
-          <Button
-            variant="outline"
-            onClick={() => setShowAIDialog(true)}
-            className="gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
-          >
-            <Sparkles className="h-4 w-4 text-purple-500" />
-            Gerar com IA
-          </Button>
+          {aiAccessChecked && aiAccessEnabled && (
+            <Button
+              variant="outline"
+              onClick={() => setShowAIDialog(true)}
+              className="gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
+            >
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              Gerar com IA
+            </Button>
+          )}
+          {aiAccessChecked && !aiAccessEnabled && (
+            <Button
+              variant="outline"
+              disabled
+              className="gap-2 opacity-50"
+              title="IA não habilitada. Configure em Integrações com uma chave de API válida (planos Premium/Enterprise)."
+            >
+              <Lock className="h-4 w-4" />
+              IA não disponível
+            </Button>
+          )}
         </div>
 
         <Button onClick={handleSave} disabled={isSaving || questoes.length === 0}>
