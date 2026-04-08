@@ -88,6 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         
         if (session?.user) {
+          // Log login activity
+          if (event === 'SIGNED_IN') {
+            supabase.from("atividades").insert({
+              usuario_id: session.user.id,
+              tipo: "login",
+              descricao: "Usuário realizou login no sistema",
+              metadata: {}
+            }).then(() => {})
+          }
           // Usar setTimeout para evitar deadlock
           setTimeout(() => {
             if (isMounted) {
