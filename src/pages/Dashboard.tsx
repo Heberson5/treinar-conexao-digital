@@ -491,7 +491,61 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Gráfico de Progresso */}
+      {/* Tentativas de Avaliação por Usuário */}
+      {userAttempts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Tentativas de Avaliação por Usuário
+            </CardTitle>
+            <CardDescription>
+              Número de tentativas e notas de cada usuário nas avaliações
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2 font-medium">Usuário</th>
+                    <th className="text-left p-2 font-medium">Treinamento</th>
+                    <th className="text-center p-2 font-medium">Tentativas</th>
+                    <th className="text-center p-2 font-medium">Notas</th>
+                    <th className="text-center p-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userAttempts.slice(0, 20).map((attempt, idx) => (
+                    <tr key={idx} className="border-b last:border-0">
+                      <td className="p-2">{attempt.usuario_nome}</td>
+                      <td className="p-2 max-w-[200px] truncate">{attempt.treinamento_titulo}</td>
+                      <td className="p-2 text-center">
+                        <Badge variant="secondary">{attempt.tentativas}x</Badge>
+                      </td>
+                      <td className="p-2 text-center">
+                        <div className="flex gap-1 justify-center flex-wrap">
+                          {attempt.notas.map((nota, ni) => (
+                            <Badge key={ni} variant={nota >= 7 ? "default" : "destructive"} className="text-xs">
+                              {nota.toFixed(1)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-2 text-center">
+                        <Badge variant={attempt.aprovado ? "default" : "destructive"}>
+                          {attempt.aprovado ? "Aprovado" : "Reprovado"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
