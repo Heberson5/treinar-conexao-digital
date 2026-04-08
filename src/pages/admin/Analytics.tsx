@@ -3,29 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { 
-  BarChart3, 
-  TrendingUp, 
-  TrendingDown,
-  Users, 
-  BookOpen, 
-  Clock, 
-  Award,
-  Target,
-  Calendar,
-  Activity,
-  Eye,
-  Play,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Building2,
-  FileText,
-  FileSpreadsheet
+  BarChart3, TrendingUp, TrendingDown, Users, BookOpen, Clock, Award,
+  Target, Calendar, Activity, Eye, Play, CheckCircle, AlertCircle,
+  Download, Building2, FileText, FileSpreadsheet
 } from "lucide-react"
 import { useBrazilianDate } from "@/hooks/use-brazilian-date"
 import { supabase } from "@/integrations/supabase/client"
@@ -33,37 +17,21 @@ import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 import { exportData } from "@/lib/export-utils"
 import { useToast } from "@/hooks/use-toast"
+import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter"
 
 interface AnalyticsData {
-  totalUsuarios: number
-  usuariosAtivos: number
-  novosCadastros: number
-  totalTreinamentos: number
-  treinamentosAtivos: number
-  totalConclusoes: number
-  taxaConclusao: number
-  horasEstudo: number
-  certificadosEmitidos: number
+  totalUsuarios: number; usuariosAtivos: number; novosCadastros: number
+  totalTreinamentos: number; treinamentosAtivos: number; totalConclusoes: number
+  taxaConclusao: number; horasEstudo: number; certificadosEmitidos: number
 }
 
-interface DepartmentStats {
-  nome: string
-  usuarios: number
-  conclusoes: number
-  engajamento: number
-}
-
-interface TrainingStats {
-  titulo: string
-  visualizacoes: number
-  conclusoes: number
-  taxa: number
-  tempo: string
-  avaliacao: number
-}
+interface DepartmentStats { nome: string; usuarios: number; conclusoes: number; engajamento: number }
+interface TrainingStats { titulo: string; visualizacoes: number; conclusoes: number; taxa: number; tempo: string; avaliacao: number }
 
 export default function Analytics() {
-  const [selectedPeriod, setSelectedPeriod] = useState("30d")
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodValue>("30d")
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>()
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>()
   const { formatDate } = useBrazilianDate()
   const { user } = useAuth()
   const { empresaSelecionada, isMaster: isMasterFilter, empresaSelecionadaNome } = useEmpresaFilter()
@@ -71,221 +39,131 @@ export default function Analytics() {
   
   const [isLoading, setIsLoading] = useState(true)
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
-    totalUsuarios: 0,
-    usuariosAtivos: 0,
-    novosCadastros: 0,
-    totalTreinamentos: 0,
-    treinamentosAtivos: 0,
-    totalConclusoes: 0,
-    taxaConclusao: 0,
-    horasEstudo: 0,
-    certificadosEmitidos: 0
+    totalUsuarios: 0, usuariosAtivos: 0, novosCadastros: 0, totalTreinamentos: 0,
+    treinamentosAtivos: 0, totalConclusoes: 0, taxaConclusao: 0, horasEstudo: 0, certificadosEmitidos: 0
   })
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([])
   const [trainingStats, setTrainingStats] = useState<TrainingStats[]>([])
   const [engajamentoDiario, setEngajamentoDiario] = useState<any[]>([])
 
-  // Calcular data de início baseado no período selecionado
-  const getStartDate = () => {
-    const now = new Date()
-    switch (selectedPeriod) {
-      case "7d": return new Date(now.setDate(now.getDate() - 7))
-      case "30d": return new Date(now.setDate(now.getDate() - 30))
-      case "90d": return new Date(now.setDate(now.getDate() - 90))
-      case "1y": return new Date(now.setFullYear(now.getFullYear() - 1))
-      default: return new Date(now.setDate(now.getDate() - 30))
-    }
-  }
-
   const fetchAnalytics = useCallback(async () => {
-      setIsLoading(true)
-      const startDate = getStartDate().toISOString()
+    setIsLoading(true)
+    const startDate = selectedPeriod === "custom" && customStartDate
+      ? customStartDate.toISOString()
+      : getStartDateFromPeriod(selectedPeriod).toISOString()
 
-      try {
-        // Construir filtros baseados na empresa selecionada (apenas para master)
-        const empresaFilter = isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" 
-          ? empresaSelecionada 
-          : null
+    try {
+      const empresaFilter = isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" ? empresaSelecionada : null
 
-        // Buscar total de usuários
-        let usuariosQuery = supabase.from("perfis").select("*", { count: "exact", head: true })
-        if (empresaFilter) {
-          usuariosQuery = usuariosQuery.eq("empresa_id", empresaFilter)
-        }
-        const { count: totalUsuarios } = await usuariosQuery
+      let usuariosQuery = supabase.from("perfis").select("*", { count: "exact", head: true })
+      if (empresaFilter) usuariosQuery = usuariosQuery.eq("empresa_id", empresaFilter)
+      const { count: totalUsuarios } = await usuariosQuery
 
-        // Buscar usuários ativos (que acessaram no período)
-        let atividadesQuery = supabase
-          .from("atividades")
-          .select("usuario_id", { count: "exact", head: true })
-          .gte("criado_em", startDate)
-        const { count: usuariosAtivos } = await atividadesQuery
+      let atividadesQuery = supabase.from("atividades").select("usuario_id", { count: "exact", head: true }).gte("criado_em", startDate)
+      const { count: usuariosAtivos } = await atividadesQuery
 
-        // Buscar novos cadastros no período
-        let novosCadastrosQuery = supabase
-          .from("perfis")
-          .select("*", { count: "exact", head: true })
-          .gte("criado_em", startDate)
-        if (empresaFilter) {
-          novosCadastrosQuery = novosCadastrosQuery.eq("empresa_id", empresaFilter)
-        }
-        const { count: novosCadastros } = await novosCadastrosQuery
+      let novosCadastrosQuery = supabase.from("perfis").select("*", { count: "exact", head: true }).gte("criado_em", startDate)
+      if (empresaFilter) novosCadastrosQuery = novosCadastrosQuery.eq("empresa_id", empresaFilter)
+      const { count: novosCadastros } = await novosCadastrosQuery
 
-        // Buscar total de treinamentos
-        let treinamentosQuery = supabase.from("treinamentos").select("*", { count: "exact", head: true })
-        if (empresaFilter) {
-          treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaFilter)
-        }
-        const { count: totalTreinamentos } = await treinamentosQuery
+      let treinamentosQuery = supabase.from("treinamentos").select("*", { count: "exact", head: true })
+      if (empresaFilter) treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaFilter)
+      const { count: totalTreinamentos } = await treinamentosQuery
 
-        // Buscar treinamentos ativos (publicados)
-        let treinamentosAtivosQuery = supabase
-          .from("treinamentos")
-          .select("*", { count: "exact", head: true })
-          .eq("publicado", true)
-        if (empresaFilter) {
-          treinamentosAtivosQuery = treinamentosAtivosQuery.eq("empresa_id", empresaFilter)
-        }
-        const { count: treinamentosAtivos } = await treinamentosAtivosQuery
+      let treinamentosAtivosQuery = supabase.from("treinamentos").select("*", { count: "exact", head: true }).eq("publicado", true)
+      if (empresaFilter) treinamentosAtivosQuery = treinamentosAtivosQuery.eq("empresa_id", empresaFilter)
+      const { count: treinamentosAtivos } = await treinamentosAtivosQuery
 
-        // Buscar progresso dos treinamentos
-        const { data: progressoData } = await supabase
-          .from("progresso_treinamentos")
-          .select(`
-            *,
-            treinamento:treinamentos(id, titulo, empresa_id, duracao_minutos)
-          `)
-          .gte("criado_em", startDate)
+      const { data: progressoData } = await supabase
+        .from("progresso_treinamentos")
+        .select(`*, treinamento:treinamentos(id, titulo, empresa_id, duracao_minutos)`)
+        .gte("criado_em", startDate)
 
-        // Filtrar por empresa se necessário
-        let progressoFiltrado = progressoData || []
-        if (empresaFilter) {
-          progressoFiltrado = progressoFiltrado.filter(p => p.treinamento?.empresa_id === empresaFilter)
-        }
+      let progressoFiltrado = progressoData || []
+      if (empresaFilter) progressoFiltrado = progressoFiltrado.filter(p => p.treinamento?.empresa_id === empresaFilter)
 
-        const totalConclusoes = progressoFiltrado.filter(p => p.concluido).length
-        const totalIniciados = progressoFiltrado.length
-        const taxaConclusao = totalIniciados > 0 ? (totalConclusoes / totalIniciados) * 100 : 0
-        const horasEstudo = progressoFiltrado.reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0) / 60
+      const totalConclusoes = progressoFiltrado.filter(p => p.concluido).length
+      const totalIniciados = progressoFiltrado.length
+      const taxaConclusao = totalIniciados > 0 ? (totalConclusoes / totalIniciados) * 100 : 0
+      const horasEstudo = progressoFiltrado.reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0) / 60
 
-        setAnalyticsData({
-          totalUsuarios: totalUsuarios || 0,
-          usuariosAtivos: usuariosAtivos || 0,
-          novosCadastros: novosCadastros || 0,
-          totalTreinamentos: totalTreinamentos || 0,
-          treinamentosAtivos: treinamentosAtivos || 0,
-          totalConclusoes,
-          taxaConclusao: Math.round(taxaConclusao * 10) / 10,
-          horasEstudo: Math.round(horasEstudo),
-          certificadosEmitidos: totalConclusoes
-        })
+      setAnalyticsData({
+        totalUsuarios: totalUsuarios || 0, usuariosAtivos: usuariosAtivos || 0,
+        novosCadastros: novosCadastros || 0, totalTreinamentos: totalTreinamentos || 0,
+        treinamentosAtivos: treinamentosAtivos || 0, totalConclusoes,
+        taxaConclusao: Math.round(taxaConclusao * 10) / 10,
+        horasEstudo: Math.round(horasEstudo), certificadosEmitidos: totalConclusoes
+      })
 
-        // Buscar estatísticas por departamento
-        let deptQuery = supabase.from("departamentos").select("id, nome")
-        if (empresaFilter) {
-          deptQuery = deptQuery.eq("empresa_id", empresaFilter)
-        }
-        const { data: departamentos } = await deptQuery
+      let deptQuery = supabase.from("departamentos").select("id, nome")
+      if (empresaFilter) deptQuery = deptQuery.eq("empresa_id", empresaFilter)
+      const { data: departamentos } = await deptQuery
 
-        const deptStats: DepartmentStats[] = []
-        if (departamentos) {
-          for (const dept of departamentos) {
-            // Contar usuários do departamento
-            let userCountQuery = supabase
-              .from("perfis")
-              .select("*", { count: "exact", head: true })
-              .eq("departamento_id", dept.id)
-            const { count: userCount } = await userCountQuery
-
-            // Calcular conclusões e engajamento
-            const deptConclusoes = progressoFiltrado.filter(p => {
-              // Simplificado - em produção você buscaria o departamento do usuário
-              return p.concluido
-            }).length
-
-            deptStats.push({
-              nome: dept.nome,
-              usuarios: userCount || 0,
-              conclusoes: Math.floor(deptConclusoes / (departamentos.length || 1)),
-              engajamento: userCount ? Math.min(100, Math.round((deptConclusoes / (userCount * 0.5 + 1)) * 100)) : 0
-            })
-          }
-        }
-        setDepartmentStats(deptStats)
-
-        // Buscar top treinamentos
-        let topTrainingsQuery = supabase
-          .from("treinamentos")
-          .select(`
-            id,
-            titulo,
-            duracao_minutos,
-            empresa_id
-          `)
-          .eq("publicado", true)
-          .limit(5)
-        
-        if (empresaFilter) {
-          topTrainingsQuery = topTrainingsQuery.eq("empresa_id", empresaFilter)
-        }
-        const { data: topTrainings } = await topTrainingsQuery
-
-        const trainingStatsData: TrainingStats[] = []
-        if (topTrainings) {
-          for (const training of topTrainings) {
-            const trainingProgress = progressoFiltrado.filter(p => p.treinamento_id === training.id)
-            const conclusoes = trainingProgress.filter(p => p.concluido).length
-            const visualizacoes = trainingProgress.length
-            const taxa = visualizacoes > 0 ? (conclusoes / visualizacoes) * 100 : 0
-            const avgRating = trainingProgress.reduce((acc, p) => acc + (p.nota_avaliacao || 4), 0) / (trainingProgress.length || 1)
-
-            trainingStatsData.push({
-              titulo: training.titulo,
-              visualizacoes,
-              conclusoes,
-              taxa: Math.round(taxa * 10) / 10,
-              tempo: `${Math.floor((training.duracao_minutos || 0) / 60)}h ${(training.duracao_minutos || 0) % 60}min`,
-              avaliacao: Math.round(avgRating * 10) / 10
-            })
-          }
-        }
-        setTrainingStats(trainingStatsData.sort((a, b) => b.conclusoes - a.conclusoes))
-
-        // Gerar dados de engajamento diário (últimos 7 dias)
-        const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-        const engajamento = []
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date()
-          date.setDate(date.getDate() - i)
-          const dayStart = new Date(date.setHours(0, 0, 0, 0)).toISOString()
-          const dayEnd = new Date(date.setHours(23, 59, 59, 999)).toISOString()
-          
-          const dayProgress = progressoFiltrado.filter(p => {
-            const pDate = new Date(p.criado_em)
-            return pDate >= new Date(dayStart) && pDate <= new Date(dayEnd)
-          })
-
-          engajamento.push({
-            dia: diasSemana[new Date(date).getDay()],
-            visualizacoes: dayProgress.length * 3,
-            interacoes: dayProgress.length * 2,
-            conclusoes: dayProgress.filter(p => p.concluido).length
+      const deptStats: DepartmentStats[] = []
+      if (departamentos) {
+        for (const dept of departamentos) {
+          let userCountQuery = supabase.from("perfis").select("*", { count: "exact", head: true }).eq("departamento_id", dept.id)
+          const { count: userCount } = await userCountQuery
+          const deptConclusoes = progressoFiltrado.filter(p => p.concluido).length
+          deptStats.push({
+            nome: dept.nome, usuarios: userCount || 0,
+            conclusoes: Math.floor(deptConclusoes / (departamentos.length || 1)),
+            engajamento: userCount ? Math.min(100, Math.round((deptConclusoes / (userCount * 0.5 + 1)) * 100)) : 0
           })
         }
-        setEngajamentoDiario(engajamento)
-
-      } catch (error) {
-        console.error("Erro ao buscar analytics:", error)
-      } finally {
-        setIsLoading(false)
       }
-  }, [selectedPeriod, empresaSelecionada, isMasterFilter])
+      setDepartmentStats(deptStats)
 
-  useEffect(() => {
-    fetchAnalytics()
-  }, [fetchAnalytics])
+      let topTrainingsQuery = supabase.from("treinamentos").select(`id, titulo, duracao_minutos, empresa_id`).eq("publicado", true).limit(5)
+      if (empresaFilter) topTrainingsQuery = topTrainingsQuery.eq("empresa_id", empresaFilter)
+      const { data: topTrainings } = await topTrainingsQuery
 
-  // Realtime subscription
+      const trainingStatsData: TrainingStats[] = []
+      if (topTrainings) {
+        for (const training of topTrainings) {
+          const trainingProgress = progressoFiltrado.filter(p => p.treinamento_id === training.id)
+          const conclusoes = trainingProgress.filter(p => p.concluido).length
+          const visualizacoes = trainingProgress.length
+          const taxa = visualizacoes > 0 ? (conclusoes / visualizacoes) * 100 : 0
+          const avgRating = trainingProgress.reduce((acc, p) => acc + (p.nota_avaliacao || 4), 0) / (trainingProgress.length || 1)
+          trainingStatsData.push({
+            titulo: training.titulo, visualizacoes, conclusoes,
+            taxa: Math.round(taxa * 10) / 10,
+            tempo: `${Math.floor((training.duracao_minutos || 0) / 60)}h ${(training.duracao_minutos || 0) % 60}min`,
+            avaliacao: Math.round(avgRating * 10) / 10
+          })
+        }
+      }
+      setTrainingStats(trainingStatsData.sort((a, b) => b.conclusoes - a.conclusoes))
+
+      const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+      const engajamento = []
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dayStart = new Date(date.setHours(0, 0, 0, 0)).toISOString()
+        const dayEnd = new Date(date.setHours(23, 59, 59, 999)).toISOString()
+        const dayProgress = progressoFiltrado.filter(p => {
+          const pDate = new Date(p.criado_em)
+          return pDate >= new Date(dayStart) && pDate <= new Date(dayEnd)
+        })
+        engajamento.push({
+          dia: diasSemana[new Date(date).getDay()],
+          visualizacoes: dayProgress.length * 3,
+          interacoes: dayProgress.length * 2,
+          conclusoes: dayProgress.filter(p => p.concluido).length
+        })
+      }
+      setEngajamentoDiario(engajamento)
+    } catch (error) {
+      console.error("Erro ao buscar analytics:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedPeriod, customStartDate, customEndDate, empresaSelecionada, isMasterFilter])
+
+  useEffect(() => { fetchAnalytics() }, [fetchAnalytics])
+
   useEffect(() => {
     const channel = supabase
       .channel('analytics-realtime')
@@ -295,22 +173,22 @@ export default function Analytics() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchAnalytics])
 
+  const getPeriodLabel = () => {
+    if (selectedPeriod === "custom" && customStartDate && customEndDate) {
+      const fmt = (d: Date) => d.toLocaleDateString('pt-BR')
+      return `${fmt(customStartDate)} a ${fmt(customEndDate)}`
+    }
+    const labels: Record<string, string> = { "7d": "Últimos 7 dias", "30d": "Últimos 30 dias", "90d": "Últimos 90 dias", "1y": "Último ano" }
+    return labels[selectedPeriod] || "Últimos 30 dias"
+  }
+
   const exportAnalytics = (format: 'excel' | 'pdf') => {
-    const periodLabel = selectedPeriod === "7d" ? "Últimos 7 dias" : 
-                        selectedPeriod === "30d" ? "Últimos 30 dias" : 
-                        selectedPeriod === "90d" ? "Últimos 90 dias" : "Último ano"
-    
-    const subtitle = `Período: ${periodLabel}${isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" ? ` | Empresa: ${empresaSelecionadaNome}` : ''}`
-    
+    const subtitle = `Período: ${getPeriodLabel()}${isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" ? ` | Empresa: ${empresaSelecionadaNome}` : ''}`
     try {
       exportData(format, {
         filename: `analytics-${new Date().toISOString().split('T')[0]}`,
-        title: "Relatório de Analytics",
-        subtitle,
-        columns: [
-          { header: "Métrica", key: "metrica" },
-          { header: "Valor", key: "valor" }
-        ],
+        title: "Relatório de Analytics", subtitle,
+        columns: [{ header: "Métrica", key: "metrica" }, { header: "Valor", key: "valor" }],
         data: [
           { metrica: "Total Usuários", valor: analyticsData.totalUsuarios },
           { metrica: "Usuários Ativos", valor: analyticsData.usuariosAtivos },
@@ -322,41 +200,21 @@ export default function Analytics() {
           { metrica: "Certificados Emitidos", valor: analyticsData.certificadosEmitidos }
         ]
       })
-      
-      toast({
-        title: "Exportação concluída",
-        description: `Analytics exportado em formato ${format.toUpperCase()}.`
-      })
+      toast({ title: "Exportação concluída", description: `Analytics exportado em formato ${format.toUpperCase()}.` })
     } catch (error) {
-      toast({
-        title: "Erro na exportação",
-        description: "Não foi possível exportar o relatório.",
-        variant: "destructive"
-      })
+      toast({ title: "Erro na exportação", description: "Não foi possível exportar o relatório.", variant: "destructive" })
     }
   }
 
-  const LoadingSkeleton = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <Skeleton className="h-16 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
+  const maxEngajamento = Math.max(...engajamentoDiario.map(d => d.visualizacoes + d.interacoes + d.conclusoes), 1)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Analytics</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Análises avançadas de performance e engajamento
             {isMasterFilter && empresaSelecionada && empresaSelecionada !== "todas" && (
               <span className="ml-2 text-primary">(filtrado por empresa)</span>
@@ -364,35 +222,27 @@ export default function Analytics() {
           </p>
         </div>
         
-        <div className="flex gap-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-[140px]">
-              <Calendar className="mr-2 h-4 w-4" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="1y">Último ano</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <PeriodFilter
+            value={selectedPeriod}
+            onChange={setSelectedPeriod}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            onCustomDateChange={(s, e) => { setCustomStartDate(s); setCustomEndDate(e) }}
+          />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={isLoading}>
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
+              <Button variant="outline" disabled={isLoading} size="sm">
+                <Download className="mr-2 h-4 w-4" /> Exportar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => exportAnalytics('excel')}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Excel (.xlsx)
+                <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => exportAnalytics('pdf')}>
-                <FileText className="mr-2 h-4 w-4" />
-                PDF
+                <FileText className="mr-2 h-4 w-4" /> PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -400,189 +250,145 @@ export default function Analytics() {
       </div>
 
       {isLoading ? (
-        <LoadingSkeleton />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {[...Array(4)].map((_, i) => (<Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>))}
+          </div>
+        </div>
       ) : (
         <>
           {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Usuários Totais</p>
-                    <p className="text-2xl font-bold">{analyticsData.totalUsuarios}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                      <span className="text-xs text-green-500">+{analyticsData.novosCadastros} novos</span>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+            {[
+              { label: "Usuários Totais", value: analyticsData.totalUsuarios, sub: `+${analyticsData.novosCadastros} novos`, subColor: "text-green-500", icon: Users, iconColor: "text-blue-500", subIcon: TrendingUp },
+              { label: "Taxa de Engajamento", value: `${analyticsData.totalUsuarios > 0 ? Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100) : 0}%`, sub: `${analyticsData.usuariosAtivos} ativos`, subColor: "text-muted-foreground", icon: Activity, iconColor: "text-green-500", subIcon: Activity },
+              { label: "Horas de Estudo", value: analyticsData.horasEstudo, sub: "Total acumulado", subColor: "text-muted-foreground", icon: Clock, iconColor: "text-orange-500", subIcon: Clock },
+              { label: "Taxa de Conclusão", value: `${analyticsData.taxaConclusao}%`, sub: `${analyticsData.totalConclusoes} conclusões`, subColor: "text-green-500", icon: Target, iconColor: "text-purple-500", subIcon: CheckCircle },
+            ].map((card, i) => (
+              <Card key={i}>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{card.label}</p>
+                      <p className="text-lg sm:text-2xl font-bold">{card.value}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <card.subIcon className={`h-3 w-3 ${card.subColor}`} />
+                        <span className={`text-[10px] sm:text-xs ${card.subColor} truncate`}>{card.sub}</span>
+                      </div>
                     </div>
+                    <card.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${card.iconColor} shrink-0`} />
                   </div>
-                  <Users className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Taxa de Engajamento</p>
-                    <p className="text-2xl font-bold">
-                      {analyticsData.totalUsuarios > 0 
-                        ? Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100)
-                        : 0}%
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Activity className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{analyticsData.usuariosAtivos} ativos</span>
-                    </div>
-                  </div>
-                  <Activity className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Horas de Estudo</p>
-                    <p className="text-2xl font-bold">{analyticsData.horasEstudo}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Total acumulado</span>
-                    </div>
-                  </div>
-                  <Clock className="h-8 w-8 text-orange-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Taxa de Conclusão</p>
-                    <p className="text-2xl font-bold">{analyticsData.taxaConclusao}%</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <CheckCircle className="h-3 w-3 text-green-500" />
-                      <span className="text-xs text-green-500">{analyticsData.totalConclusoes} conclusões</span>
-                    </div>
-                  </div>
-                  <Target className="h-8 w-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           <Tabs defaultValue="engajamento" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="engajamento">Engajamento</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="usuarios">Usuários</TabsTrigger>
-              <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
-              <TabsTrigger value="tempo">Tempo Real</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+              <TabsTrigger value="engajamento" className="text-xs sm:text-sm">Engajamento</TabsTrigger>
+              <TabsTrigger value="performance" className="text-xs sm:text-sm">Performance</TabsTrigger>
+              <TabsTrigger value="usuarios" className="text-xs sm:text-sm">Usuários</TabsTrigger>
+              <TabsTrigger value="conteudo" className="text-xs sm:text-sm hidden sm:flex">Conteúdo</TabsTrigger>
+              <TabsTrigger value="tempo" className="text-xs sm:text-sm hidden sm:flex">Tempo Real</TabsTrigger>
             </TabsList>
 
-            {/* Engajamento Tab */}
+            {/* Engajamento Tab - Visual chart style */}
             <TabsContent value="engajamento" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Weekly Engagement Table */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* Weekly Engagement - Chart style */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Engajamento Semanal</CardTitle>
-                    <CardDescription>Atividade dos últimos 7 dias</CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base sm:text-lg">Engajamento Semanal</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Atividade dos últimos 7 dias</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {engajamentoDiario.map((dia, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <span className="font-medium">{dia.dia}</span>
-                          <div className="flex gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Eye className="h-4 w-4 text-blue-600" />
-                              <span>{dia.visualizacoes}</span>
+                      {engajamentoDiario.map((dia, index) => {
+                        const total = dia.visualizacoes + dia.interacoes + dia.conclusoes
+                        const barWidth = maxEngajamento > 0 ? (total / maxEngajamento) * 100 : 0
+                        return (
+                          <div key={index} className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs sm:text-sm font-medium w-8">{dia.dia}</span>
+                              <div className="flex gap-3 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-blue-500" />{dia.visualizacoes}</span>
+                                <span className="flex items-center gap-1"><Play className="h-3 w-3 text-green-500" />{dia.interacoes}</span>
+                                <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-purple-500" />{dia.conclusoes}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Play className="h-4 w-4 text-green-600" />
-                              <span>{dia.interacoes}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <CheckCircle className="h-4 w-4 text-purple-600" />
-                              <span>{dia.conclusoes}</span>
+                            <div className="h-3 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full flex rounded-full overflow-hidden" style={{ width: `${Math.max(barWidth, 2)}%` }}>
+                                <div className="bg-blue-500/60" style={{ width: `${dia.visualizacoes > 0 ? (dia.visualizacoes / total) * 100 : 33}%` }} />
+                                <div className="bg-green-500/60" style={{ width: `${dia.interacoes > 0 ? (dia.interacoes / total) * 100 : 33}%` }} />
+                                <div className="bg-purple-500/60" style={{ width: `${dia.conclusoes > 0 ? (dia.conclusoes / total) * 100 : 34}%` }} />
+                              </div>
                             </div>
                           </div>
+                        )
+                      })}
+                    </div>
+                    <div className="flex justify-center gap-4 mt-4 text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-500/60 rounded-sm" /><span>Visualizações</span></div>
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500/60 rounded-sm" /><span>Interações</span></div>
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-purple-500/60 rounded-sm" /><span>Conclusões</span></div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base sm:text-lg">Resumo de Atividades</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Métricas principais do período</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { icon: BookOpen, color: "text-primary", label: "Treinamentos Ativos", value: analyticsData.treinamentosAtivos },
+                        { icon: CheckCircle, color: "text-green-600", label: "Conclusões no Período", value: analyticsData.totalConclusoes },
+                        { icon: Award, color: "text-amber-500", label: "Certificados Emitidos", value: analyticsData.certificadosEmitidos },
+                        { icon: Users, color: "text-primary", label: "Novos Usuários", value: analyticsData.novosCadastros },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 sm:p-3 border rounded-lg">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <item.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${item.color}`} />
+                            <span className="text-xs sm:text-sm">{item.label}</span>
+                          </div>
+                          <span className="text-base sm:text-lg font-bold">{item.value}</span>
                         </div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Resumo de Atividades</CardTitle>
-                    <CardDescription>
-                      Métricas principais do período
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <BookOpen className="h-5 w-5 text-primary" />
-                          <span>Treinamentos Ativos</span>
-                        </div>
-                        <span className="text-lg font-bold">{analyticsData.treinamentosAtivos}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                          <span>Conclusões no Período</span>
-                        </div>
-                        <span className="text-lg font-bold">{analyticsData.totalConclusoes}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Award className="h-5 w-5 text-amber-500" />
-                          <span>Certificados Emitidos</span>
-                        </div>
-                        <span className="text-lg font-bold">{analyticsData.certificadosEmitidos}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-primary" />
-                          <span>Novos Usuários</span>
-                        </div>
-                        <span className="text-lg font-bold">{analyticsData.novosCadastros}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
 
-              {/* Department Engagement Table */}
+              {/* Department Engagement - Chart style */}
               {departmentStats.length > 0 && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
-                      Engajamento por Departamento
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Building2 className="h-4 w-4 sm:h-5 sm:w-5" /> Engajamento por Departamento
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {departmentStats.map((dept, index) => (
                         <div key={index} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{dept.nome}</span>
-                            <div className="flex items-center gap-4 text-sm">
-                              <span>{dept.usuarios} usuários</span>
-                              <span>{dept.conclusoes} conclusões</span>
-                              <Badge variant={dept.engajamento >= 70 ? "default" : "secondary"}>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <span className="font-medium text-sm">{dept.nome}</span>
+                            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                              <span className="text-muted-foreground">{dept.usuarios} usuários</span>
+                              <span className="text-muted-foreground">{dept.conclusoes} conclusões</span>
+                              <Badge variant={dept.engajamento >= 70 ? "default" : "secondary"} className="text-xs">
                                 {dept.engajamento}%
                               </Badge>
                             </div>
                           </div>
-                          <Progress value={dept.engajamento} className="h-2" />
+                          <div className="h-3 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${dept.engajamento >= 70 ? 'bg-green-500/60' : dept.engajamento >= 40 ? 'bg-yellow-500/60' : 'bg-red-500/60'}`}
+                              style={{ width: `${dept.engajamento}%` }}
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -593,38 +399,36 @@ export default function Analytics() {
 
             {/* Performance Tab */}
             <TabsContent value="performance" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Top Treinamentos</CardTitle>
-                    <CardDescription>
-                      Treinamentos com melhor performance
-                    </CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base sm:text-lg">Top Treinamentos</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Treinamentos com melhor performance</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {trainingStats.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {trainingStats.map((treinamento, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex-1">
+                          <div key={index} className="flex items-center justify-between p-2 sm:p-3 border rounded-lg">
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="flex items-center justify-center w-6 h-6 bg-primary/10 rounded-full text-xs font-bold text-primary">
+                                <span className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-primary/10 rounded-full text-[10px] sm:text-xs font-bold text-primary shrink-0">
                                   {index + 1}
                                 </span>
-                                <h4 className="font-medium line-clamp-1">{treinamento.titulo}</h4>
+                                <h4 className="font-medium text-xs sm:text-sm line-clamp-1">{treinamento.titulo}</h4>
                               </div>
-                              <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+                              <div className="grid grid-cols-3 gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
                                 <span>{treinamento.visualizacoes} views</span>
                                 <span>{treinamento.tempo}</span>
                                 <span>★ {treinamento.avaliacao}</span>
                               </div>
-                              <div className="mt-2">
-                                <Progress value={treinamento.taxa} className="h-2" />
+                              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500/60 rounded-full" style={{ width: `${treinamento.taxa}%` }} />
                               </div>
                             </div>
-                            <div className="text-right ml-4">
-                              <p className="text-lg font-bold text-green-600">{treinamento.taxa}%</p>
-                              <p className="text-xs text-muted-foreground">Conclusão</p>
+                            <div className="text-right ml-3 shrink-0">
+                              <p className="text-base sm:text-lg font-bold text-green-600">{treinamento.taxa}%</p>
+                              <p className="text-[10px] sm:text-xs text-muted-foreground">Conclusão</p>
                             </div>
                           </div>
                         ))}
@@ -639,55 +443,27 @@ export default function Analytics() {
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Métricas de Performance</CardTitle>
-                    <CardDescription>
-                      Indicadores chave de desempenho
-                    </CardDescription>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base sm:text-lg">Métricas de Performance</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Indicadores chave de desempenho</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Taxa de Conclusão Geral</span>
-                          <span className="text-sm text-muted-foreground">
-                            {analyticsData.taxaConclusao}%
-                          </span>
+                      {[
+                        { label: "Taxa de Conclusão Geral", value: analyticsData.taxaConclusao },
+                        { label: "Engajamento de Usuários", value: analyticsData.totalUsuarios > 0 ? Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100) : 0 },
+                        { label: "Treinamentos Publicados", value: analyticsData.totalTreinamentos > 0 ? Math.round((analyticsData.treinamentosAtivos / analyticsData.totalTreinamentos) * 100) : 0 },
+                      ].map((metric, i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{metric.label}</span>
+                            <span className="text-muted-foreground">{metric.value}%</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary/60 rounded-full" style={{ width: `${metric.value}%` }} />
+                          </div>
                         </div>
-                        <Progress value={analyticsData.taxaConclusao} className="h-2" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Engajamento de Usuários</span>
-                          <span className="text-sm text-muted-foreground">
-                            {analyticsData.totalUsuarios > 0 
-                              ? Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                        <Progress 
-                          value={analyticsData.totalUsuarios > 0 
-                            ? (analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100
-                            : 0} 
-                          className="h-2" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Treinamentos Publicados</span>
-                          <span className="text-sm text-muted-foreground">
-                            {analyticsData.totalTreinamentos > 0 
-                              ? Math.round((analyticsData.treinamentosAtivos / analyticsData.totalTreinamentos) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                        <Progress 
-                          value={analyticsData.totalTreinamentos > 0 
-                            ? (analyticsData.treinamentosAtivos / analyticsData.totalTreinamentos) * 100
-                            : 0} 
-                          className="h-2" 
-                        />
-                      </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -696,100 +472,56 @@ export default function Analytics() {
 
             {/* Usuários Tab */}
             <TabsContent value="usuarios" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Novos Cadastros</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-primary">+{analyticsData.novosCadastros}</p>
-                      <p className="text-sm text-muted-foreground">No período selecionado</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Usuários Ativos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-green-600">{analyticsData.usuariosAtivos}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {analyticsData.totalUsuarios > 0 
-                          ? `${Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100)}% do total`
-                          : "0% do total"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Certificados</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-yellow-600">{analyticsData.certificadosEmitidos}</p>
-                      <p className="text-sm text-muted-foreground">Emitidos no período</p>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                {[
+                  { title: "Novos Cadastros", value: `+${analyticsData.novosCadastros}`, color: "text-primary", sub: "No período selecionado" },
+                  { title: "Usuários Ativos", value: analyticsData.usuariosAtivos, color: "text-green-600", sub: analyticsData.totalUsuarios > 0 ? `${Math.round((analyticsData.usuariosAtivos / analyticsData.totalUsuarios) * 100)}% do total` : "0% do total" },
+                  { title: "Certificados", value: analyticsData.certificadosEmitidos, color: "text-yellow-600", sub: "Emitidos no período" },
+                ].map((card, i) => (
+                  <Card key={i}>
+                    <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">{card.title}</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="text-center">
+                        <p className={`text-2xl sm:text-3xl font-bold ${card.color}`}>{card.value}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{card.sub}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </TabsContent>
 
             {/* Conteúdo Tab */}
             <TabsContent value="conteudo" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Treinamentos por Status</CardTitle>
-                  </CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Treinamentos por Status</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span>Publicados</span>
+                    <div className="space-y-3">
+                      {[
+                        { color: "bg-green-500", label: "Publicados", value: analyticsData.treinamentosAtivos },
+                        { color: "bg-yellow-500", label: "Rascunhos", value: analyticsData.totalTreinamentos - analyticsData.treinamentosAtivos },
+                        { color: "bg-blue-500", label: "Total", value: analyticsData.totalTreinamentos },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 sm:p-3 border rounded-lg text-sm">
+                          <div className="flex items-center gap-3"><div className={`w-3 h-3 ${item.color} rounded-full`} /><span>{item.label}</span></div>
+                          <span className="font-bold">{item.value}</span>
                         </div>
-                        <span className="font-bold">{analyticsData.treinamentosAtivos}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                          <span>Rascunhos</span>
-                        </div>
-                        <span className="font-bold">{analyticsData.totalTreinamentos - analyticsData.treinamentosAtivos}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <span>Total</span>
-                        </div>
-                        <span className="font-bold">{analyticsData.totalTreinamentos}</span>
-                      </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Métricas de Conteúdo</CardTitle>
-                  </CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-base sm:text-lg">Métricas de Conteúdo</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-2 sm:p-3 border rounded-lg text-sm">
                         <span>Horas de Conteúdo Assistido</span>
                         <span className="font-bold">{analyticsData.horasEstudo}h</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center justify-between p-2 sm:p-3 border rounded-lg text-sm">
                         <span>Média por Usuário</span>
-                        <span className="font-bold">
-                          {analyticsData.usuariosAtivos > 0 
-                            ? Math.round(analyticsData.horasEstudo / analyticsData.usuariosAtivos)
-                            : 0}h
-                        </span>
+                        <span className="font-bold">{analyticsData.usuariosAtivos > 0 ? Math.round(analyticsData.horasEstudo / analyticsData.usuariosAtivos) : 0}h</span>
                       </div>
                     </div>
                   </CardContent>
@@ -800,37 +532,28 @@ export default function Analytics() {
             {/* Tempo Real Tab */}
             <TabsContent value="tempo" className="space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Atividade em Tempo Real</CardTitle>
-                  <CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base sm:text-lg">Atividade em Tempo Real</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
                     Última atualização: {new Date().toLocaleTimeString('pt-BR')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-6 border rounded-lg">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm text-muted-foreground">Online agora</span>
-                      </div>
-                      <p className="text-4xl font-bold text-green-600">
-                        {Math.floor(analyticsData.usuariosAtivos * 0.1) || 1}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">usuários ativos</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="text-center p-4 bg-muted/30 rounded-lg">
+                      <Activity className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-green-500" />
+                      <p className="text-xl sm:text-2xl font-bold">{analyticsData.usuariosAtivos}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Usuários Ativos Agora</p>
                     </div>
-                    <div className="text-center p-6 border rounded-lg">
-                      <Play className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                      <p className="text-4xl font-bold text-blue-600">
-                        {Math.floor(analyticsData.usuariosAtivos * 0.05) || 0}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">em treinamento</p>
+                    <div className="text-center p-4 bg-muted/30 rounded-lg">
+                      <Play className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-blue-500" />
+                      <p className="text-xl sm:text-2xl font-bold">{analyticsData.treinamentosAtivos}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Treinamentos em Andamento</p>
                     </div>
-                    <div className="text-center p-6 border rounded-lg">
-                      <Eye className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-                      <p className="text-4xl font-bold text-purple-600">
-                        {Math.floor(analyticsData.usuariosAtivos * 0.03) || 0}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">visualizando catálogo</p>
+                    <div className="text-center p-4 bg-muted/30 rounded-lg">
+                      <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-green-500" />
+                      <p className="text-xl sm:text-2xl font-bold">{analyticsData.totalConclusoes}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Conclusões Hoje</p>
                     </div>
                   </div>
                 </CardContent>
