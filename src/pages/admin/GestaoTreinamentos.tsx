@@ -307,26 +307,28 @@ export default function GestaoTreinamentos() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Treinamentos</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestão de Treinamentos</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Crie e gerencie os treinamentos da plataforma
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {isMaster && (
-            <Button variant="outline" className="gap-2">
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              IA Disponível
+            <Button variant="outline" className="gap-2 text-xs sm:text-sm" size="sm">
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
+              <span className="hidden sm:inline">IA Disponível</span>
+              <span className="sm:hidden">IA</span>
             </Button>
           )}
 
-          <Button asChild className="bg-gradient-primary">
+          <Button asChild className="bg-gradient-primary flex-1 sm:flex-none" size="sm">
             <Link to="/admin/treinamentos/novo">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Treinamento
+              <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Novo Treinamento</span>
+              <span className="sm:hidden">Novo</span>
             </Link>
           </Button>
         </div>
