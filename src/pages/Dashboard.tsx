@@ -329,15 +329,15 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{getDashboardTitle()}</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">{getDashboardTitle()}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Acompanhe o desempenho e progresso dos treinamentos
           </p>
         </div>
         
-        {/* Filtros simples */}
+        {/* Filtros */}
         <div className="flex gap-2">
           <Select 
             value={filters.period} 
