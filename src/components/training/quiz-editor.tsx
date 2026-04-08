@@ -7,8 +7,10 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
-import { Plus, Trash2, GripVertical, HelpCircle, Sparkles, Loader2, Clock } from "lucide-react"
+import { Plus, Trash2, GripVertical, HelpCircle, Sparkles, Loader2, Clock, Lock } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import {
   Select,
