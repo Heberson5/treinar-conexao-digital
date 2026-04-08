@@ -7,9 +7,10 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
-import { Plus, Trash2, GripVertical, HelpCircle, Sparkles, Loader2, Clock } from "lucide-react"
+import { Plus, Trash2, GripVertical, HelpCircle, Sparkles, Loader2, Clock, Lock } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 import {
   Select,
   SelectContent,
@@ -86,6 +87,7 @@ function createDefaultQuestion(tipo: QuestionType, ordem: number): Questao {
 
 export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMinima = 7, tempoAvaliacao = 0, conteudoTreinamento, onSettingsChange }: QuizEditorProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [questoes, setQuestoes] = useState<Questao[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -93,11 +95,71 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
   const [tempo, setTempo] = useState(tempoAvaliacao)
   const [showAIDialog, setShowAIDialog] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [aiAccessEnabled, setAiAccessEnabled] = useState(false)
+  const [aiAccessChecked, setAiAccessChecked] = useState(false)
   const [aiConfig, setAiConfig] = useState<{ tipo: QuestionType; quantidade: number }[]>([
     { tipo: "quiz", quantidade: 5 }
   ])
 
   useEffect(() => { loadQuestoes() }, [treinamentoId])
+  
+  useEffect(() => { checkAIAccess() }, [user])
+  
+  const checkAIAccess = async () => {
+    // Master sempre tem acesso (usa Lovable AI Gateway)
+    if (user?.role === "master") {
+      setAiAccessEnabled(true)
+      setAiAccessChecked(true)
+      return
+    }
+    
+    if (!user?.empresa_id) {
+      setAiAccessEnabled(false)
+      setAiAccessChecked(true)
+      return
+    }
+    
+    try {
+      // Verificar plano
+      const { data: contrato } = await supabase
+        .from("plano_contratos")
+        .select("nome_plano")
+        .eq("empresa_id", user.empresa_id)
+        .eq("ativo", true)
+        .single()
+      
+      if (!contrato || !["Premium", "Enterprise"].includes(contrato.nome_plano)) {
+        setAiAccessEnabled(false)
+        setAiAccessChecked(true)
+        return
+      }
+      
+      // Verificar config IA com chave
+      const { data: configIA } = await supabase
+        .from("configuracoes_ia_empresa")
+        .select("provedor_ia, habilitado, api_key_gemini, api_key_chatgpt, api_key_deepseek")
+        .eq("empresa_id", user.empresa_id)
+        .single()
+      
+      if (!configIA || !configIA.habilitado) {
+        setAiAccessEnabled(false)
+        setAiAccessChecked(true)
+        return
+      }
+      
+      const provedor = configIA.provedor_ia || "gemini"
+      const temChave = 
+        (provedor === "gemini" && !!(configIA as any).api_key_gemini) ||
+        (provedor === "chatgpt" && !!(configIA as any).api_key_chatgpt) ||
+        (provedor === "deepseek" && !!(configIA as any).api_key_deepseek)
+      
+      setAiAccessEnabled(temChave)
+    } catch {
+      setAiAccessEnabled(false)
+    } finally {
+      setAiAccessChecked(true)
+    }
+  }
 
   const loadQuestoes = async () => {
     setIsLoading(true)
@@ -498,14 +560,27 @@ export function QuizEditor({ treinamentoId, avaliacaoObrigatoria = false, notaMi
             </SelectContent>
           </Select>
 
-          <Button
-            variant="outline"
-            onClick={() => setShowAIDialog(true)}
-            className="gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
-          >
-            <Sparkles className="h-4 w-4 text-purple-500" />
-            Gerar com IA
-          </Button>
+          {aiAccessChecked && aiAccessEnabled && (
+            <Button
+              variant="outline"
+              onClick={() => setShowAIDialog(true)}
+              className="gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
+            >
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              Gerar com IA
+            </Button>
+          )}
+          {aiAccessChecked && !aiAccessEnabled && (
+            <Button
+              variant="outline"
+              disabled
+              className="gap-2 opacity-50"
+              title="IA não habilitada. Configure em Integrações com uma chave de API válida (planos Premium/Enterprise)."
+            >
+              <Lock className="h-4 w-4" />
+              IA não disponível
+            </Button>
+          )}
         </div>
 
         <Button onClick={handleSave} disabled={isSaving || questoes.length === 0}>
