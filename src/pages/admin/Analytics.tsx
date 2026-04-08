@@ -279,10 +279,21 @@ export default function Analytics() {
       } finally {
         setIsLoading(false)
       }
-    }
-
-    fetchAnalytics()
   }, [selectedPeriod, empresaSelecionada, isMasterFilter])
+
+  useEffect(() => {
+    fetchAnalytics()
+  }, [fetchAnalytics])
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('analytics-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => fetchAnalytics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => fetchAnalytics())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchAnalytics])
 
   const exportAnalytics = (format: 'excel' | 'pdf') => {
     const periodLabel = selectedPeriod === "7d" ? "Últimos 7 dias" : 
