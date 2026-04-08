@@ -7,7 +7,7 @@ import {
 import {
   LayoutDashboard, BookOpen, Users, Building2, Settings, BarChart3,
   Shield, GraduationCap, FileText, Calendar, Briefcase, CreditCard,
-  Zap, Sparkles, Palette, DollarSign, Tag,
+  Zap, Sparkles, Palette, DollarSign, Tag, Settings2,
 } from "lucide-react"
 import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
@@ -45,6 +45,7 @@ const getAdminMenuItems = (role: string) => {
 const masterMenuItems = [
   { title: "Editor Landing Page", url: "/admin/landing-page", icon: Palette },
   { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
+  { title: "Arquitetura do Sistema", url: "/admin/arquitetura", icon: Settings2 },
 ]
 
 export function AppSidebar() {
