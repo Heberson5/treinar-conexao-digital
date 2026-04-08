@@ -335,7 +335,7 @@ export default function GestaoTreinamentos() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -393,18 +393,18 @@ export default function GestaoTreinamentos() {
       {/* Tabs e Busca */}
       <div className="space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="todos">Todos ({trainings.length})</TabsTrigger>
-            <TabsTrigger value="modelos">
-              <Globe className="h-4 w-4 mr-1" />
+          <TabsList className="flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="todos" className="text-xs sm:text-sm">Todos ({trainings.length})</TabsTrigger>
+            <TabsTrigger value="modelos" className="text-xs sm:text-sm">
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Modelos ({modelosGlobais.length})
             </TabsTrigger>
-            <TabsTrigger value="empresa">
-              <Building2 className="h-4 w-4 mr-1" />
+            <TabsTrigger value="empresa" className="text-xs sm:text-sm">
+              <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Empresa ({treinamentosEmpresa.length})
             </TabsTrigger>
-            <TabsTrigger value="ativos">Ativos ({ativos.length})</TabsTrigger>
-            <TabsTrigger value="rascunhos">Rascunhos ({rascunhos.length})</TabsTrigger>
+            <TabsTrigger value="ativos" className="text-xs sm:text-sm">Ativos ({ativos.length})</TabsTrigger>
+            <TabsTrigger value="rascunhos" className="text-xs sm:text-sm">Rascunhos ({rascunhos.length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -439,7 +439,7 @@ export default function GestaoTreinamentos() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredTrainings.map((training) => (
             <Card key={training.id} className="hover:shadow-md transition-shadow overflow-hidden">
               <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center overflow-hidden relative">
