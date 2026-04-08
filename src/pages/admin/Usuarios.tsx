@@ -602,6 +602,7 @@ export default function Usuarios() {
             ? {
                 ...u,
                 nome: novoNome.trim(),
+                email: novoEmail.trim(),
                 empresa_id: novaEmpresa || null,
                 departamento_id: novoDepartamento || null,
                 cargo: novoCargo || null,
