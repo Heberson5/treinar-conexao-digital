@@ -1090,12 +1090,9 @@ export default function Usuarios() {
                 id="editEmail"
                 type="email"
                 value={novoEmail}
-                disabled
-                className="bg-muted"
+                onChange={(e) => setNovoEmail(e.target.value)}
+                placeholder="E-mail do usuário"
               />
-              <p className="text-xs text-muted-foreground">
-                O e-mail não pode ser alterado.
-              </p>
             </div>
 
             <div className="space-y-2">
