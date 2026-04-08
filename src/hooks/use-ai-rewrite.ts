@@ -22,7 +22,7 @@ export function useAIRewrite(options?: UseAIRewriteOptions) {
 
   // Verificar se a empresa tem acesso à IA
   const checkAIAccess = async (): Promise<{ enabled: boolean; provedor: string }> => {
-    // Master sempre tem acesso
+    // Master sempre tem acesso (usa Lovable AI Gateway, não precisa de chave da empresa)
     if (user?.role === "master") {
       setIsEnabled(true);
       setHasChecked(true);
@@ -52,10 +52,10 @@ export function useAIRewrite(options?: UseAIRewriteOptions) {
         return { enabled: false, provedor: "gemini" };
       }
 
-      // Buscar configuração de IA da empresa
+      // Buscar configuração de IA da empresa (incluindo chaves)
       const { data: configIA, error: configError } = await supabase
         .from("configuracoes_ia_empresa")
-        .select("provedor_ia, habilitado")
+        .select("provedor_ia, habilitado, api_key_gemini, api_key_chatgpt, api_key_deepseek")
         .eq("empresa_id", user.empresa_id)
         .single();
 
@@ -63,14 +63,33 @@ export function useAIRewrite(options?: UseAIRewriteOptions) {
         console.error("Erro ao buscar config IA:", configError);
       }
 
-      const config = configIA as AIConfig | null;
+      const config = configIA as (AIConfig & { api_key_gemini?: string; api_key_chatgpt?: string; api_key_deepseek?: string }) | null;
 
-      setIsEnabled(config?.habilitado ?? true);
+      // Verificar se está habilitado E se tem chave configurada para o provedor selecionado
+      if (!config || !config.habilitado) {
+        setIsEnabled(false);
+        setHasChecked(true);
+        return { enabled: false, provedor: config?.provedor_ia ?? "gemini" };
+      }
+
+      const provedor = config.provedor_ia || "gemini";
+      const temChave = 
+        (provedor === "gemini" && !!config.api_key_gemini) ||
+        (provedor === "chatgpt" && !!config.api_key_chatgpt) ||
+        (provedor === "deepseek" && !!config.api_key_deepseek);
+
+      if (!temChave) {
+        setIsEnabled(false);
+        setHasChecked(true);
+        return { enabled: false, provedor };
+      }
+
+      setIsEnabled(true);
       setHasChecked(true);
 
       return {
-        enabled: config?.habilitado ?? true,
-        provedor: config?.provedor_ia ?? "gemini"
+        enabled: true,
+        provedor
       };
     } catch (error) {
       console.error("Erro ao verificar acesso à IA:", error);
