@@ -91,8 +91,7 @@ export default function Relatorios() {
     }
   }
 
-  useEffect(() => {
-    const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
       setIsLoading(true)
       const startDate = getStartDate().toISOString()
 
