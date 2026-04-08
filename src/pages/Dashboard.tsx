@@ -6,23 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  BarChart3, 
-  BookOpen, 
-  Clock, 
-  TrendingUp, 
-  Users, 
-  Award,
-  PlayCircle,
-  Calendar,
-  Target,
-  Building2,
-  Loader2,
-  FileText,
-  RefreshCw
+  BarChart3, BookOpen, Clock, TrendingUp, Users, Award,
+  PlayCircle, Calendar, Target, Building2, Loader2, FileText, RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context";
 import { supabase } from "@/integrations/supabase/client";
+import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter";
 
 interface DashboardFiltersState {
   period: "today" | "week" | "month" | "all";
