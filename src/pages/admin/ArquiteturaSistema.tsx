@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,10 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { 
   Settings2, Layout, Menu, FileText, Palette, Eye, Save,
-  GripVertical, ChevronUp, ChevronDown, LayoutGrid, Columns, Type
+  GripVertical, LayoutGrid, Columns, Type, Pencil, Check, X
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/integrations/supabase/client"
 
 interface MenuItemConfig {
   id: string
@@ -81,6 +80,12 @@ const defaultFieldConfigs: FieldConfig[] = [
   { id: "user-departamento", label: "Departamento", table: "perfis", field: "departamento_id", visible: true, required: false, order: 5 },
 ]
 
+const sectionLabels: Record<string, string> = {
+  main: "Menu Principal",
+  admin: "Administração",
+  master: "Master"
+}
+
 export default function ArquiteturaSistema() {
   const { toast } = useToast()
   const [menuItems, setMenuItems] = useState<MenuItemConfig[]>(defaultMenuItems)
@@ -90,26 +95,15 @@ export default function ArquiteturaSistema() {
     showPageNumbers: true, headerColor: "#3b82f6", fontSize: 12
   })
 
-  const moveMenuItem = (index: number, direction: "up" | "down", section: string) => {
-    const sectionItems = menuItems.filter(m => m.section === section).sort((a, b) => a.order - b.order)
-    const itemIndex = sectionItems.findIndex((_, i) => i === index)
-    if (direction === "up" && itemIndex === 0) return
-    if (direction === "down" && itemIndex === sectionItems.length - 1) return
-    
-    const swapIndex = direction === "up" ? itemIndex - 1 : itemIndex + 1
-    const tempOrder = sectionItems[itemIndex].order
-    sectionItems[itemIndex].order = sectionItems[swapIndex].order
-    sectionItems[swapIndex].order = tempOrder
+  // Drag state
+  const [dragItem, setDragItem] = useState<MenuItemConfig | null>(null)
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-    setMenuItems(prev => {
-      const others = prev.filter(m => m.section !== section)
-      return [...others, ...sectionItems]
-    })
-  }
-
-  const toggleMenuVisibility = (id: string) => {
-    setMenuItems(prev => prev.map(m => m.id === id ? { ...m, visible: !m.visible } : m))
-  }
+  // Inline editing
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
+  const editInputRef = useRef<HTMLInputElement>(null)
 
   const toggleFieldVisibility = (id: string) => {
     setFieldConfigs(prev => prev.map(f => f.id === id ? { ...f, visible: !f.visible } : f))
@@ -135,31 +129,181 @@ export default function ArquiteturaSistema() {
     if (savedReport) try { setReportLayout(JSON.parse(savedReport)) } catch {}
   }, [])
 
+  useEffect(() => {
+    if (editingItemId && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingItemId])
+
+  // --- Drag & Drop handlers ---
+  const handleDragStart = (e: React.DragEvent, item: MenuItemConfig) => {
+    setDragItem(item)
+    e.dataTransfer.effectAllowed = "move"
+    // Make drag image semi-transparent
+    const el = e.currentTarget as HTMLElement
+    el.style.opacity = "0.5"
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).style.opacity = "1"
+    setDragItem(null)
+    setDragOverSection(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent, section: string, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverSection(section)
+    setDragOverIndex(index)
+  }
+
+  const handleSectionDragOver = (e: React.DragEvent, section: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverSection(section)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetSection: string, targetIndex: number) => {
+    e.preventDefault()
+    if (!dragItem) return
+
+    setMenuItems(prev => {
+      const updated = prev.filter(m => m.id !== dragItem.id)
+      const sectionItems = updated.filter(m => m.section === targetSection).sort((a, b) => a.order - b.order)
+      const otherItems = updated.filter(m => m.section !== targetSection)
+
+      // Insert at target index
+      const movedItem = { ...dragItem, section: targetSection as any }
+      sectionItems.splice(targetIndex, 0, movedItem)
+
+      // Recalculate orders
+      sectionItems.forEach((item, i) => { item.order = i + 1 })
+
+      return [...otherItems, ...sectionItems]
+    })
+
+    setDragItem(null)
+    setDragOverSection(null)
+    setDragOverIndex(null)
+  }
+
+  const handleSectionDrop = (e: React.DragEvent, targetSection: string) => {
+    e.preventDefault()
+    if (!dragItem) return
+
+    setMenuItems(prev => {
+      const updated = prev.filter(m => m.id !== dragItem.id)
+      const sectionItems = updated.filter(m => m.section === targetSection).sort((a, b) => a.order - b.order)
+      const otherItems = updated.filter(m => m.section !== targetSection)
+
+      const movedItem = { ...dragItem, section: targetSection as any }
+      sectionItems.push(movedItem)
+      sectionItems.forEach((item, i) => { item.order = i + 1 })
+
+      return [...otherItems, ...sectionItems]
+    })
+
+    setDragItem(null)
+    setDragOverSection(null)
+    setDragOverIndex(null)
+  }
+
+  // --- Inline rename ---
+  const startEditing = (item: MenuItemConfig) => {
+    setEditingItemId(item.id)
+    setEditingTitle(item.title)
+  }
+
+  const confirmEdit = () => {
+    if (!editingItemId || !editingTitle.trim()) return
+    setMenuItems(prev => prev.map(m => m.id === editingItemId ? { ...m, title: editingTitle.trim() } : m))
+    setEditingItemId(null)
+    setEditingTitle("")
+  }
+
+  const cancelEdit = () => {
+    setEditingItemId(null)
+    setEditingTitle("")
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") confirmEdit()
+    if (e.key === "Escape") cancelEdit()
+  }
+
   const renderMenuSection = (section: string, title: string) => {
     const items = menuItems.filter(m => m.section === section).sort((a, b) => a.order - b.order)
+    const isOverThisSection = dragOverSection === section
+
     return (
-      <div className="space-y-2">
-        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">{title}</h3>
+      <div
+        className={`space-y-1 p-3 rounded-lg border-2 border-dashed transition-colors ${
+          isOverThisSection && dragItem?.section !== section
+            ? "border-primary bg-primary/5"
+            : "border-transparent"
+        }`}
+        onDragOver={(e) => handleSectionDragOver(e, section)}
+        onDrop={(e) => handleSectionDrop(e, section)}
+      >
+        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
         {items.map((item, index) => (
-          <div key={item.id} className="flex items-center justify-between p-2 sm:p-3 border rounded-lg bg-card">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div
+            key={item.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, item)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, section, index)}
+            onDrop={(e) => handleDrop(e, section, index)}
+            className={`flex items-center justify-between p-2 sm:p-3 border rounded-lg bg-card cursor-grab active:cursor-grabbing transition-all ${
+              dragOverSection === section && dragOverIndex === index && dragItem?.id !== item.id
+                ? "border-t-2 border-t-primary"
+                : ""
+            } ${dragItem?.id === item.id ? "opacity-50" : ""}`}
+          >
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className={`text-xs sm:text-sm font-medium truncate ${!item.visible ? 'line-through text-muted-foreground' : ''}`}>
-                {item.title}
-              </span>
-              <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{item.url}</Badge>
+              {editingItemId === item.id ? (
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  <Input
+                    ref={editInputRef}
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onKeyDown={handleEditKeyDown}
+                    className="h-7 text-sm"
+                  />
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={confirmEdit}>
+                    <Check className="h-3 w-3 text-green-600" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={cancelEdit}>
+                    <X className="h-3 w-3 text-red-500" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <span className="text-xs sm:text-sm font-medium truncate">{item.title}</span>
+                  <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{sectionLabels[item.section]}</Badge>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveMenuItem(index, "up", section)}>
-                <ChevronUp className="h-3 w-3" />
+            {editingItemId !== item.id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => startEditing(item)}
+              >
+                <Pencil className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveMenuItem(index, "down", section)}>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-              <Switch checked={item.visible} onCheckedChange={() => toggleMenuVisibility(item.id)} />
-            </div>
+            )}
           </div>
         ))}
+        {items.length === 0 && (
+          <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
+            Arraste itens para esta seção
+          </div>
+        )}
       </div>
     )
   }
@@ -226,10 +370,10 @@ export default function ArquiteturaSistema() {
                 <Menu className="h-5 w-5" /> Organização dos Menus
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Reordene, oculte ou exiba itens de menu. Use as setas para alterar a ordem.
+                Clique e arraste os itens para reordenar ou mover entre seções. Clique no ícone de lápis para renomear.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               {renderMenuSection("main", "Menu Principal")}
               <Separator />
               {renderMenuSection("admin", "Administração")}

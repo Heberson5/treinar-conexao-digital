@@ -311,6 +311,9 @@ export default function Usuarios() {
   const usuariosFiltrados = useMemo(
     () =>
       usuarios.filter((usuario) => {
+        // Non-master users should not see master users
+        if (!isMaster && usuario.papel === "master") return false
+
         const term = searchTerm.toLowerCase()
         const matchesSearch =
           !term ||
@@ -326,7 +329,7 @@ export default function Usuarios() {
 
         return matchesSearch && matchesStatus && matchesEmpresa
       }),
-    [usuarios, searchTerm, statusFilter, empresaFilter]
+    [usuarios, searchTerm, statusFilter, empresaFilter, isMaster]
   )
 
   const resetForm = () => {

@@ -93,6 +93,7 @@ const permissoesDisponiveis: Permission[] = [
   { id: "system.logs", nome: "Visualizar Logs", descricao: "Acesso aos logs de auditoria", categoria: "Sistema", ativo: true },
   { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança", categoria: "Sistema", ativo: true },
   { id: "system.notifications", nome: "Gerenciar Notificações", descricao: "Configurar notificações automáticas", categoria: "Sistema", ativo: true },
+  { id: "system.architecture", nome: "Arquitetura do Sistema", descricao: "Acesso exclusivo Master para personalizar menus, campos e estrutura do sistema", categoria: "Sistema", ativo: true },
   { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros", categoria: "Financeiro", ativo: true },
   { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças e pagamentos", categoria: "Financeiro", ativo: true },
   { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir e gerenciar faturas", categoria: "Financeiro", ativo: true },
