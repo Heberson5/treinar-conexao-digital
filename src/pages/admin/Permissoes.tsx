@@ -106,7 +106,7 @@ const rolesIniciais: Role[] = [
     nome: "Master",
     descricao: "Acesso total ao sistema - gerencia todas as empresas e configurações críticas",
     cor: "bg-yellow-500",
-    permissoes: permissoesDisponiveis.map(p => p.id),
+    permissoes: permissoesDisponiveis.map(p => p.id), // Includes system.architecture
     usuariosCount: 1,
     ativo: true
   },
