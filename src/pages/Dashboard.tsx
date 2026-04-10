@@ -130,10 +130,11 @@ export default function Dashboard() {
       }
       const { data: progressoData } = await progressoQuery;
 
-      // Buscar atividades recentes
+      // Buscar atividades recentes (apenas sobre treinamentos, excluindo login/acesso)
       const { data: atividadesData } = await supabase
         .from("atividades")
         .select("*")
+        .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
         .order("criado_em", { ascending: false })
         .limit(10);
 
@@ -278,19 +279,22 @@ export default function Dashboard() {
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case "login": return "bg-primary";
       case "treinamento_iniciado": return "bg-blue-500";
       case "treinamento_concluido": return "bg-green-500";
       case "certificado_emitido": return "bg-amber-500";
+      case "avaliacao_realizada": return "bg-purple-500";
+      case "progresso_atualizado": return "bg-cyan-500";
       default: return "bg-muted-foreground";
     }
   };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "treinamento_concluido": return "Concluído";
-      case "treinamento_iniciado": return "Iniciado";
-      case "certificado_emitido": return "Certificado";
+      case "treinamento_concluido": return "Treinamento Concluído";
+      case "treinamento_iniciado": return "Treinamento Iniciado";
+      case "certificado_emitido": return "Certificado Emitido";
+      case "avaliacao_realizada": return "Avaliação Realizada";
+      case "progresso_atualizado": return "Progresso Atualizado";
       default: return "Atividade";
     }
   };
