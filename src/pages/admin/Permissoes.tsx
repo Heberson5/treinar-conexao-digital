@@ -9,21 +9,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Shield, 
-  Users, 
-  Lock,
-  Unlock,
-  Crown,
-  UserCheck,
-  User,
-  Eye,
-  EyeOff
+  Plus, Search, Edit3, Trash2, Shield, Users, Lock,
+  Unlock, Crown, UserCheck, User, Eye, EyeOff
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
 interface Permission {
   id: string
@@ -31,6 +21,7 @@ interface Permission {
   descricao: string
   categoria: string
   ativo: boolean
+  masterOnly?: boolean
 }
 
 interface Role {
@@ -41,6 +32,7 @@ interface Role {
   permissoes: string[]
   usuariosCount: number
   ativo: boolean
+  isMasterRole?: boolean
 }
 
 const coresDisponiveis = [
@@ -80,24 +72,25 @@ const permissoesDisponiveis: Permission[] = [
   { id: "departments.create", nome: "Criar Departamentos", descricao: "Autoriza a criação de novos departamentos", categoria: "Departamentos", ativo: true },
   { id: "departments.edit", nome: "Editar Departamentos", descricao: "Permite alterar dados de departamentos", categoria: "Departamentos", ativo: true },
   { id: "departments.delete", nome: "Excluir Departamentos", descricao: "Autoriza a remoção de departamentos", categoria: "Departamentos", ativo: true },
-  { id: "companies.view", nome: "Visualizar Empresas", descricao: "Acesso para visualizar todas as empresas", categoria: "Empresas", ativo: true },
-  { id: "companies.create", nome: "Criar Empresas", descricao: "Permite cadastrar novas empresas", categoria: "Empresas", ativo: true },
-  { id: "companies.edit", nome: "Editar Empresas", descricao: "Autoriza a edição de dados das empresas", categoria: "Empresas", ativo: true },
-  { id: "companies.delete", nome: "Excluir Empresas", descricao: "Permite remover empresas do sistema", categoria: "Empresas", ativo: true },
-  { id: "companies.switch", nome: "Alternar entre Empresas", descricao: "Permite visualizar dados de diferentes empresas", categoria: "Empresas", ativo: true },
+  { id: "companies.view", nome: "Visualizar Empresas", descricao: "Acesso para visualizar todas as empresas", categoria: "Empresas", ativo: true, masterOnly: true },
+  { id: "companies.create", nome: "Criar Empresas", descricao: "Permite cadastrar novas empresas", categoria: "Empresas", ativo: true, masterOnly: true },
+  { id: "companies.edit", nome: "Editar Empresas", descricao: "Autoriza a edição de dados das empresas", categoria: "Empresas", ativo: true, masterOnly: true },
+  { id: "companies.delete", nome: "Excluir Empresas", descricao: "Permite remover empresas do sistema", categoria: "Empresas", ativo: true, masterOnly: true },
+  { id: "companies.switch", nome: "Alternar entre Empresas", descricao: "Permite visualizar dados de diferentes empresas", categoria: "Empresas", ativo: true, masterOnly: true },
   { id: "integrations.view", nome: "Visualizar Integrações", descricao: "Acesso para ver integrações configuradas", categoria: "Integrações", ativo: true },
   { id: "integrations.configure", nome: "Configurar Integrações", descricao: "Permite configurar integrações externas", categoria: "Integrações", ativo: true },
   { id: "integrations.ai", nome: "Usar Recursos de IA", descricao: "Autoriza o uso de funcionalidades de IA", categoria: "Integrações", ativo: true },
   { id: "system.settings", nome: "Configurações Gerais", descricao: "Acesso às configurações gerais do sistema", categoria: "Sistema", ativo: true },
-  { id: "system.backup", nome: "Backup e Restore", descricao: "Permite realizar backup e restauração", categoria: "Sistema", ativo: true },
+  { id: "system.backup", nome: "Backup e Restore", descricao: "Permite realizar backup e restauração", categoria: "Sistema", ativo: true, masterOnly: true },
   { id: "system.logs", nome: "Visualizar Logs", descricao: "Acesso aos logs de auditoria", categoria: "Sistema", ativo: true },
-  { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança", categoria: "Sistema", ativo: true },
+  { id: "system.security", nome: "Configurações de Segurança", descricao: "Permite alterar configurações de segurança", categoria: "Sistema", ativo: true, masterOnly: true },
   { id: "system.notifications", nome: "Gerenciar Notificações", descricao: "Configurar notificações automáticas", categoria: "Sistema", ativo: true },
-  { id: "system.architecture", nome: "Arquitetura do Sistema", descricao: "Acesso exclusivo Master para personalizar menus, campos e estrutura do sistema", categoria: "Sistema", ativo: true },
-  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros", categoria: "Financeiro", ativo: true },
-  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças e pagamentos", categoria: "Financeiro", ativo: true },
-  { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir e gerenciar faturas", categoria: "Financeiro", ativo: true },
-  { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar e atribuir planos", categoria: "Financeiro", ativo: true },
+  { id: "system.architecture", nome: "Arquitetura do Sistema", descricao: "Acesso exclusivo Master para personalizar menus, campos e estrutura do sistema", categoria: "Sistema", ativo: true, masterOnly: true },
+  { id: "system.permissions", nome: "Permissões", descricao: "Gerenciar papéis e permissões do sistema - não pode ser desativado para Master", categoria: "Sistema", ativo: true, masterOnly: true },
+  { id: "financial.view", nome: "Visualizar Financeiro", descricao: "Acesso para visualizar dados financeiros", categoria: "Financeiro", ativo: true, masterOnly: true },
+  { id: "financial.manage", nome: "Gerenciar Financeiro", descricao: "Permite gerenciar cobranças e pagamentos", categoria: "Financeiro", ativo: true, masterOnly: true },
+  { id: "financial.invoices", nome: "Gerenciar Faturas", descricao: "Acesso para emitir e gerenciar faturas", categoria: "Financeiro", ativo: true, masterOnly: true },
+  { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar e atribuir planos", categoria: "Financeiro", ativo: true, masterOnly: true },
 ]
 
 const rolesIniciais: Role[] = [
@@ -106,9 +99,10 @@ const rolesIniciais: Role[] = [
     nome: "Master",
     descricao: "Acesso total ao sistema - gerencia todas as empresas e configurações críticas",
     cor: "bg-yellow-500",
-    permissoes: permissoesDisponiveis.map(p => p.id), // Includes system.architecture
+    permissoes: permissoesDisponiveis.map(p => p.id),
     usuariosCount: 1,
-    ativo: true
+    ativo: true,
+    isMasterRole: true,
   },
   {
     id: 2,
@@ -153,6 +147,8 @@ const rolesIniciais: Role[] = [
 ]
 
 export default function Permissoes() {
+  const { user } = useAuth()
+  const isMaster = user?.role === "master"
   const [roles, setRoles] = useState<Role[]>(rolesIniciais)
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
@@ -171,7 +167,12 @@ export default function Permissoes() {
     permissoes: []
   })
 
-  const categorias = [...new Set(permissoesDisponiveis.map(p => p.categoria))]
+  // Filter permissions: admins should not see masterOnly permissions
+  const visiblePermissions = isMaster
+    ? permissoesDisponiveis
+    : permissoesDisponiveis.filter(p => !p.masterOnly)
+
+  const categorias = [...new Set(visiblePermissions.map(p => p.categoria))]
 
   const resetForm = () => {
     setNewRole({ nome: "", descricao: "", cor: "bg-blue-500", permissoes: [] })
@@ -206,6 +207,10 @@ export default function Permissoes() {
 
   const handleDeleteRole = (id: number) => {
     const role = roles.find(r => r.id === id)
+    if (role?.isMasterRole) {
+      toast({ title: "Não permitido", description: "O papel Master não pode ser excluído", variant: "destructive" })
+      return
+    }
     if (role && role.usuariosCount > 0) {
       toast({ title: "Não é possível excluir", description: "Este papel possui usuários associados", variant: "destructive" })
       return
@@ -215,6 +220,11 @@ export default function Permissoes() {
   }
 
   const togglePermission = (permissionId: string) => {
+    // For Master role editing, "system.permissions" cannot be disabled
+    if (editingRole?.isMasterRole && permissionId === "system.permissions") {
+      toast({ title: "Não permitido", description: "A permissão 'Permissões' não pode ser desativada para o Master", variant: "destructive" })
+      return
+    }
     setNewRole(prev => ({
       ...prev,
       permissoes: prev.permissoes.includes(permissionId)
@@ -224,6 +234,11 @@ export default function Permissoes() {
   }
 
   const toggleRoleStatus = (id: number) => {
+    const role = roles.find(r => r.id === id)
+    if (role?.isMasterRole) {
+      toast({ title: "Não permitido", description: "O papel Master não pode ser desativado", variant: "destructive" })
+      return
+    }
     setRoles(roles.map(role => role.id === id ? { ...role, ativo: !role.ativo } : role))
   }
 
@@ -237,7 +252,10 @@ export default function Permissoes() {
     }
   }
 
-  const filteredRoles = roles.filter(role =>
+  // Filter roles: non-master users should not see the Master role
+  const visibleRoles = isMaster ? roles : roles.filter(r => !r.isMasterRole)
+
+  const filteredRoles = visibleRoles.filter(role =>
     role.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     role.descricao.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -249,9 +267,9 @@ export default function Permissoes() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Papéis</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestão de Papéis</h1>
           <p className="text-muted-foreground mt-2">
             Configure papéis e suas permissões no sistema
           </p>
@@ -286,6 +304,7 @@ export default function Permissoes() {
                     value={newRole.nome}
                     onChange={(e) => setNewRole({...newRole, nome: e.target.value})}
                     placeholder="Ex: Gerente"
+                    disabled={editingRole?.isMasterRole}
                   />
                 </div>
                 <div className="space-y-2">
@@ -331,20 +350,36 @@ export default function Permissoes() {
                   
                   {categorias.map((categoria) => (
                     <TabsContent key={categoria} value={categoria} className="space-y-2">
-                      {permissoesDisponiveis
+                      {visiblePermissions
                         .filter(p => p.categoria === categoria)
-                        .map((permission) => (
-                          <div key={permission.id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm">{permission.nome}</h4>
-                              <p className="text-xs text-muted-foreground">{permission.descricao}</p>
+                        .map((permission) => {
+                          const isLocked = editingRole?.isMasterRole && permission.id === "system.permissions"
+                          return (
+                            <div key={permission.id} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-sm">{permission.nome}</h4>
+                                  {isLocked && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      <Lock className="h-2 w-2 mr-1" /> Obrigatório
+                                    </Badge>
+                                  )}
+                                  {permission.masterOnly && (
+                                    <Badge variant="secondary" className="text-[10px]">
+                                      <Crown className="h-2 w-2 mr-1" /> Master
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{permission.descricao}</p>
+                              </div>
+                              <Switch
+                                checked={newRole.permissoes.includes(permission.id)}
+                                onCheckedChange={() => togglePermission(permission.id)}
+                                disabled={isLocked}
+                              />
                             </div>
-                            <Switch
-                              checked={newRole.permissoes.includes(permission.id)}
-                              onCheckedChange={() => togglePermission(permission.id)}
-                            />
-                          </div>
-                        ))}
+                          )
+                        })}
                     </TabsContent>
                   ))}
                 </Tabs>
@@ -364,7 +399,7 @@ export default function Permissoes() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -373,7 +408,7 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Papéis</p>
-                <p className="text-2xl font-bold">{roles.length}</p>
+                <p className="text-2xl font-bold">{visibleRoles.length}</p>
               </div>
             </div>
           </CardContent>
@@ -386,7 +421,7 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Papéis Ativos</p>
-                <p className="text-2xl font-bold">{roles.filter(r => r.ativo).length}</p>
+                <p className="text-2xl font-bold">{visibleRoles.filter(r => r.ativo).length}</p>
               </div>
             </div>
           </CardContent>
@@ -399,7 +434,7 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Usuários</p>
-                <p className="text-2xl font-bold">{roles.reduce((acc, r) => acc + r.usuariosCount, 0)}</p>
+                <p className="text-2xl font-bold">{visibleRoles.reduce((acc, r) => acc + r.usuariosCount, 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -412,7 +447,7 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Permissões</p>
-                <p className="text-2xl font-bold">{permissoesDisponiveis.length}</p>
+                <p className="text-2xl font-bold">{visiblePermissions.length}</p>
               </div>
             </div>
           </CardContent>
@@ -478,7 +513,7 @@ export default function Permissoes() {
               
               <div className="flex justify-between pt-2">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => toggleRoleStatus(role.id)}>
+                  <Button variant="outline" size="sm" onClick={() => toggleRoleStatus(role.id)} disabled={role.isMasterRole}>
                     {role.ativo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => handleEditRole(role)}>
@@ -491,7 +526,7 @@ export default function Permissoes() {
                   size="sm"
                   onClick={() => handleDeleteRole(role.id)}
                   className="text-destructive hover:text-destructive"
-                  disabled={role.usuariosCount > 0}
+                  disabled={role.usuariosCount > 0 || role.isMasterRole}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

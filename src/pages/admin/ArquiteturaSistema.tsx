@@ -10,9 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { 
   Settings2, Layout, Menu, FileText, Palette, Eye, Save,
-  GripVertical, LayoutGrid, Columns, Type, Pencil, Check, X
+  GripVertical, LayoutGrid, Columns, Type, Pencil, Check, X, Globe
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
+import { registrarAuditoria } from "@/lib/audit-utils"
 
 interface MenuItemConfig {
   id: string
@@ -88,12 +91,19 @@ const sectionLabels: Record<string, string> = {
 
 export default function ArquiteturaSistema() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [menuItems, setMenuItems] = useState<MenuItemConfig[]>(defaultMenuItems)
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>(defaultFieldConfigs)
   const [reportLayout, setReportLayout] = useState<ReportLayoutConfig>({
     orientation: "portrait", showLogo: true, showDate: true,
     showPageNumbers: true, headerColor: "#3b82f6", fontSize: 12
   })
+
+  // Sistema config
+  const [loading, setLoading] = useState(false)
+  const [nomeSistema, setNomeSistema] = useState("Portal Treinamentos")
+  const [faviconUrl, setFaviconUrl] = useState("")
+  const [logoSidebarUrl, setLogoSidebarUrl] = useState("")
 
   // Drag state
   const [dragItem, setDragItem] = useState<MenuItemConfig | null>(null)
@@ -117,6 +127,11 @@ export default function ArquiteturaSistema() {
     localStorage.setItem("sistema_menu_config", JSON.stringify(menuItems))
     localStorage.setItem("sistema_field_config", JSON.stringify(fieldConfigs))
     localStorage.setItem("sistema_report_layout", JSON.stringify(reportLayout))
+    // Dispatch storage event for sidebar to pick up changes immediately
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "sistema_menu_config",
+      newValue: JSON.stringify(menuItems),
+    }))
     toast({ title: "Configuração salva", description: "As alterações na arquitetura do sistema foram salvas com sucesso." })
   }
 
@@ -129,6 +144,24 @@ export default function ArquiteturaSistema() {
     if (savedReport) try { setReportLayout(JSON.parse(savedReport)) } catch {}
   }, [])
 
+  // Load system config
+  useEffect(() => {
+    const loadConfig = async () => {
+      const { data } = await supabase
+        .from("configuracoes_sistema" as any)
+        .select("*")
+        .limit(1)
+        .single()
+      if (data) {
+        const d = data as any
+        setNomeSistema(d.nome_sistema || "Portal Treinamentos")
+        setFaviconUrl(d.favicon_url || "")
+        setLogoSidebarUrl(d.logo_sidebar_url || "")
+      }
+    }
+    loadConfig()
+  }, [])
+
   useEffect(() => {
     if (editingItemId && editInputRef.current) {
       editInputRef.current.focus()
@@ -136,11 +169,37 @@ export default function ArquiteturaSistema() {
     }
   }, [editingItemId])
 
+  // Save sistema config
+  const handleSaveSistema = async () => {
+    setLoading(true)
+    const { error } = await supabase
+      .from("configuracoes_sistema" as any)
+      .update({
+        nome_sistema: nomeSistema,
+        favicon_url: faviconUrl || null,
+        logo_sidebar_url: logoSidebarUrl || null,
+        atualizado_em: new Date().toISOString(),
+      } as any)
+      .not("id", "is", null)
+
+    setLoading(false)
+    if (!error) {
+      if (faviconUrl) {
+        const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+        if (link) link.href = faviconUrl
+      }
+      document.title = nomeSistema
+      toast({ title: "Configurações do sistema salvas!", description: "Nome, favicon e logo foram atualizados." })
+      await registrarAuditoria({ acao: "editar", menu: "arquitetura", local: "sistema", descricao: "Atualizou configurações do sistema" })
+    } else {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" })
+    }
+  }
+
   // --- Drag & Drop handlers ---
   const handleDragStart = (e: React.DragEvent, item: MenuItemConfig) => {
     setDragItem(item)
     e.dataTransfer.effectAllowed = "move"
-    // Make drag image semi-transparent
     const el = e.currentTarget as HTMLElement
     el.style.opacity = "0.5"
   }
@@ -167,6 +226,7 @@ export default function ArquiteturaSistema() {
 
   const handleDrop = (e: React.DragEvent, targetSection: string, targetIndex: number) => {
     e.preventDefault()
+    e.stopPropagation()
     if (!dragItem) return
 
     setMenuItems(prev => {
@@ -174,11 +234,8 @@ export default function ArquiteturaSistema() {
       const sectionItems = updated.filter(m => m.section === targetSection).sort((a, b) => a.order - b.order)
       const otherItems = updated.filter(m => m.section !== targetSection)
 
-      // Insert at target index
       const movedItem = { ...dragItem, section: targetSection as any }
       sectionItems.splice(targetIndex, 0, movedItem)
-
-      // Recalculate orders
       sectionItems.forEach((item, i) => { item.order = i + 1 })
 
       return [...otherItems, ...sectionItems]
@@ -193,7 +250,12 @@ export default function ArquiteturaSistema() {
     e.preventDefault()
     if (!dragItem) return
 
+    // Only handle if not already handled by item drop
     setMenuItems(prev => {
+      // Check if item is already in this section at the right position
+      const alreadyMoved = prev.find(m => m.id === dragItem.id && m.section === targetSection)
+      if (alreadyMoved) return prev
+
       const updated = prev.filter(m => m.id !== dragItem.id)
       const sectionItems = updated.filter(m => m.section === targetSection).sort((a, b) => a.order - b.order)
       const otherItems = updated.filter(m => m.section !== targetSection)
@@ -248,57 +310,74 @@ export default function ArquiteturaSistema() {
         onDrop={(e) => handleSectionDrop(e, section)}
       >
         <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
-        {items.map((item, index) => (
-          <div
-            key={item.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, item)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, section, index)}
-            onDrop={(e) => handleDrop(e, section, index)}
-            className={`flex items-center justify-between p-2 sm:p-3 border rounded-lg bg-card cursor-grab active:cursor-grabbing transition-all ${
-              dragOverSection === section && dragOverIndex === index && dragItem?.id !== item.id
-                ? "border-t-2 border-t-primary"
-                : ""
-            } ${dragItem?.id === item.id ? "opacity-50" : ""}`}
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              {editingItemId === item.id ? (
-                <div className="flex items-center gap-1 flex-1 min-w-0">
-                  <Input
-                    ref={editInputRef}
-                    value={editingTitle}
-                    onChange={(e) => setEditingTitle(e.target.value)}
-                    onKeyDown={handleEditKeyDown}
-                    className="h-7 text-sm"
-                  />
-                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={confirmEdit}>
-                    <Check className="h-3 w-3 text-green-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={cancelEdit}>
-                    <X className="h-3 w-3 text-red-500" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-xs sm:text-sm font-medium truncate">{item.title}</span>
-                  <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{sectionLabels[item.section]}</Badge>
-                </>
+        {items.map((item, index) => {
+          const showDropIndicator = dragOverSection === section && dragOverIndex === index && dragItem?.id !== item.id
+          return (
+            <div key={item.id}>
+              {showDropIndicator && (
+                <div className="h-1 bg-primary rounded-full mx-2 my-1 transition-all" />
               )}
-            </div>
-            {editingItemId !== item.id && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0"
-                onClick={() => startEditing(item)}
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, item)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, section, index)}
+                onDrop={(e) => handleDrop(e, section, index)}
+                className={`flex items-center justify-between p-2 sm:p-3 border rounded-lg bg-card cursor-grab active:cursor-grabbing transition-all ${
+                  dragItem?.id === item.id ? "opacity-50" : ""
+                }`}
               >
-                <Pencil className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-        ))}
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {editingItemId === item.id ? (
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                      <Input
+                        ref={editInputRef}
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={handleEditKeyDown}
+                        className="h-7 text-sm"
+                      />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={confirmEdit}>
+                        <Check className="h-3 w-3 text-green-600" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={cancelEdit}>
+                        <X className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-xs sm:text-sm font-medium truncate">{item.title}</span>
+                      <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{sectionLabels[item.section]}</Badge>
+                    </>
+                  )}
+                </div>
+                {editingItemId !== item.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => startEditing(item)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {/* Drop zone at end of section */}
+        {items.length > 0 && dragItem && (
+          <div
+            className={`h-8 rounded-lg border-2 border-dashed transition-colors ${
+              dragOverSection === section && dragOverIndex === items.length
+                ? "border-primary bg-primary/10"
+                : "border-transparent"
+            }`}
+            onDragOver={(e) => handleDragOver(e, section, items.length)}
+            onDrop={(e) => handleDrop(e, section, items.length)}
+          />
+        )}
         {items.length === 0 && (
           <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
             Arraste itens para esta seção
@@ -356,8 +435,9 @@ export default function ArquiteturaSistema() {
       </div>
 
       <Tabs defaultValue="menus" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="menus" className="text-xs sm:text-sm"><Menu className="mr-1 h-4 w-4" /> Menus</TabsTrigger>
+          <TabsTrigger value="sistema" className="text-xs sm:text-sm"><Globe className="mr-1 h-4 w-4" /> Sistema</TabsTrigger>
           <TabsTrigger value="campos" className="text-xs sm:text-sm"><LayoutGrid className="mr-1 h-4 w-4" /> Campos</TabsTrigger>
           <TabsTrigger value="relatorios" className="text-xs sm:text-sm"><FileText className="mr-1 h-4 w-4" /> Relatórios PDF</TabsTrigger>
         </TabsList>
@@ -383,6 +463,72 @@ export default function ArquiteturaSistema() {
           </Card>
         </TabsContent>
 
+        {/* Sistema Tab - moved from Configurações */}
+        <TabsContent value="sistema" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> Identidade do Sistema</CardTitle>
+              <CardDescription>Configure o nome, ícone da aba do navegador e logo da barra lateral</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Nome do Sistema</Label>
+                  <Input value={nomeSistema} onChange={(e) => setNomeSistema(e.target.value)} placeholder="Portal Treinamentos" />
+                  <p className="text-xs text-muted-foreground">Aparece na aba do navegador e cabeçalho</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>URL do Favicon (ícone da aba)</Label>
+                  <div className="flex gap-2">
+                    <Input value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} placeholder="https://exemplo.com/favicon.png" />
+                    {faviconUrl && <img src={faviconUrl} alt="Favicon" className="h-10 w-10 object-contain border rounded" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG ou ICO, recomendado 32x32px</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>URL da Logo (barra lateral)</Label>
+                <div className="flex gap-4 items-start">
+                  <div className="flex-1">
+                    <Input value={logoSidebarUrl} onChange={(e) => setLogoSidebarUrl(e.target.value)} placeholder="https://exemplo.com/logo.png" />
+                    <p className="text-xs text-muted-foreground mt-1">PNG ou SVG, aparecerá na parte superior dos menus</p>
+                  </div>
+                  {logoSidebarUrl && (
+                    <div className="border rounded-lg p-2 bg-card">
+                      <img src={logoSidebarUrl} alt="Logo sidebar" className="h-12 w-12 object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h4 className="font-medium mb-3 flex items-center gap-2"><Eye className="h-4 w-4" /> Pré-visualização</h4>
+                <div className="flex items-center gap-3 p-3 bg-card rounded-lg border">
+                  {logoSidebarUrl ? (
+                    <img src={logoSidebarUrl} alt="Logo" className="h-8 w-8 object-contain" />
+                  ) : (
+                    <div className="h-8 w-8 bg-primary/20 rounded flex items-center justify-center">
+                      <Layout className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-bold">{nomeSistema || "Portal Treinamentos"}</p>
+                    <p className="text-xs text-muted-foreground">Treinamentos</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={handleSaveSistema} disabled={loading} className="bg-gradient-primary">
+                  <Save className="mr-2 h-4 w-4" /> {loading ? "Salvando..." : "Salvar Configurações do Sistema"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Campos Tab */}
         <TabsContent value="campos" className="space-y-6">
           {renderFieldSection("treinamentos", "Campos de Treinamentos")}
@@ -394,80 +540,97 @@ export default function ArquiteturaSistema() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <FileText className="h-5 w-5" /> Layout dos Relatórios em PDF
+                <FileText className="h-5 w-5" /> Layout dos Relatórios PDF
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Configure o layout padrão dos relatórios exportados em PDF
+                Configure a aparência dos relatórios gerados em PDF
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm">Orientação</Label>
-                    <Select value={reportLayout.orientation} onValueChange={(v) => setReportLayout(prev => ({ ...prev, orientation: v as any }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="portrait">Retrato</SelectItem>
-                        <SelectItem value="landscape">Paisagem</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-sm">Tamanho da Fonte</Label>
-                    <Input 
-                      type="number" min={8} max={18} value={reportLayout.fontSize}
-                      onChange={(e) => setReportLayout(prev => ({ ...prev, fontSize: parseInt(e.target.value) || 12 }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Cor do Cabeçalho</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input 
-                        type="color" value={reportLayout.headerColor}
-                        onChange={(e) => setReportLayout(prev => ({ ...prev, headerColor: e.target.value }))}
-                        className="w-12 h-10 p-1"
-                      />
-                      <Input 
-                        value={reportLayout.headerColor}
-                        onChange={(e) => setReportLayout(prev => ({ ...prev, headerColor: e.target.value }))}
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Orientação</Label>
+                  <Select
+                    value={reportLayout.orientation}
+                    onValueChange={(v) => setReportLayout({ ...reportLayout, orientation: v as any })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="portrait">Retrato</SelectItem>
+                      <SelectItem value="landscape">Paisagem</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label className="text-sm">Exibir Logo</Label>
-                    <Switch checked={reportLayout.showLogo} onCheckedChange={(v) => setReportLayout(prev => ({ ...prev, showLogo: v }))} />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label className="text-sm">Exibir Data</Label>
-                    <Switch checked={reportLayout.showDate} onCheckedChange={(v) => setReportLayout(prev => ({ ...prev, showDate: v }))} />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <Label className="text-sm">Numeração de Páginas</Label>
-                    <Switch checked={reportLayout.showPageNumbers} onCheckedChange={(v) => setReportLayout(prev => ({ ...prev, showPageNumbers: v }))} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Tamanho da Fonte</Label>
+                  <Input
+                    type="number"
+                    value={reportLayout.fontSize}
+                    onChange={(e) => setReportLayout({ ...reportLayout, fontSize: Number(e.target.value) })}
+                    min={8}
+                    max={16}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Cor do Cabeçalho</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={reportLayout.headerColor}
+                    onChange={(e) => setReportLayout({ ...reportLayout, headerColor: e.target.value })}
+                    className="h-10 w-20 rounded border cursor-pointer"
+                  />
+                  <span className="text-sm text-muted-foreground">{reportLayout.headerColor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Exibir Logo</Label>
+                  <Switch
+                    checked={reportLayout.showLogo}
+                    onCheckedChange={(v) => setReportLayout({ ...reportLayout, showLogo: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Exibir Data</Label>
+                  <Switch
+                    checked={reportLayout.showDate}
+                    onCheckedChange={(v) => setReportLayout({ ...reportLayout, showDate: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Exibir Número da Página</Label>
+                  <Switch
+                    checked={reportLayout.showPageNumbers}
+                    onCheckedChange={(v) => setReportLayout({ ...reportLayout, showPageNumbers: v })}
+                  />
                 </div>
               </div>
 
               {/* Preview */}
-              <div className="mt-6">
-                <Label className="text-sm font-semibold mb-2 block">Pré-visualização</Label>
-                <div className={`border rounded-lg p-4 bg-card ${reportLayout.orientation === "landscape" ? "aspect-[1.41/1] max-w-md" : "aspect-[1/1.41] max-w-[300px]"}`}>
-                  <div className="h-6 rounded" style={{ backgroundColor: reportLayout.headerColor, opacity: 0.8 }} />
-                  <div className="mt-2 flex justify-between text-[8px] sm:text-[10px] text-muted-foreground">
-                    {reportLayout.showLogo && <span>📋 Logo</span>}
-                    {reportLayout.showDate && <span>{new Date().toLocaleDateString('pt-BR')}</span>}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h4 className="font-medium mb-3 flex items-center gap-2"><Eye className="h-4 w-4" /> Pré-visualização</h4>
+                <div
+                  className={`border rounded-lg bg-white text-black overflow-hidden ${
+                    reportLayout.orientation === "landscape" ? "w-full max-w-md" : "w-48"
+                  }`}
+                >
+                  <div className="p-2 text-white text-[10px] font-bold" style={{ backgroundColor: reportLayout.headerColor }}>
+                    {reportLayout.showLogo && "🏢 "}Relatório de Treinamentos
+                    {reportLayout.showDate && <span className="float-right">{new Date().toLocaleDateString("pt-BR")}</span>}
                   </div>
-                  <div className="mt-3 space-y-1">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-2 bg-muted rounded" style={{ width: `${80 - i * 10}%` }} />
-                    ))}
+                  <div className="p-3">
+                    <div className="space-y-1">
+                      <div className="h-2 bg-gray-200 rounded w-3/4" style={{ fontSize: reportLayout.fontSize }}></div>
+                      <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-2 bg-gray-200 rounded w-2/3"></div>
+                    </div>
                   </div>
                   {reportLayout.showPageNumbers && (
-                    <div className="text-[8px] text-muted-foreground text-center mt-auto pt-4">Página 1 de 1</div>
+                    <div className="text-center text-[8px] text-gray-400 pb-1">Página 1 de 1</div>
                   )}
                 </div>
               </div>

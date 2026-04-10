@@ -259,9 +259,8 @@ export default function Configuracoes() {
       )}
 
       <Tabs defaultValue="geral" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="sistema">Sistema</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           <TabsTrigger value="seguranca">Segurança</TabsTrigger>
@@ -317,128 +316,6 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
 
-        {/* Sistema - Favicon, Nome, Logo */}
-        <TabsContent value="sistema" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> Identidade do Sistema</CardTitle>
-              <CardDescription>Configure o nome, ícone da aba do navegador e logo da barra lateral</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Nome do Sistema</Label>
-                  <Input value={config.nomeSistema} onChange={(e) => setConfig({...config, nomeSistema: e.target.value})} disabled={user?.role !== "master"} placeholder="Portal Treinamentos" />
-                  <p className="text-xs text-muted-foreground">Aparece na aba do navegador e cabeçalho</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>URL do Favicon (ícone da aba)</Label>
-                  <div className="flex gap-2">
-                    <Input value={config.faviconUrl} onChange={(e) => setConfig({...config, faviconUrl: e.target.value})} disabled={user?.role !== "master"} placeholder="https://exemplo.com/favicon.png" />
-                    {config.faviconUrl && <img src={config.faviconUrl} alt="Favicon" className="h-10 w-10 object-contain border rounded" />}
-                  </div>
-                  <p className="text-xs text-muted-foreground">PNG ou ICO, recomendado 32x32px</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>URL da Logo (barra lateral)</Label>
-                <div className="flex gap-4 items-start">
-                  <div className="flex-1">
-                    <Input value={config.logoSidebarUrl} onChange={(e) => setConfig({...config, logoSidebarUrl: e.target.value})} disabled={user?.role !== "master"} placeholder="https://exemplo.com/logo.png" />
-                    <p className="text-xs text-muted-foreground mt-1">PNG ou SVG, aparecerá na parte superior dos menus</p>
-                  </div>
-                  {config.logoSidebarUrl && (
-                    <div className="border rounded-lg p-2 bg-card">
-                      <img src={config.logoSidebarUrl} alt="Logo sidebar" className="h-12 w-12 object-contain" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div className="border rounded-lg p-4 bg-muted/30">
-                <h4 className="font-medium mb-3 flex items-center gap-2"><Eye className="h-4 w-4" /> Pré-visualização</h4>
-                <div className="flex items-center gap-3 p-3 bg-card rounded-lg border">
-                  {config.logoSidebarUrl ? (
-                    <img src={config.logoSidebarUrl} alt="Logo" className="h-8 w-8 object-contain" />
-                  ) : (
-                    <div className="h-8 w-8 bg-primary/20 rounded flex items-center justify-center">
-                      <Image className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-bold">{config.nomeSistema || "Portal Treinamentos"}</p>
-                    <p className="text-xs text-muted-foreground">Treinamentos</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button onClick={handleSaveSistema} disabled={loading || user?.role !== "master"} className="bg-gradient-primary">
-                  <Save className="mr-2 h-4 w-4" /> {loading ? "Salvando..." : "Salvar Configurações do Sistema"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Maintenance & other system settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Server className="h-5 w-5" /> Configurações Avançadas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
-                <div>
-                  <h4 className="font-medium text-yellow-800 dark:text-yellow-200">Modo de Manutenção</h4>
-                  <p className="text-sm text-yellow-600 dark:text-yellow-300">Bloqueia acesso de usuários não-admin</p>
-                </div>
-                <Switch checked={config.manuntencaoModo} onCheckedChange={(v) => setConfig({...config, manuntencaoModo: v})} disabled={user?.role !== "master"} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div><h4 className="font-medium">Registro Público</h4><p className="text-sm text-muted-foreground">Permitir novos cadastros</p></div>
-                <Switch checked={config.registroPublico} onCheckedChange={(v) => setConfig({...config, registroPublico: v})} disabled={user?.role !== "master"} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div><h4 className="font-medium">Backup Automático</h4><p className="text-sm text-muted-foreground">Backup automático dos dados</p></div>
-                <Switch checked={config.backupAutomatico} onCheckedChange={(v) => setConfig({...config, backupAutomatico: v})} disabled={user?.role !== "master"} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nível de Log</Label>
-                  <Select value={config.logLevel} onValueChange={(v) => setConfig({...config, logLevel: v})} disabled={user?.role !== "master"}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="error">Error</SelectItem>
-                      <SelectItem value="warn">Warning</SelectItem>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="debug">Debug</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Frequência do Backup</Label>
-                  <Select value={config.backupFrequencia} onValueChange={(v) => setConfig({...config, backupFrequencia: v})} disabled={user?.role !== "master"}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="diario">Diário</SelectItem>
-                      <SelectItem value="semanal">Semanal</SelectItem>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={handleReset} disabled={user?.role !== "master"} className="text-destructive hover:text-destructive">
-                  <RefreshCw className="mr-2 h-4 w-4" /> Resetar
-                </Button>
-                <Button onClick={() => handleSave("sistema")} disabled={loading || user?.role !== "master"} className="bg-gradient-primary">
-                  <Save className="mr-2 h-4 w-4" /> Salvar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Email */}
         <TabsContent value="email" className="space-y-6">

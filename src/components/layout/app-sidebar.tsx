@@ -13,39 +13,49 @@ import logoImage from "@/assets/logo.png"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/integrations/supabase/client"
 
-const getMainMenuItems = (role: string) => {
-  const items = [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["master", "admin", "instrutor"] },
-    { title: "Meus Treinamentos", url: "/meus-treinamentos", icon: GraduationCap, roles: ["master", "admin", "instrutor", "usuario"] },
-    { title: "Catálogo", url: "/catalogo", icon: BookOpen, roles: ["master", "admin", "instrutor", "usuario"] },
-    { title: "Relatórios", url: "/relatorios", icon: FileText, roles: ["master", "admin", "instrutor"] },
-    { title: "Calendário", url: "/calendario", icon: Calendar, roles: ["master", "admin", "instrutor", "usuario"] },
-  ]
-  return items.filter(item => item.roles.includes(role))
+const iconMap: Record<string, any> = {
+  LayoutDashboard, BookOpen, Users, Building2, Settings, BarChart3,
+  Shield, GraduationCap, FileText, Calendar, Briefcase, CreditCard,
+  Zap, Sparkles, Palette, DollarSign, Tag, Settings2,
 }
 
-const getAdminMenuItems = (role: string) => {
-  const items = [
-    { title: "Dashboard Executivo", url: "/admin/executivo", icon: Sparkles, roles: ["master", "admin"] },
-    { title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: BookOpen, roles: ["master", "admin", "instrutor"] },
-    { title: "Usuários", url: "/admin/usuarios", icon: Users, roles: ["master", "admin"] },
-    { title: "Cargos", url: "/admin/cargos", icon: Briefcase, roles: ["master", "admin"] },
-    { title: "Departamentos", url: "/admin/departamentos", icon: Building2, roles: ["master", "admin"] },
-    { title: "Categorias", url: "/admin/categorias", icon: Tag, roles: ["master", "admin"] },
-    { title: "Empresas", url: "/admin/empresas", icon: Building2, roles: ["master"] },
-    { title: "Planos", url: "/admin/planos", icon: CreditCard, roles: ["master"] },
-    { title: "Integrações", url: "/admin/integracoes", icon: Zap, roles: ["master", "admin"] },
-    { title: "Analytics", url: "/admin/analytics", icon: BarChart3, roles: ["master", "admin"] },
-    { title: "Permissões", url: "/admin/permissoes", icon: Shield, roles: ["master"] },
-    { title: "Configurações", url: "/admin/configuracoes", icon: Settings, roles: ["master"] },
-  ]
-  return items.filter(item => item.roles.includes(role))
+interface MenuItemConfig {
+  id: string
+  title: string
+  url: string
+  icon: string
+  visible: boolean
+  order: number
+  section: "main" | "admin" | "master"
 }
 
-const masterMenuItems = [
-  { title: "Editor Landing Page", url: "/admin/landing-page", icon: Palette },
-  { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
-  { title: "Arquitetura do Sistema", url: "/admin/arquitetura", icon: Settings2 },
+const defaultMainItems = [
+  { id: "dashboard", title: "Dashboard", url: "/dashboard", icon: "LayoutDashboard", roles: ["master", "admin", "instrutor"] },
+  { id: "meus-treinamentos", title: "Meus Treinamentos", url: "/meus-treinamentos", icon: "GraduationCap", roles: ["master", "admin", "instrutor", "usuario"] },
+  { id: "catalogo", title: "Catálogo", url: "/catalogo", icon: "BookOpen", roles: ["master", "admin", "instrutor", "usuario"] },
+  { id: "relatorios", title: "Relatórios", url: "/relatorios", icon: "FileText", roles: ["master", "admin", "instrutor"] },
+  { id: "calendario", title: "Calendário", url: "/calendario", icon: "Calendar", roles: ["master", "admin", "instrutor", "usuario"] },
+]
+
+const defaultAdminItems = [
+  { id: "executivo", title: "Dashboard Executivo", url: "/admin/executivo", icon: "Sparkles", roles: ["master", "admin"] },
+  { id: "treinamentos", title: "Gestão de Treinamentos", url: "/admin/treinamentos", icon: "BookOpen", roles: ["master", "admin", "instrutor"] },
+  { id: "usuarios", title: "Usuários", url: "/admin/usuarios", icon: "Users", roles: ["master", "admin"] },
+  { id: "cargos", title: "Cargos", url: "/admin/cargos", icon: "Briefcase", roles: ["master", "admin"] },
+  { id: "departamentos", title: "Departamentos", url: "/admin/departamentos", icon: "Building2", roles: ["master", "admin"] },
+  { id: "categorias", title: "Categorias", url: "/admin/categorias", icon: "Tag", roles: ["master", "admin"] },
+  { id: "empresas", title: "Empresas", url: "/admin/empresas", icon: "Building2", roles: ["master"] },
+  { id: "planos", title: "Planos", url: "/admin/planos", icon: "CreditCard", roles: ["master"] },
+  { id: "integracoes", title: "Integrações", url: "/admin/integracoes", icon: "Zap", roles: ["master", "admin"] },
+  { id: "analytics", title: "Analytics", url: "/admin/analytics", icon: "BarChart3", roles: ["master", "admin"] },
+  { id: "permissoes", title: "Permissões", url: "/admin/permissoes", icon: "Shield", roles: ["master"] },
+  { id: "configuracoes", title: "Configurações", url: "/admin/configuracoes", icon: "Settings", roles: ["master"] },
+]
+
+const defaultMasterItems = [
+  { id: "landing-page", title: "Editor Landing Page", url: "/admin/landing-page", icon: "Palette" },
+  { id: "financeiro", title: "Financeiro", url: "/admin/financeiro", icon: "DollarSign" },
+  { id: "arquitetura", title: "Arquitetura do Sistema", url: "/admin/arquitetura", icon: "Settings2" },
 ]
 
 export function AppSidebar() {
@@ -55,13 +65,11 @@ export function AppSidebar() {
   const userRole = user?.role || 'usuario'
   const isMaster = userRole === 'master'
   const isAdminOrHigher = ['master', 'admin', 'instrutor'].includes(userRole)
-  
-  const mainMenuItems = getMainMenuItems(userRole)
-  const adminMenuItems = getAdminMenuItems(userRole)
 
   const [systemName, setSystemName] = useState("Portal")
   const [systemSubtitle] = useState("Treinamentos")
   const [sidebarLogo, setSidebarLogo] = useState<string | null>(null)
+  const [menuConfig, setMenuConfig] = useState<MenuItemConfig[] | null>(null)
 
   useEffect(() => {
     const loadSystemConfig = async () => {
@@ -88,8 +96,84 @@ export function AppSidebar() {
     loadSystemConfig()
   }, [])
 
+  // Load architecture menu config from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("sistema_menu_config")
+    if (saved) {
+      try {
+        setMenuConfig(JSON.parse(saved))
+      } catch {}
+    }
+
+    // Listen for storage changes (when architecture saves)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "sistema_menu_config" && e.newValue) {
+        try { setMenuConfig(JSON.parse(e.newValue)) } catch {}
+      }
+    }
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
+  }, [])
+
+  // Build menu items using architecture config if available
+  const getMenuItems = (section: "main" | "admin" | "master") => {
+    if (menuConfig) {
+      const sectionItems = menuConfig
+        .filter(m => m.section === section && m.visible !== false)
+        .sort((a, b) => a.order - b.order)
+      
+      if (section === "main") {
+        return sectionItems.filter(item => {
+          const defaultItem = defaultMainItems.find(d => d.id === item.id)
+          return defaultItem ? defaultItem.roles.includes(userRole) : true
+        }).map(item => ({
+          title: item.title,
+          url: item.url,
+          icon: iconMap[item.icon] || Settings,
+        }))
+      }
+      if (section === "admin") {
+        return sectionItems.filter(item => {
+          const defaultItem = defaultAdminItems.find(d => d.id === item.id)
+          return defaultItem ? defaultItem.roles.includes(userRole) : true
+        }).map(item => ({
+          title: item.title,
+          url: item.url,
+          icon: iconMap[item.icon] || Settings,
+        }))
+      }
+      // master
+      return sectionItems.map(item => ({
+        title: item.title,
+        url: item.url,
+        icon: iconMap[item.icon] || Settings,
+      }))
+    }
+
+    // Fallback: default menu
+    if (section === "main") {
+      return defaultMainItems.filter(i => i.roles.includes(userRole)).map(i => ({
+        title: i.title, url: i.url, icon: iconMap[i.icon] || Settings,
+      }))
+    }
+    if (section === "admin") {
+      return defaultAdminItems.filter(i => i.roles.includes(userRole)).map(i => ({
+        title: i.title, url: i.url, icon: iconMap[i.icon] || Settings,
+      }))
+    }
+    return defaultMasterItems.map(i => ({
+      title: i.title, url: i.url, icon: iconMap[i.icon] || Settings,
+    }))
+  }
+
+  const mainMenuItems = getMenuItems("main")
+  const adminMenuItems = getMenuItems("admin")
+  const masterMenuItems = getMenuItems("master")
+
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"
+    isActive
+      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+      : "hover:bg-accent hover:text-accent-foreground"
 
   return (
     <Sidebar className={open ? "w-64" : "w-16"} collapsible="icon">
@@ -144,7 +228,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {isMaster && (
+        {isMaster && masterMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Master</SidebarGroupLabel>
             <SidebarGroupContent>
