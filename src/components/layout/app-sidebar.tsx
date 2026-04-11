@@ -196,7 +196,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainMenuItems.map(item => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
                     <NavLink to={item.url} className={getNavClass}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {open && <span>{item.title}</span>}
@@ -215,7 +215,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {adminMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
                       <NavLink to={item.url} className={getNavClass}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
@@ -235,7 +235,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {masterMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
                       <NavLink to={item.url} className={getNavClass}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
