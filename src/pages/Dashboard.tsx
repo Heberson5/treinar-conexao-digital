@@ -123,20 +123,30 @@ export default function Dashboard() {
         console.error("Erro ao buscar treinamentos:", treinamentosError);
       }
 
-      // Buscar progresso
+      // Buscar progresso (excluindo master users)
       let progressoQuery = supabase.from("progresso_treinamentos").select("*");
       if (treinamentosData && treinamentosData.length > 0) {
         progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
       }
       const { data: progressoData } = await progressoQuery;
 
-      // Buscar atividades recentes (apenas sobre treinamentos, excluindo login/acesso)
+      // Get master user IDs to exclude them from counts
+      const { data: masterRoles } = await supabase
+        .from("usuario_roles")
+        .select("usuario_id")
+        .eq("role", "master");
+      const masterUserIds = new Set((masterRoles || []).map(r => r.usuario_id));
+
+      // Filter out master users from progress data
+      const filteredProgressoData = (progressoData || []).filter(p => !masterUserIds.has(p.usuario_id));
+
+      // Buscar atividades recentes (apenas sobre treinamentos, excluindo Master)
       const { data: atividadesData } = await supabase
         .from("atividades")
         .select("*")
         .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
         .order("criado_em", { ascending: false })
-        .limit(10);
+        .limit(30);
 
       // Buscar tentativas de avaliação por usuário
       let tentativasQuery = supabase
