@@ -1579,7 +1579,7 @@ export function ModernTrainingEditor({
                                   : "hover:bg-muted",
                                 snapshot.isDragging && "shadow-lg bg-background"
                               )}
-                              onClick={() => setActiveSection(index)}
+                              onClick={() => { setActiveSection(index); if (window.innerWidth < 640) setShowSidebar(false); }}
                             >
                               <div {...provided.dragHandleProps} className="cursor-grab">
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
