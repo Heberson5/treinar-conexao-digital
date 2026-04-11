@@ -1888,36 +1888,57 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
         </CardContent>
       </Card>
 
-      {/* Botão de conclusão */}
-      <Card className="sticky bottom-4">
-        <CardContent className="p-4">
-          {/* Quiz Section */}
-          {id && (
-            <div className="mb-6">
-              <QuizViewer treinamentoId={id} notaMinima={7} />
-            </div>
-          )}
+      {/* Quiz Section - opens in separate view */}
+      {id && hasQuiz && !quizApproved && canComplete && (
+        <Card className="sticky bottom-4 mb-4">
+          <CardContent className="p-4">
+            <QuizViewer 
+              treinamentoId={id} 
+              notaMinima={7}
+              onAprovado={() => setQuizApproved(true)}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {canComplete ? (
-                <span className="text-green-600 dark:text-green-400 font-medium">
-                  ✓ Pronto para concluir!
-                </span>
-              ) : (
-                <span>
-                  Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
-                </span>
-              )}
+      {/* Botão de conclusão - só aparece quando aprovado na avaliação (se houver) */}
+      {(!hasQuiz || quizApproved) && (
+        <Card className="sticky bottom-4">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground">
+                {canComplete ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">
+                    ✓ Pronto para concluir!
+                  </span>
+                ) : (
+                  <span>
+                    Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
+                  </span>
+                )}
+              </div>
+              <Button 
+                size="lg" 
+                onClick={handleComplete}
+                disabled={!canComplete}
+                className="gap-2 w-full md:w-auto"
+              >
+                <Award className="h-5 w-5" />
+                Concluir Treinamento
+              </Button>
             </div>
-            <Button 
-              size="lg" 
-              onClick={handleComplete}
-              disabled={!canComplete}
-              className="gap-2 w-full md:w-auto"
-            >
-              <Award className="h-5 w-5" />
-              Concluir Treinamento
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mensagem quando precisa fazer a avaliação */}
+      {hasQuiz && !quizApproved && !canComplete && (
+        <Card className="sticky bottom-4">
+          <CardContent className="p-4 text-center text-sm text-muted-foreground">
+            Complete pelo menos {minimumTimeRequired} minutos de estudo para liberar a avaliação.
+          </CardContent>
+        </Card>
+      )}
             </Button>
           </div>
         </CardContent>
