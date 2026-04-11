@@ -1550,9 +1550,14 @@ export function ModernTrainingEditor({
                   <Layers className="h-4 w-4" />
                   Seções
                 </h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addSection}>
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addSection}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden" onClick={() => setShowSidebar(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
