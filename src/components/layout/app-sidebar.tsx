@@ -96,23 +96,31 @@ export function AppSidebar() {
     loadSystemConfig()
   }, [])
 
-  // Load architecture menu config from localStorage
+  // Load architecture menu config from database
   useEffect(() => {
-    const saved = localStorage.getItem("sistema_menu_config")
-    if (saved) {
-      try {
-        setMenuConfig(JSON.parse(saved))
-      } catch {}
-    }
+    const loadMenuConfig = async () => {
+      const { data } = await supabase
+        .from("configuracoes_menu")
+        .select("menu_config")
+        .limit(1)
+        .single()
 
-    // Listen for storage changes (when architecture saves)
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "sistema_menu_config" && e.newValue) {
-        try { setMenuConfig(JSON.parse(e.newValue)) } catch {}
+      if (data) {
+        const d = data as any
+        if (d.menu_config && Array.isArray(d.menu_config) && d.menu_config.length > 0) {
+          setMenuConfig(d.menu_config)
+        }
       }
     }
-    window.addEventListener("storage", handleStorage)
-    return () => window.removeEventListener("storage", handleStorage)
+    loadMenuConfig()
+
+    // Listen for immediate updates from architecture page
+    const handleMenuUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail) setMenuConfig(detail)
+    }
+    window.addEventListener("menu-config-updated", handleMenuUpdate)
+    return () => window.removeEventListener("menu-config-updated", handleMenuUpdate)
   }, [])
 
   // Build menu items using architecture config if available
@@ -173,7 +181,7 @@ export function AppSidebar() {
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-      : "hover:bg-accent hover:text-accent-foreground"
+      : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground"
 
   return (
     <Sidebar className={open ? "w-64" : "w-16"} collapsible="icon">

@@ -85,6 +85,16 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
     return () => clearInterval(interval)
   }, [quizStarted, tempoLimite, resultado])
 
+  // Shuffle helper
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const shuffled = [...arr]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
+
   const loadData = async () => {
     setIsLoading(true)
     const [questoesRes, tentativasRes] = await Promise.all([
@@ -93,17 +103,29 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
     ])
 
     if (questoesRes.data) {
-      setQuestoes(questoesRes.data.map(q => ({
-        id: q.id,
-        tipo: ((q as any).tipo || "quiz") as QuestionType,
-        pergunta: q.pergunta,
-        opcoes: (q as any).opcoes?.length ? (q as any).opcoes : [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d].filter(Boolean),
-        resposta_correta: q.resposta_correta,
-        ordem: q.ordem,
-        valor_minimo: (q as any).valor_minimo,
-        valor_maximo: (q as any).valor_maximo,
-        passo: (q as any).passo,
-      })))
+      const mappedQuestions = questoesRes.data.map(q => {
+        const letterKeys = "abcdefghij".split("")
+        const originalOpcoes: string[] = (q as any).opcoes?.length ? (q as any).opcoes : [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d].filter(Boolean)
+        
+        // Shuffle options and track the correct answer
+        const optionPairs = originalOpcoes.map((opt, i) => ({ opt, originalKey: letterKeys[i] }))
+        const shuffledPairs = shuffleArray(optionPairs)
+        const newCorrectKey = letterKeys[shuffledPairs.findIndex(p => p.originalKey === q.resposta_correta)]
+        
+        return {
+          id: q.id,
+          tipo: ((q as any).tipo || "quiz") as QuestionType,
+          pergunta: q.pergunta,
+          opcoes: shuffledPairs.map(p => p.opt),
+          resposta_correta: newCorrectKey || q.resposta_correta,
+          ordem: q.ordem,
+          valor_minimo: (q as any).valor_minimo,
+          valor_maximo: (q as any).valor_maximo,
+          passo: (q as any).passo,
+        }
+      })
+      // Shuffle question order
+      setQuestoes(shuffleArray(mappedQuestions))
     }
     if (tentativasRes?.data?.length) setJaAprovado(true)
     setIsLoading(false)
@@ -112,17 +134,27 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
   const startQuiz = () => {
     setQuizStarted(true)
     if (tempoLimite > 0) setTimeLeft(tempoLimite * 60)
+    // Re-shuffle questions and options when starting
+    setQuestoes(prev => {
+      const reshuffled = shuffleArray(prev.map(q => {
+        if (q.tipo === "quiz" || q.tipo === "verdadeiro-falso") {
+          const letterKeys = "abcdefghij".split("")
+          const optionPairs = q.opcoes.map((opt, i) => ({ opt, originalKey: letterKeys[i] }))
+          const shuffledPairs = shuffleArray(optionPairs)
+          const newCorrectKey = letterKeys[shuffledPairs.findIndex(p => p.originalKey === q.resposta_correta)]
+          return { ...q, opcoes: shuffledPairs.map(p => p.opt), resposta_correta: newCorrectKey || q.resposta_correta }
+        }
+        return q
+      }))
+      return reshuffled
+    })
     // Init puzzle orders
     const puzzles: Record<string, number[]> = {}
     questoes.forEach(q => {
       if (q.tipo === "puzzle") {
         const indices = q.opcoes.map((_, i) => i)
-        // Shuffle
-        for (let i = indices.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [indices[i], indices[j]] = [indices[j], indices[i]]
-        }
-        puzzles[q.id] = indices
+        const shuffled = shuffleArray(indices)
+        puzzles[q.id] = shuffled
       }
     })
     setPuzzleOrders(puzzles)

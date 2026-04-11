@@ -123,20 +123,30 @@ export default function Dashboard() {
         console.error("Erro ao buscar treinamentos:", treinamentosError);
       }
 
-      // Buscar progresso
+      // Buscar progresso (excluindo master users)
       let progressoQuery = supabase.from("progresso_treinamentos").select("*");
       if (treinamentosData && treinamentosData.length > 0) {
         progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
       }
       const { data: progressoData } = await progressoQuery;
 
-      // Buscar atividades recentes (apenas sobre treinamentos, excluindo login/acesso)
+      // Get master user IDs to exclude them from counts
+      const { data: masterRoles } = await supabase
+        .from("usuario_roles")
+        .select("usuario_id")
+        .eq("role", "master");
+      const masterUserIds = new Set((masterRoles || []).map(r => r.usuario_id));
+
+      // Filter out master users from progress data
+      const filteredProgressoData = (progressoData || []).filter(p => !masterUserIds.has(p.usuario_id));
+
+      // Buscar atividades recentes (apenas sobre treinamentos, excluindo Master)
       const { data: atividadesData } = await supabase
         .from("atividades")
         .select("*")
         .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
         .order("criado_em", { ascending: false })
-        .limit(10);
+        .limit(30);
 
       // Buscar tentativas de avaliação por usuário
       let tentativasQuery = supabase
@@ -150,8 +160,11 @@ export default function Dashboard() {
 
       const { data: tentativasData } = await tentativasQuery;
 
+      // Filter out master users from tentativas
+      const filteredTentativas = (tentativasData || []).filter(t => !masterUserIds.has(t.usuario_id));
+
       // Buscar perfis dos usuários que fizeram tentativas
-      const userIds = [...new Set((tentativasData || []).map(t => t.usuario_id))];
+      const userIds = [...new Set(filteredTentativas.map(t => t.usuario_id))];
       let perfisMap: Record<string, string> = {};
       if (userIds.length > 0) {
         const { data: perfisData } = await supabase
@@ -172,9 +185,9 @@ export default function Dashboard() {
         treinamentoNomes[t.id] = t.titulo;
       });
 
-      // Agrupar tentativas por usuario + treinamento
+      // Agrupar tentativas por usuario + treinamento (excluindo master)
       const attemptGroups: Record<string, UserAttemptData> = {};
-      (tentativasData || []).forEach(t => {
+      filteredTentativas.forEach(t => {
         const key = `${t.usuario_id}-${t.treinamento_id}`;
         if (!attemptGroups[key]) {
           attemptGroups[key] = {
@@ -193,27 +206,27 @@ export default function Dashboard() {
 
       setUserAttempts(Object.values(attemptGroups));
 
-      // Calcular estatísticas
+      // Calcular estatísticas (usando dados filtrados sem master)
       const totalTreinamentos = treinamentosData?.length || 0;
       const treinamentosAtivos = treinamentosData?.filter(t => t.publicado).length || 0;
       
-      const progressoPorTreinamento = (progressoData || []).reduce((acc, p) => {
+      const progressoPorTreinamento = filteredProgressoData.reduce((acc, p) => {
         if (!acc[p.treinamento_id]) acc[p.treinamento_id] = [];
         acc[p.treinamento_id].push(p);
         return acc;
       }, {} as Record<string, any[]>);
 
-      const participantesUnicos = new Set((progressoData || []).map(p => p.usuario_id));
+      const participantesUnicos = new Set(filteredProgressoData.map(p => p.usuario_id));
       const totalParticipantes = participantesUnicos.size;
-      const conclusoes = (progressoData || []).filter(p => p.concluido).length;
-      const totalProgressos = (progressoData || []).length;
+      const conclusoes = filteredProgressoData.filter(p => p.concluido).length;
+      const totalProgressos = filteredProgressoData.length;
       const taxaConclusao = totalProgressos > 0 ? Math.round((conclusoes / totalProgressos) * 100) : 0;
-      const horasTreinamento = (progressoData || []).reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0);
+      const horasTreinamento = filteredProgressoData.reduce((acc, p) => acc + (p.tempo_assistido_minutos || 0), 0);
 
       const treinamentosComStats: TrainingData[] = (treinamentosData || []).map(t => {
         const progressos = progressoPorTreinamento[t.id] || [];
         const participantes = progressos.length;
-        const conclusoesTreinamento = progressos.filter(p => p.concluido).length;
+        const conclusoesTreinamento = progressos.filter((p: any) => p.concluido).length;
         const taxa = participantes > 0 ? Math.round((conclusoesTreinamento / participantes) * 100) : 0;
         return {
           id: t.id,
@@ -236,7 +249,9 @@ export default function Dashboard() {
       });
 
       setTrainings(treinamentosComStats.slice(0, 5));
-      setActivities(atividadesData || []);
+      // Filter activities to exclude master users
+      const filteredActivities = (atividadesData || []).filter(a => !a.usuario_id || !masterUserIds.has(a.usuario_id));
+      setActivities(filteredActivities);
 
     } catch (error) {
       console.error("Erro ao buscar dados do dashboard:", error);

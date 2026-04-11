@@ -41,6 +41,7 @@ interface TrainingData {
   nivel: string | null;
   thumbnail_url: string | null;
   conteudo_completo?: string;
+  avaliacao_obrigatoria?: boolean;
 }
 
 interface ProgressData {
@@ -60,6 +61,8 @@ export default function ExecutarTreinamento() {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [canComplete, setCanComplete] = useState(false);
+  const [quizApproved, setQuizApproved] = useState(false);
+  const [hasQuiz, setHasQuiz] = useState(false);
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingHover, setRatingHover] = useState(0);
@@ -97,7 +100,7 @@ export default function ExecutarTreinamento() {
       setLoading(true);
       const { data, error } = await supabase
         .from("treinamentos")
-        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, conteudo_html")
+        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, conteudo_html, avaliacao_obrigatoria")
         .eq("id", id)
         .maybeSingle();
 
@@ -107,14 +110,39 @@ export default function ExecutarTreinamento() {
       } else if (data) {
         setTraining({
           ...data,
-          conteudo_completo: data.conteudo_html || undefined
+          conteudo_completo: data.conteudo_html || undefined,
+          avaliacao_obrigatoria: data.avaliacao_obrigatoria || false
         });
       }
+
+      // Check if training has quiz questions
+      const { count } = await supabase
+        .from("questoes_treinamento")
+        .select("id", { count: "exact", head: true })
+        .eq("treinamento_id", id);
+      
+      setHasQuiz((count || 0) > 0);
+
+      // Check if user already approved
+      if (user?.id) {
+        const { data: approvedData } = await supabase
+          .from("tentativas_avaliacao")
+          .select("id")
+          .eq("treinamento_id", id)
+          .eq("usuario_id", user.id)
+          .eq("aprovado", true)
+          .limit(1);
+        
+        if (approvedData && approvedData.length > 0) {
+          setQuizApproved(true);
+        }
+      }
+
       setLoading(false);
     }
 
     loadTraining();
-  }, [id]);
+  }, [id, user?.id]);
 
   // Carregar ou criar progresso
   useEffect(() => {
@@ -1860,40 +1888,57 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
         </CardContent>
       </Card>
 
-      {/* Botão de conclusão */}
-      <Card className="sticky bottom-4">
-        <CardContent className="p-4">
-          {/* Quiz Section */}
-          {id && (
-            <div className="mb-6">
-              <QuizViewer treinamentoId={id} notaMinima={7} />
-            </div>
-          )}
+      {/* Quiz Section - opens in separate view */}
+      {id && hasQuiz && !quizApproved && canComplete && (
+        <Card className="sticky bottom-4 mb-4">
+          <CardContent className="p-4">
+            <QuizViewer 
+              treinamentoId={id} 
+              notaMinima={7}
+              onAprovado={() => setQuizApproved(true)}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {canComplete ? (
-                <span className="text-green-600 dark:text-green-400 font-medium">
-                  ✓ Pronto para concluir!
-                </span>
-              ) : (
-                <span>
-                  Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
-                </span>
-              )}
+      {/* Botão de conclusão - só aparece quando aprovado na avaliação (se houver) */}
+      {(!hasQuiz || quizApproved) && (
+        <Card className="sticky bottom-4">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground">
+                {canComplete ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">
+                    ✓ Pronto para concluir!
+                  </span>
+                ) : (
+                  <span>
+                    Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
+                  </span>
+                )}
+              </div>
+              <Button 
+                size="lg" 
+                onClick={handleComplete}
+                disabled={!canComplete}
+                className="gap-2 w-full md:w-auto"
+              >
+                <Award className="h-5 w-5" />
+                Concluir Treinamento
+              </Button>
             </div>
-            <Button 
-              size="lg" 
-              onClick={handleComplete}
-              disabled={!canComplete}
-              className="gap-2 w-full md:w-auto"
-            >
-              <Award className="h-5 w-5" />
-              Concluir Treinamento
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mensagem quando precisa fazer a avaliação */}
+      {hasQuiz && !quizApproved && !canComplete && (
+        <Card className="sticky bottom-4">
+          <CardContent className="p-4 text-center text-sm text-muted-foreground">
+            Complete pelo menos {minimumTimeRequired} minutos de estudo para liberar a avaliação.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Diálogo de Avaliação */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
