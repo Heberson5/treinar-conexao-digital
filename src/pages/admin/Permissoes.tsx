@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/integrations/supabase/client"
 
 interface Permission {
   id: string
@@ -56,6 +57,8 @@ const permissoesDisponiveis: Permission[] = [
   { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso completo para gerenciar todos os aspectos dos treinamentos", categoria: "Treinamentos", ativo: true },
   { id: "trainings.assign", nome: "Atribuir Treinamentos", descricao: "Permite atribuir treinamentos a usuários ou departamentos", categoria: "Treinamentos", ativo: true },
   { id: "trainings.certificates", nome: "Gerenciar Certificados", descricao: "Acesso para visualizar e emitir certificados", categoria: "Treinamentos", ativo: true },
+  { id: "catalog.view", nome: "Visualizar Catálogo", descricao: "Acesso para visualizar o catálogo de treinamentos disponíveis", categoria: "Catálogo", ativo: true },
+  { id: "catalog.manage", nome: "Gerenciar Catálogo", descricao: "Permite organizar e configurar o catálogo de treinamentos", categoria: "Catálogo", ativo: true },
   { id: "users.view", nome: "Visualizar Usuários", descricao: "Permite visualizar a lista de usuários cadastrados", categoria: "Usuários", ativo: true },
   { id: "users.create", nome: "Criar Usuários", descricao: "Autoriza a criação de novos usuários no sistema", categoria: "Usuários", ativo: true },
   { id: "users.edit", nome: "Editar Usuários", descricao: "Permite alterar dados de usuários existentes", categoria: "Usuários", ativo: true },
@@ -93,66 +96,14 @@ const permissoesDisponiveis: Permission[] = [
   { id: "financial.plans", nome: "Gerenciar Planos", descricao: "Permite criar e atribuir planos", categoria: "Financeiro", ativo: true, masterOnly: true },
 ]
 
-const rolesIniciais: Role[] = [
-  {
-    id: 1,
-    nome: "Master",
-    descricao: "Acesso total ao sistema - gerencia todas as empresas e configurações críticas",
-    cor: "bg-yellow-500",
-    permissoes: permissoesDisponiveis.map(p => p.id),
-    usuariosCount: 1,
-    ativo: true,
-    isMasterRole: true,
-  },
-  {
-    id: 2,
-    nome: "Administrador",
-    descricao: "Gestão completa da empresa - usuários, treinamentos, relatórios e configurações",
-    cor: "bg-blue-500",
-    permissoes: [
-      "trainings.view", "trainings.create", "trainings.edit", "trainings.delete", "trainings.manage", "trainings.assign", "trainings.certificates",
-      "users.view", "users.create", "users.edit", "users.delete", "users.roles", "users.import", "users.progress",
-      "reports.view", "reports.export", "reports.advanced", "reports.department", "reports.compliance",
-      "departments.view", "departments.create", "departments.edit", "departments.delete",
-      "integrations.view", "integrations.configure", "integrations.ai",
-      "system.settings", "system.notifications"
-    ],
-    usuariosCount: 3,
-    ativo: true
-  },
-  {
-    id: 3,
-    nome: "Instrutor",
-    descricao: "Criação e gestão de treinamentos - pode criar conteúdo e acompanhar progresso dos alunos",
-    cor: "bg-green-500",
-    permissoes: [
-      "trainings.view", "trainings.create", "trainings.edit", "trainings.assign", "trainings.certificates",
-      "users.view", "users.progress",
-      "reports.view", "reports.export", "reports.department",
-      "departments.view",
-      "integrations.ai"
-    ],
-    usuariosCount: 8,
-    ativo: true
-  },
-  {
-    id: 4,
-    nome: "Usuário",
-    descricao: "Acesso para realizar treinamentos - visualiza conteúdos e certificados próprios",
-    cor: "bg-gray-500",
-    permissoes: ["trainings.view"],
-    usuariosCount: 156,
-    ativo: true
-  }
-]
-
 export default function Permissoes() {
   const { user } = useAuth()
   const isMaster = user?.role === "master"
-  const [roles, setRoles] = useState<Role[]>(rolesIniciais)
+  const [roles, setRoles] = useState<Role[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
   const [newRole, setNewRole] = useState<{
@@ -166,6 +117,99 @@ export default function Permissoes() {
     cor: "bg-blue-500",
     permissoes: []
   })
+
+  // Fetch real data from database
+  useEffect(() => {
+    const fetchRoles = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch all roles with user counts
+        const { data: rolesData } = await supabase
+          .from("usuario_roles")
+          .select("role, usuario_id")
+
+        // Count users per role
+        const roleCounts: Record<string, number> = {}
+        if (rolesData) {
+          for (const r of rolesData) {
+            roleCounts[r.role] = (roleCounts[r.role] || 0) + 1
+          }
+        }
+
+        const builtRoles: Role[] = [
+          {
+            id: 1,
+            nome: "Master",
+            descricao: "Acesso total ao sistema - gerencia todas as empresas e configurações críticas",
+            cor: "bg-yellow-500",
+            permissoes: permissoesDisponiveis.map(p => p.id),
+            usuariosCount: roleCounts["master"] || 0,
+            ativo: true,
+            isMasterRole: true,
+          },
+          {
+            id: 2,
+            nome: "Administrador",
+            descricao: "Gestão completa da empresa - usuários, treinamentos, relatórios e configurações",
+            cor: "bg-blue-500",
+            permissoes: [
+              "trainings.view", "trainings.create", "trainings.edit", "trainings.delete", "trainings.manage", "trainings.assign", "trainings.certificates",
+              "catalog.view", "catalog.manage",
+              "users.view", "users.create", "users.edit", "users.delete", "users.roles", "users.import", "users.progress",
+              "reports.view", "reports.export", "reports.advanced", "reports.department", "reports.compliance",
+              "departments.view", "departments.create", "departments.edit", "departments.delete",
+              "integrations.view", "integrations.configure", "integrations.ai",
+              "system.settings", "system.notifications"
+            ],
+            usuariosCount: roleCounts["admin"] || 0,
+            ativo: true
+          },
+          {
+            id: 3,
+            nome: "Instrutor",
+            descricao: "Criação e gestão de treinamentos - pode criar conteúdo e acompanhar progresso dos alunos",
+            cor: "bg-green-500",
+            permissoes: [
+              "trainings.view", "trainings.create", "trainings.edit", "trainings.assign", "trainings.certificates",
+              "catalog.view",
+              "users.view", "users.progress",
+              "reports.view", "reports.export", "reports.department",
+              "departments.view",
+              "integrations.ai"
+            ],
+            usuariosCount: roleCounts["instrutor"] || 0,
+            ativo: true
+          },
+          {
+            id: 4,
+            nome: "Usuário",
+            descricao: "Acesso para realizar treinamentos - visualiza conteúdos e certificados próprios",
+            cor: "bg-gray-500",
+            permissoes: ["trainings.view", "catalog.view"],
+            usuariosCount: roleCounts["usuario"] || 0,
+            ativo: true
+          }
+        ]
+        setRoles(builtRoles)
+      } catch (error) {
+        console.error("Erro ao buscar dados de papéis:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchRoles()
+
+    // Realtime subscription for role changes
+    const channel = supabase
+      .channel('permissions-roles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuario_roles' }, () => {
+        fetchRoles()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   // Filter permissions: admins should not see masterOnly permissions
   const visiblePermissions = isMaster
@@ -220,7 +264,6 @@ export default function Permissoes() {
   }
 
   const togglePermission = (permissionId: string) => {
-    // For Master role editing, "system.permissions" cannot be disabled
     if (editingRole?.isMasterRole && permissionId === "system.permissions") {
       toast({ title: "Não permitido", description: "A permissão 'Permissões' não pode ser desativada para o Master", variant: "destructive" })
       return
@@ -264,6 +307,8 @@ export default function Permissoes() {
     return permissoesDisponiveis.find(p => p.id === id)?.nome || id
   }
 
+  const totalUsuarios = visibleRoles.reduce((acc, r) => acc + r.usuariosCount, 0)
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -280,7 +325,7 @@ export default function Permissoes() {
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
               Novo Papel
             </Button>
@@ -390,7 +435,7 @@ export default function Permissoes() {
               <Button variant="outline" onClick={() => setIsCreateRoleOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={editingRole ? handleUpdateRole : handleCreateRole} className="bg-gradient-primary">
+              <Button onClick={editingRole ? handleUpdateRole : handleCreateRole} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {editingRole ? "Atualizar" : "Criar Papel"}
               </Button>
             </div>
@@ -434,7 +479,7 @@ export default function Permissoes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Usuários</p>
-                <p className="text-2xl font-bold">{visibleRoles.reduce((acc, r) => acc + r.usuariosCount, 0)}</p>
+                <p className="text-2xl font-bold">{isLoading ? "..." : totalUsuarios}</p>
               </div>
             </div>
           </CardContent>

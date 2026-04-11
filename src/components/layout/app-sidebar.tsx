@@ -172,7 +172,7 @@ export function AppSidebar() {
 
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
-      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+      ? "bg-primary text-primary-foreground font-semibold shadow-sm !bg-primary !text-primary-foreground"
       : "hover:bg-accent hover:text-accent-foreground"
 
   return (
@@ -197,7 +197,7 @@ export function AppSidebar() {
               {mainMenuItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavClass}>
+                    <NavLink to={item.url} className={getNavClass}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {open && <span>{item.title}</span>}
                     </NavLink>
@@ -216,7 +216,7 @@ export function AppSidebar() {
                 {adminMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <NavLink to={item.url} end className={getNavClass}>
+                      <NavLink to={item.url} className={getNavClass}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
                       </NavLink>
@@ -236,7 +236,7 @@ export function AppSidebar() {
                 {masterMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <NavLink to={item.url} end className={getNavClass}>
+                      <NavLink to={item.url} className={getNavClass}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
                       </NavLink>
