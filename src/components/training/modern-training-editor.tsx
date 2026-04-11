@@ -1475,9 +1475,9 @@ export function ModernTrainingEditor({
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Top toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" onClick={onCancel} className="shrink-0">
+      <div className="flex items-center justify-between px-2 sm:px-4 py-2 sm:py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={onCancel} className="shrink-0 h-8 w-8 sm:h-9 sm:w-9">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -1485,22 +1485,22 @@ export function ModernTrainingEditor({
               value={formData.titulo}
               onChange={(e) => setFormData((prev) => ({ ...prev, titulo: e.target.value }))}
               placeholder="Título do treinamento"
-              className="text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent w-full"
+              className="text-base sm:text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent w-full"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               {formData.sections.length} seção(ões) • {formData.sections.reduce((acc, s) => acc + s.blocks.length, 0)} bloco(s)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Select
             value={formData.status}
             onValueChange={(value: "ativo" | "inativo" | "rascunho") =>
               setFormData((prev) => ({ ...prev, status: value }))
             }
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24 sm:w-32 h-8 text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1513,7 +1513,7 @@ export function ModernTrainingEditor({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowSidebar(!showSidebar)}>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowSidebar(!showSidebar)}>
                   <PanelLeft className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1524,7 +1524,7 @@ export function ModernTrainingEditor({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowPreview(true)}>
+                <Button variant="outline" size="icon" className="h-8 w-8 hidden sm:flex" onClick={() => setShowPreview(true)}>
                   <Eye className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1532,27 +1532,32 @@ export function ModernTrainingEditor({
             </Tooltip>
           </TooltipProvider>
 
-          <Button onClick={() => onSave(formData)}>
-            <Save className="h-4 w-4 mr-2" />
-            Salvar
+          <Button onClick={() => onSave(formData)} size="sm" className="h-8 text-xs sm:text-sm">
+            <Save className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Salvar</span>
           </Button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left sidebar - Section navigation */}
         {showSidebar && (
-          <div className="w-72 border-r bg-muted/20 flex flex-col">
+          <div className="absolute inset-0 z-30 sm:relative sm:inset-auto w-full sm:w-72 border-r bg-background sm:bg-muted/20 flex flex-col">
             <div className="p-4 border-b">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Layers className="h-4 w-4" />
                   Seções
                 </h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addSection}>
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addSection}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden" onClick={() => setShowSidebar(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1574,7 +1579,7 @@ export function ModernTrainingEditor({
                                   : "hover:bg-muted",
                                 snapshot.isDragging && "shadow-lg bg-background"
                               )}
-                              onClick={() => setActiveSection(index)}
+                              onClick={() => { setActiveSection(index); if (window.innerWidth < 640) setShowSidebar(false); }}
                             >
                               <div {...provided.dragHandleProps} className="cursor-grab">
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -1814,26 +1819,27 @@ export function ModernTrainingEditor({
         {/* Main editor area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Section header */}
-          <div className="flex items-center justify-between px-6 py-3 border-b bg-muted/20">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-6 py-2 sm:py-3 border-b bg-muted/20 gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-7 w-7 sm:h-9 sm:w-9 shrink-0"
                 disabled={activeSection === 0}
                 onClick={() => setActiveSection(activeSection - 1)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground font-medium">
+              <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                <span className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
                   Seção {activeSection + 1}
                 </span>
-                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground hidden sm:inline">•</span>
                 <Input
                   value={formData.sections[activeSection]?.title || ""}
                   onChange={(e) => updateSectionTitle(activeSection, e.target.value)}
-                  className="border-none shadow-none focus-visible:ring-0 font-medium text-lg h-auto p-0 bg-transparent max-w-[300px]"
+                  className="border-none shadow-none focus-visible:ring-0 font-medium text-sm sm:text-lg h-auto p-0 bg-transparent max-w-[120px] sm:max-w-[300px]"
                   placeholder="Nome da seção"
                 />
               </div>
@@ -1841,6 +1847,7 @@ export function ModernTrainingEditor({
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-7 w-7 sm:h-9 sm:w-9 shrink-0"
                 disabled={activeSection === formData.sections.length - 1}
                 onClick={() => setActiveSection(activeSection + 1)}
               >
@@ -1848,12 +1855,12 @@ export function ModernTrainingEditor({
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar bloco
+                  <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm w-full sm:w-auto">
+                    <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="sm:inline">Adicionar bloco</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -1894,10 +1901,10 @@ export function ModernTrainingEditor({
           {/* Editor content */}
           <ScrollArea className="flex-1">
             <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="max-w-3xl mx-auto py-8 px-12">
+              <div className="max-w-3xl mx-auto py-4 sm:py-8 px-3 sm:px-12">
                 <Droppable droppableId={`section-${activeSection}`} type="block">
                   {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps} className="min-h-[500px]">
+                    <div ref={provided.innerRef} {...provided.droppableProps} className="min-h-[300px] sm:min-h-[500px]">
                       {formData.sections[activeSection]?.blocks.map((block, blockIndex) =>
                         renderBlock(block, activeSection, blockIndex)
                       )}
@@ -1905,10 +1912,10 @@ export function ModernTrainingEditor({
 
                       {/* Empty state */}
                       {formData.sections[activeSection]?.blocks.length === 0 && (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>Esta seção está vazia</p>
-                          <p className="text-sm">Clique em "Adicionar bloco" para começar</p>
+                        <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                          <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
+                          <p className="text-sm sm:text-base">Esta seção está vazia</p>
+                          <p className="text-xs sm:text-sm">Clique em "Adicionar bloco" para começar</p>
                         </div>
                       )}
                     </div>
@@ -1919,14 +1926,16 @@ export function ModernTrainingEditor({
           </ScrollArea>
 
           {/* Bottom navigation */}
-          <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/20">
+          <div className="flex items-center justify-between px-3 sm:px-6 py-2 sm:py-3 border-t bg-muted/20">
             <Button
               variant="outline"
+              size="sm"
               disabled={activeSection === 0}
               onClick={() => setActiveSection(activeSection - 1)}
+              className="h-8 text-xs sm:text-sm"
             >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Seção anterior
+              <ChevronLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Seção anterior</span>
             </Button>
 
             <div className="flex items-center gap-1">
@@ -1944,11 +1953,13 @@ export function ModernTrainingEditor({
 
             <Button
               variant="outline"
+              size="sm"
               disabled={activeSection === formData.sections.length - 1}
               onClick={() => setActiveSection(activeSection + 1)}
+              className="h-8 text-xs sm:text-sm"
             >
-              Próxima seção
-              <ChevronRight className="h-4 w-4 ml-2" />
+              <span className="hidden sm:inline">Próxima seção</span>
+              <ChevronRight className="h-4 w-4 sm:ml-2" />
             </Button>
           </div>
         </div>
