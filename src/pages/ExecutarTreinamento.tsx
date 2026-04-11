@@ -61,6 +61,8 @@ export default function ExecutarTreinamento() {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [canComplete, setCanComplete] = useState(false);
+  const [quizApproved, setQuizApproved] = useState(false);
+  const [hasQuiz, setHasQuiz] = useState(false);
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingHover, setRatingHover] = useState(0);
