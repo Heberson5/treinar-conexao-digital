@@ -1475,9 +1475,9 @@ export function ModernTrainingEditor({
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Top toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" onClick={onCancel} className="shrink-0">
+      <div className="flex items-center justify-between px-2 sm:px-4 py-2 sm:py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={onCancel} className="shrink-0 h-8 w-8 sm:h-9 sm:w-9">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -1485,22 +1485,22 @@ export function ModernTrainingEditor({
               value={formData.titulo}
               onChange={(e) => setFormData((prev) => ({ ...prev, titulo: e.target.value }))}
               placeholder="Título do treinamento"
-              className="text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent w-full"
+              className="text-base sm:text-xl font-semibold border-none shadow-none focus-visible:ring-0 h-auto p-0 bg-transparent w-full"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               {formData.sections.length} seção(ões) • {formData.sections.reduce((acc, s) => acc + s.blocks.length, 0)} bloco(s)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Select
             value={formData.status}
             onValueChange={(value: "ativo" | "inativo" | "rascunho") =>
               setFormData((prev) => ({ ...prev, status: value }))
             }
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24 sm:w-32 h-8 text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1513,7 +1513,7 @@ export function ModernTrainingEditor({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowSidebar(!showSidebar)}>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowSidebar(!showSidebar)}>
                   <PanelLeft className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1524,7 +1524,7 @@ export function ModernTrainingEditor({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowPreview(true)}>
+                <Button variant="outline" size="icon" className="h-8 w-8 hidden sm:flex" onClick={() => setShowPreview(true)}>
                   <Eye className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1532,9 +1532,9 @@ export function ModernTrainingEditor({
             </Tooltip>
           </TooltipProvider>
 
-          <Button onClick={() => onSave(formData)}>
-            <Save className="h-4 w-4 mr-2" />
-            Salvar
+          <Button onClick={() => onSave(formData)} size="sm" className="h-8 text-xs sm:text-sm">
+            <Save className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Salvar</span>
           </Button>
         </div>
       </div>
