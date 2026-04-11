@@ -100,7 +100,7 @@ export default function ExecutarTreinamento() {
       setLoading(true);
       const { data, error } = await supabase
         .from("treinamentos")
-        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, conteudo_html")
+        .select("id, titulo, descricao, duracao_minutos, categoria, nivel, thumbnail_url, conteudo_html, avaliacao_obrigatoria")
         .eq("id", id)
         .maybeSingle();
 
@@ -110,14 +110,39 @@ export default function ExecutarTreinamento() {
       } else if (data) {
         setTraining({
           ...data,
-          conteudo_completo: data.conteudo_html || undefined
+          conteudo_completo: data.conteudo_html || undefined,
+          avaliacao_obrigatoria: data.avaliacao_obrigatoria || false
         });
       }
+
+      // Check if training has quiz questions
+      const { count } = await supabase
+        .from("questoes_treinamento")
+        .select("id", { count: "exact", head: true })
+        .eq("treinamento_id", id);
+      
+      setHasQuiz((count || 0) > 0);
+
+      // Check if user already approved
+      if (user?.id) {
+        const { data: approvedData } = await supabase
+          .from("tentativas_avaliacao")
+          .select("id")
+          .eq("treinamento_id", id)
+          .eq("usuario_id", user.id)
+          .eq("aprovado", true)
+          .limit(1);
+        
+        if (approvedData && approvedData.length > 0) {
+          setQuizApproved(true);
+        }
+      }
+
       setLoading(false);
     }
 
     loadTraining();
-  }, [id]);
+  }, [id, user?.id]);
 
   // Carregar ou criar progresso
   useEffect(() => {
