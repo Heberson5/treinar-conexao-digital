@@ -1939,10 +1939,6 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
           </CardContent>
         </Card>
       )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Diálogo de Avaliação */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
