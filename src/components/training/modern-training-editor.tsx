@@ -1540,10 +1540,10 @@ export function ModernTrainingEditor({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left sidebar - Section navigation */}
         {showSidebar && (
-          <div className="w-72 border-r bg-muted/20 flex flex-col">
+          <div className="absolute inset-0 z-30 sm:relative sm:inset-auto w-full sm:w-72 border-r bg-background sm:bg-muted/20 flex flex-col">
             <div className="p-4 border-b">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
