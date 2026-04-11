@@ -172,7 +172,7 @@ export function AppSidebar() {
 
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
-      ? "bg-primary text-primary-foreground font-semibold shadow-sm !bg-primary !text-primary-foreground"
+      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
       : "hover:bg-accent hover:text-accent-foreground"
 
   return (
