@@ -41,6 +41,7 @@ interface TrainingData {
   nivel: string | null;
   thumbnail_url: string | null;
   conteudo_completo?: string;
+  avaliacao_obrigatoria?: boolean;
 }
 
 interface ProgressData {
