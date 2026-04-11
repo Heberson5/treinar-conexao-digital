@@ -123,25 +123,56 @@ export default function ArquiteturaSistema() {
     setFieldConfigs(prev => prev.map(f => f.id === id ? { ...f, required: !f.required } : f))
   }
 
-  const saveConfig = () => {
-    localStorage.setItem("sistema_menu_config", JSON.stringify(menuItems))
-    localStorage.setItem("sistema_field_config", JSON.stringify(fieldConfigs))
-    localStorage.setItem("sistema_report_layout", JSON.stringify(reportLayout))
-    // Dispatch storage event for sidebar to pick up changes immediately
-    window.dispatchEvent(new StorageEvent("storage", {
-      key: "sistema_menu_config",
-      newValue: JSON.stringify(menuItems),
-    }))
-    toast({ title: "Configuração salva", description: "As alterações na arquitetura do sistema foram salvas com sucesso." })
+  const saveConfig = async () => {
+    try {
+      const { error } = await supabase
+        .from("configuracoes_menu")
+        .update({
+          menu_config: menuItems as any,
+          field_config: fieldConfigs as any,
+          report_layout: reportLayout as any,
+          atualizado_em: new Date().toISOString(),
+        })
+        .not("id", "is", null)
+
+      if (error) {
+        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" })
+        return
+      }
+
+      // Dispatch custom event for sidebar to pick up changes immediately
+      window.dispatchEvent(new CustomEvent("menu-config-updated", {
+        detail: menuItems
+      }))
+      toast({ title: "Configuração salva", description: "As alterações na arquitetura do sistema foram salvas com sucesso." })
+      await registrarAuditoria({ acao: "editar", menu: "arquitetura", local: "menus", descricao: "Atualizou configuração de menus" })
+    } catch (err) {
+      toast({ title: "Erro ao salvar", description: "Erro inesperado ao salvar configuração", variant: "destructive" })
+    }
   }
 
   useEffect(() => {
-    const savedMenu = localStorage.getItem("sistema_menu_config")
-    const savedFields = localStorage.getItem("sistema_field_config")
-    const savedReport = localStorage.getItem("sistema_report_layout")
-    if (savedMenu) try { setMenuItems(JSON.parse(savedMenu)) } catch {}
-    if (savedFields) try { setFieldConfigs(JSON.parse(savedFields)) } catch {}
-    if (savedReport) try { setReportLayout(JSON.parse(savedReport)) } catch {}
+    const loadMenuConfig = async () => {
+      const { data } = await supabase
+        .from("configuracoes_menu")
+        .select("*")
+        .limit(1)
+        .single()
+
+      if (data) {
+        const d = data as any
+        if (d.menu_config && Array.isArray(d.menu_config) && d.menu_config.length > 0) {
+          setMenuItems(d.menu_config)
+        }
+        if (d.field_config && Array.isArray(d.field_config) && d.field_config.length > 0) {
+          setFieldConfigs(d.field_config)
+        }
+        if (d.report_layout && typeof d.report_layout === 'object' && Object.keys(d.report_layout).length > 0) {
+          setReportLayout(d.report_layout)
+        }
+      }
+    }
+    loadMenuConfig()
   }, [])
 
   // Load system config
