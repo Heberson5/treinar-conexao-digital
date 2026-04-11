@@ -300,6 +300,33 @@ export type Database = {
           },
         ]
       }
+      configuracoes_menu: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          field_config: Json | null
+          id: string
+          menu_config: Json | null
+          report_layout: Json | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          field_config?: Json | null
+          id?: string
+          menu_config?: Json | null
+          report_layout?: Json | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          field_config?: Json | null
+          id?: string
+          menu_config?: Json | null
+          report_layout?: Json | null
+        }
+        Relationships: []
+      }
       configuracoes_sistema: {
         Row: {
           atualizado_em: string | null
