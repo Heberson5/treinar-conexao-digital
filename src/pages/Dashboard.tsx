@@ -71,7 +71,7 @@ export default function Dashboard() {
   const [userAttempts, setUserAttempts] = useState<UserAttemptData[]>([]);
   
   const [filters, setFilters] = useState<DashboardFiltersState>({
-    period: "month",
+    period: "30d",
     departmentId: "",
   });
 
@@ -79,26 +79,8 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const now = new Date();
-      let startDate: Date | undefined;
-      let endDate: Date | undefined;
-      
-      switch (filters.period) {
-        case "today":
-          startDate = startOfDay(now);
-          endDate = endOfDay(now);
-          break;
-        case "week":
-          startDate = startOfWeek(now, { weekStartsOn: 0 });
-          endDate = endOfWeek(now, { weekStartsOn: 0 });
-          break;
-        case "month":
-          startDate = startOfMonth(now);
-          endDate = endOfMonth(now);
-          break;
-        default:
-          startDate = subDays(now, 365);
-          endDate = now;
-      }
+      let startDate: Date = getStartDateFromPeriod(filters.period);
+      let endDate: Date = now;
 
       // Buscar treinamentos
       let treinamentosQuery = supabase
