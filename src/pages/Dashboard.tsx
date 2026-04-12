@@ -16,6 +16,8 @@ import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/
 interface DashboardFiltersState {
   period: PeriodValue;
   departmentId: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 interface DashboardStats {
