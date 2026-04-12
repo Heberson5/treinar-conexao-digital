@@ -115,6 +115,18 @@ export default function GestaoTreinamentos() {
   }, [isMaster, empresaSelecionada])
 
   const handleDelete = async (id: string) => {
+    const trainingToDelete = trainings.find(t => t.id === id)
+    
+    // Não permitir excluir modelos globais (empresa_id IS NULL)
+    if (trainingToDelete && !trainingToDelete.empresa_id) {
+      toast({
+        title: "Ação não permitida",
+        description: "Modelos padrão não podem ser excluídos.",
+        variant: "destructive"
+      })
+      return
+    }
+
     const { error } = await supabase
       .from("treinamentos")
       .delete()
