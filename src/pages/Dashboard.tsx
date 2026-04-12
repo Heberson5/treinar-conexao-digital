@@ -338,22 +338,21 @@ export default function Dashboard() {
         </div>
         
         {/* Filtros */}
-        <div className="flex gap-2">
-          <Select 
+        <div className="flex flex-wrap items-center gap-4">
+          <PeriodFilter 
             value={filters.period} 
-            onValueChange={(value) => setFilters(prev => ({ ...prev, period: value as any }))}
+            onChange={(value) => setFilters(prev => ({ ...prev, period: value }))}
+          />
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => fetchDashboardData()}
+            disabled={isLoading}
+            title="Atualizar dados"
           >
-            <SelectTrigger className="w-[150px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Esta semana</SelectItem>
-              <SelectItem value="month">Este mês</SelectItem>
-              <SelectItem value="all">Todos</SelectItem>
-            </SelectContent>
-          </Select>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
 
