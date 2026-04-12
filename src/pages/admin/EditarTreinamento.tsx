@@ -184,24 +184,48 @@ export default function EditarTreinamento() {
       }
     }
 
-    updateTraining(trainingId, {
-      titulo: formData.titulo,
-      subtitulo: formData.subtitulo,
-      descricao: formData.descricao,
-      texto: formData.texto,
-      videoUrl: formData.videoUrl,
-      categoria: formData.categoria,
-      duracao: formData.duracao,
-      status: formData.status,
-      instrutor: formData.instrutor,
-      departamento: formData.departamento,
-      capa: formData.capa,
-    });
+    const isStandardModel = trainingId <= 12;
 
-    toast({
-      title: "Treinamento atualizado!",
-      description: "As alterações foram salvas com sucesso.",
-    });
+    if (isStandardModel) {
+      const { createTraining } = useTraining();
+      createTraining({
+        titulo: formData.titulo,
+        subtitulo: formData.subtitulo,
+        descricao: formData.descricao,
+        texto: formData.texto,
+        videoUrl: formData.videoUrl,
+        categoria: formData.categoria,
+        duracao: formData.duracao,
+        status: formData.status,
+        instrutor: formData.instrutor,
+        departamento: formData.departamento,
+        capa: formData.capa,
+      });
+
+      toast({
+        title: "Modelo padrão mantido",
+        description: "O modelo original foi mantido e uma cópia foi criada para edição.",
+      });
+    } else {
+      updateTraining(trainingId, {
+        titulo: formData.titulo,
+        subtitulo: formData.subtitulo,
+        descricao: formData.descricao,
+        texto: formData.texto,
+        videoUrl: formData.videoUrl,
+        categoria: formData.categoria,
+        duracao: formData.duracao,
+        status: formData.status,
+        instrutor: formData.instrutor,
+        departamento: formData.departamento,
+        capa: formData.capa,
+      });
+
+      toast({
+        title: "Treinamento atualizado!",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    }
     navigate("/admin/treinamentos");
   };
 
