@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, BookOpen, Clock, TrendingUp, Users, Award,
   PlayCircle, Calendar, Target, Building2, Loader2, FileText, RefreshCw
@@ -15,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter";
 
 interface DashboardFiltersState {
-  period: "today" | "week" | "month" | "all";
+  period: PeriodValue;
   departmentId: string;
 }
 
