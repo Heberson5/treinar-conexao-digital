@@ -99,20 +99,29 @@ export default function Analytics() {
       if (empresaFilter) deptQuery = deptQuery.eq("empresa_id", empresaFilter)
       const { data: departamentos } = await deptQuery
 
+      // Criar mapa de usuários por departamento para cálculos precisos
+      let usersDeptQuery = supabase.from("perfis").select("id, departamento_id")
+      if (empresaFilter) usersDeptQuery = usersDeptQuery.eq("empresa_id", empresaFilter)
+      const { data: allUsers } = await usersDeptQuery
+      const userDeptMap = new Map(allUsers?.map(u => [u.id, u.departamento_id]) || [])
+
       const deptStats: DepartmentStats[] = []
       if (departamentos) {
         for (const dept of departamentos) {
-          let userCountQuery = supabase.from("perfis").select("*", { count: "exact", head: true }).eq("departamento_id", dept.id)
-          const { count: userCount } = await userCountQuery
-          const deptConclusoes = progressoFiltrado.filter(p => p.concluido).length
+          const userCount = (allUsers || []).filter(u => u.departamento_id === dept.id).length
+          const deptConclusoes = progressoFiltrado.filter(p => p.concluido && userDeptMap.get(p.usuario_id) === dept.id).length
+          const deptIniciados = progressoFiltrado.filter(p => userDeptMap.get(p.usuario_id) === dept.id).length
+          
           deptStats.push({
-            nome: dept.nome, usuarios: userCount || 0,
-            conclusoes: Math.floor(deptConclusoes / (departamentos.length || 1)),
-            engajamento: userCount ? Math.min(100, Math.round((deptConclusoes / (userCount * 0.5 + 1)) * 100)) : 0
+            nome: dept.nome, 
+            usuarios: userCount || 0,
+            conclusoes: deptConclusoes,
+            // Engajamento = (Usuários com atividade no departamento / Total de usuários no departamento)
+            engajamento: userCount ? Math.min(100, Math.round((deptIniciados / userCount) * 100)) : 0
           })
         }
       }
-      setDepartmentStats(deptStats)
+      setDepartmentStats(deptStats.sort((a, b) => b.engajamento - a.engajamento))
 
       let topTrainingsQuery = supabase.from("treinamentos").select(`id, titulo, duracao_minutos, empresa_id`).eq("publicado", true).limit(5)
       if (empresaFilter) topTrainingsQuery = topTrainingsQuery.eq("empresa_id", empresaFilter)

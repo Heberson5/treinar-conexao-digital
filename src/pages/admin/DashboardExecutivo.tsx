@@ -189,22 +189,26 @@ export default function DashboardExecutivo() {
         if (empresaFilter) deptQuery = deptQuery.eq("empresa_id", empresaFilter)
         const { data: departamentos } = await deptQuery
 
+        // Mapa de usuários para departamentos
+        let usersDeptQuery = supabase.from("perfis").select("id, departamento_id")
+        if (empresaFilter) usersDeptQuery = usersDeptQuery.eq("empresa_id", empresaFilter)
+        const { data: allUsers } = await usersDeptQuery
+        const userDeptMap = new Map(allUsers?.map(u => [u.id, u.departamento_id]) || [])
+
         const topDeptsData: TopDepartment[] = []
         if (departamentos) {
-          for (const dept of departamentos.slice(0, 5)) {
-            const { count: userCount } = await supabase
-              .from("perfis")
-              .select("*", { count: "exact", head: true })
-              .eq("departamento_id", dept.id)
+          for (const dept of departamentos) {
+            const userCount = (allUsers || []).filter(u => u.departamento_id === dept.id).length
+            const deptIniciados = progressoFiltrado.filter(p => userDeptMap.get(p.usuario_id) === dept.id).length
             
             topDeptsData.push({
               nome: dept.nome,
               usuarios: userCount || 0,
-              engajamento: Math.min(100, Math.round(Math.random() * 40 + 60)) // Simplificado
+              engajamento: userCount ? Math.min(100, Math.round((deptIniciados / userCount) * 100)) : 0
             })
           }
         }
-        setTopDepartments(topDeptsData.sort((a, b) => b.engajamento - a.engajamento))
+        setTopDepartments(topDeptsData.sort((a, b) => b.engajamento - a.engajamento).slice(0, 5))
 
         // Alertas
         const alertsList: string[] = []
