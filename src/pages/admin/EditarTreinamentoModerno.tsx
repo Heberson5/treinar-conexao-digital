@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTraining, Training } from "@/contexts/training-context";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
 import {
   ModernTrainingEditor,
   TrainingData,
@@ -458,38 +459,74 @@ export default function EditarTreinamentoModerno() {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const safeUuid = (val: string | undefined | null) => val && uuidRegex.test(val) ? val : null;
 
-      const { error } = await supabase
-        .from("treinamentos")
-        .update({
-          titulo: data.titulo,
-          descricao: data.descricao || textoConsolidado.slice(0, 500),
-          conteudo_html: textoConsolidado,
-          categoria: data.categoria,
-          duracao_minutos: duracaoMinutos,
-          publicado: data.status === "ativo",
-          thumbnail_url: capa || null,
-          empresa_id: safeUuid(data.empresa_id) || dbTraining.empresa_id,
-          departamento_id: safeUuid(data.departamento_id),
-          instrutor_id: safeUuid(data.instrutor_id),
-          nivel: (data as any).nivel || null,
-          atualizado_em: new Date().toISOString(),
-        })
-        .eq("id", dbTraining.id);
+      const isGlobalModel = !dbTraining.empresa_id;
+      
+      if (isGlobalModel) {
+        // Criar uma cópia se for um modelo padrão (empresa_id IS NULL)
+        const { error } = await supabase
+          .from("treinamentos")
+          .insert({
+            titulo: data.titulo,
+            descricao: data.descricao || textoConsolidado.slice(0, 500),
+            conteudo_html: textoConsolidado,
+            categoria: data.categoria,
+            duracao_minutos: duracaoMinutos,
+            publicado: data.status === "ativo",
+            thumbnail_url: capa || null,
+            empresa_id: user?.empresa_id,
+            departamento_id: safeUuid(data.departamento_id),
+            instrutor_id: safeUuid(data.instrutor_id),
+            nivel: (data as any).nivel || null,
+          });
 
-      if (error) {
-        console.error("Erro ao atualizar:", error);
+        if (error) {
+          console.error("Erro ao criar cópia:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível criar uma cópia do modelo.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
-          title: "Erro",
-          description: "Não foi possível salvar as alterações.",
-          variant: "destructive",
+          title: "Modelo padrão mantido",
+          description: "O modelo original foi mantido e uma cópia foi criada para sua empresa.",
         });
-        return;
-      }
+      } else {
+        const { error } = await supabase
+          .from("treinamentos")
+          .update({
+            titulo: data.titulo,
+            descricao: data.descricao || textoConsolidado.slice(0, 500),
+            conteudo_html: textoConsolidated,
+            categoria: data.categoria,
+            duracao_minutos: duracaoMinutos,
+            publicado: data.status === "ativo",
+            thumbnail_url: capa || null,
+            empresa_id: safeUuid(data.empresa_id) || dbTraining.empresa_id,
+            departamento_id: safeUuid(data.departamento_id),
+            instrutor_id: safeUuid(data.instrutor_id),
+            nivel: (data as any).nivel || null,
+            atualizado_em: new Date().toISOString(),
+          })
+          .eq("id", dbTraining.id);
 
-      toast({
-        title: "Treinamento atualizado",
-        description: "As alterações foram salvas com sucesso.",
-      });
+        if (error) {
+          console.error("Erro ao atualizar:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível salvar as alterações.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Treinamento atualizado",
+          description: "As alterações foram salvas com sucesso.",
+        });
+      }
     } else if (training) {
       // Extrair primeiro vídeo
       let videoUrl = "";
