@@ -200,7 +200,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-foreground/70">Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map(item => (
@@ -219,7 +219,7 @@ export function AppSidebar() {
 
         {isAdminOrHigher && adminMenuItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-foreground/70">Administração</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminMenuItems.map(item => (
@@ -239,7 +239,7 @@ export function AppSidebar() {
 
         {isMaster && masterMenuItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Master</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-foreground/70">Master</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {masterMenuItems.map(item => (
