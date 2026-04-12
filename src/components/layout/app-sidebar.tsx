@@ -181,16 +181,16 @@ export function AppSidebar() {
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      : "text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 
   return (
-    <Sidebar className={open ? "w-64" : "w-16"} collapsible="icon">
-      <SidebarContent className="bg-sidebar border-r">
+    <Sidebar className={cn(open ? "w-64" : "w-16", "border-r")} collapsible="icon">
+      <SidebarContent className="bg-sidebar">
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <img src={sidebarLogo || logoImage} alt="Logo" className="h-8 w-8 object-contain" />
             {open && (
-              <div>
+              <div className="text-foreground">
                 <h2 className="font-bold text-lg">{systemName}</h2>
                 <p className="text-xs text-muted-foreground">{systemSubtitle}</p>
               </div>
