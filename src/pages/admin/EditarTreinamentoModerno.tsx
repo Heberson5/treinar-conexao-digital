@@ -499,7 +499,7 @@ export default function EditarTreinamentoModerno() {
           .update({
             titulo: data.titulo,
             descricao: data.descricao || textoConsolidado.slice(0, 500),
-            conteudo_html: textoConsolidated,
+            conteudo_html: textoConsolidado,
             categoria: data.categoria,
             duracao_minutos: duracaoMinutos,
             publicado: data.status === "ativo",
