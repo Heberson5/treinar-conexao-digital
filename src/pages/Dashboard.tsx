@@ -81,69 +81,76 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const now = new Date();
-      let startDate: Date = getStartDateFromPeriod(filters.period);
-      let endDate: Date = now;
+      let startDate: Date = filters.period === 'custom' && filters.startDate ? filters.startDate : getStartDateFromPeriod(filters.period);
+      let endDate: Date = filters.period === 'custom' && filters.endDate ? filters.endDate : now;
 
-      // Buscar treinamentos
-      let treinamentosQuery = supabase
-        .from("treinamentos")
-        .select("*")
-        .eq("publicado", true);
-      
-      if (isMaster && empresaSelecionada) {
-        treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaSelecionada);
-      } else if (!isMaster && user?.empresa_id) {
-        treinamentosQuery = treinamentosQuery.eq("empresa_id", user.empresa_id);
-      }
-
-      if (filters.departmentId) {
-        treinamentosQuery = treinamentosQuery.eq("departamento_id", filters.departmentId);
-      }
-
-      const { data: treinamentosData, error: treinamentosError } = await treinamentosQuery;
+      // Buscar dados de forma paralela para melhor performance
+      const [
+        { data: treinamentosData, error: treinamentosError },
+        { data: masterRoles },
+        { data: atividadesData },
+        { data: tentativasData }
+      ] = await Promise.all([
+        // 1. Treinamentos
+        supabase
+          .from("treinamentos")
+          .select("*")
+          .eq("publicado", true)
+          .then(res => {
+            let query = res.data || [];
+            if (isMaster && empresaSelecionada) {
+              query = query.filter(t => t.empresa_id === empresaSelecionada);
+            } else if (!isMaster && user?.empresa_id) {
+              query = query.filter(t => t.empresa_id === user.empresa_id);
+            }
+            if (filters.departmentId) {
+              query = query.filter(t => t.departamento_id === filters.departmentId);
+            }
+            return { data: query, error: res.error };
+          }),
+        // 2. Roles (para filtrar master)
+        supabase
+          .from("usuario_roles")
+          .select("usuario_id")
+          .eq("role", "master"),
+        // 3. Atividades (limitado a 50)
+        supabase
+          .from("atividades")
+          .select("*")
+          .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
+          .gte("criado_em", startDate.toISOString())
+          .lte("criado_em", endDate.toISOString())
+          .order("criado_em", { ascending: false })
+          .limit(50),
+        // 4. Tentativas
+        supabase
+          .from("tentativas_avaliacao")
+          .select("*")
+          .gte("criado_em", startDate.toISOString())
+          .lte("criado_em", endDate.toISOString())
+          .order("criado_em", { ascending: false })
+      ]);
       
       if (treinamentosError) {
         console.error("Erro ao buscar treinamentos:", treinamentosError);
       }
 
-      // Buscar progresso (excluindo master users)
-      let progressoQuery = supabase.from("progresso_treinamentos").select("*");
-      if (treinamentosData && treinamentosData.length > 0) {
-        progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
-      }
-      const { data: progressoData } = await progressoQuery;
-
-      // Get master user IDs to exclude them from counts
-      const { data: masterRoles } = await supabase
-        .from("usuario_roles")
-        .select("usuario_id")
-        .eq("role", "master");
       const masterUserIds = new Set((masterRoles || []).map(r => r.usuario_id));
 
-      // Filter out master users from progress data
-      const filteredProgressoData = (progressoData || []).filter(p => !masterUserIds.has(p.usuario_id));
-
-      // Buscar atividades recentes (apenas sobre treinamentos, excluindo Master)
-      const { data: atividadesData } = await supabase
-        .from("atividades")
-        .select("*")
-        .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
-        .order("criado_em", { ascending: false })
-        .limit(30);
-
-      // Buscar tentativas de avaliação por usuário
-      let tentativasQuery = supabase
-        .from("tentativas_avaliacao")
-        .select("*")
-        .order("criado_em", { ascending: false });
-
+      // 5. Progresso (precisa do treinamentosData)
+      let progressoData: any[] = [];
       if (treinamentosData && treinamentosData.length > 0) {
-        tentativasQuery = tentativasQuery.in("treinamento_id", treinamentosData.map(t => t.id));
+        const { data } = await supabase
+          .from("progresso_treinamentos")
+          .select("*")
+          .in("treinamento_id", treinamentosData.map(t => t.id))
+          .gte("updated_at", startDate.toISOString())
+          .lte("updated_at", endDate.toISOString());
+        progressoData = data || [];
       }
 
-      const { data: tentativasData } = await tentativasQuery;
-
-      // Filter out master users from tentativas
+      // Filter out master users from progress data
+      const filteredProgressoData = progressoData.filter(p => !masterUserIds.has(p.usuario_id));
       const filteredTentativas = (tentativasData || []).filter(t => !masterUserIds.has(t.usuario_id));
 
       // Buscar perfis dos usuários que fizeram tentativas
