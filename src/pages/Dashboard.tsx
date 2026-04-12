@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, BookOpen, Clock, TrendingUp, Users, Award,
   PlayCircle, Calendar, Target, Building2, Loader2, FileText, RefreshCw
@@ -15,8 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter";
 
 interface DashboardFiltersState {
-  period: "today" | "week" | "month" | "all";
+  period: PeriodValue;
   departmentId: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 interface DashboardStats {
@@ -72,7 +73,7 @@ export default function Dashboard() {
   const [userAttempts, setUserAttempts] = useState<UserAttemptData[]>([]);
   
   const [filters, setFilters] = useState<DashboardFiltersState>({
-    period: "month",
+    period: "30d",
     departmentId: "",
   });
 
@@ -80,87 +81,76 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const now = new Date();
-      let startDate: Date | undefined;
-      let endDate: Date | undefined;
-      
-      switch (filters.period) {
-        case "today":
-          startDate = startOfDay(now);
-          endDate = endOfDay(now);
-          break;
-        case "week":
-          startDate = startOfWeek(now, { weekStartsOn: 0 });
-          endDate = endOfWeek(now, { weekStartsOn: 0 });
-          break;
-        case "month":
-          startDate = startOfMonth(now);
-          endDate = endOfMonth(now);
-          break;
-        default:
-          startDate = subDays(now, 365);
-          endDate = now;
-      }
+      let startDate: Date = filters.period === 'custom' && filters.startDate ? filters.startDate : getStartDateFromPeriod(filters.period);
+      let endDate: Date = filters.period === 'custom' && filters.endDate ? filters.endDate : now;
 
-      // Buscar treinamentos
-      let treinamentosQuery = supabase
-        .from("treinamentos")
-        .select("*")
-        .eq("publicado", true);
-      
-      if (isMaster && empresaSelecionada) {
-        treinamentosQuery = treinamentosQuery.eq("empresa_id", empresaSelecionada);
-      } else if (!isMaster && user?.empresa_id) {
-        treinamentosQuery = treinamentosQuery.eq("empresa_id", user.empresa_id);
-      }
-
-      if (filters.departmentId) {
-        treinamentosQuery = treinamentosQuery.eq("departamento_id", filters.departmentId);
-      }
-
-      const { data: treinamentosData, error: treinamentosError } = await treinamentosQuery;
+      // Buscar dados de forma paralela para melhor performance
+      const [
+        { data: treinamentosData, error: treinamentosError },
+        { data: masterRoles },
+        { data: atividadesData },
+        { data: tentativasData }
+      ] = await Promise.all([
+        // 1. Treinamentos
+        supabase
+          .from("treinamentos")
+          .select("*")
+          .eq("publicado", true)
+          .then(res => {
+            let query = res.data || [];
+            if (isMaster && empresaSelecionada) {
+              query = query.filter(t => t.empresa_id === empresaSelecionada);
+            } else if (!isMaster && user?.empresa_id) {
+              query = query.filter(t => t.empresa_id === user.empresa_id);
+            }
+            if (filters.departmentId) {
+              query = query.filter(t => t.departamento_id === filters.departmentId);
+            }
+            return { data: query, error: res.error };
+          }),
+        // 2. Roles (para filtrar master)
+        supabase
+          .from("usuario_roles")
+          .select("usuario_id")
+          .eq("role", "master"),
+        // 3. Atividades (limitado a 50)
+        supabase
+          .from("atividades")
+          .select("*")
+          .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
+          .gte("criado_em", startDate.toISOString())
+          .lte("criado_em", endDate.toISOString())
+          .order("criado_em", { ascending: false })
+          .limit(50),
+        // 4. Tentativas
+        supabase
+          .from("tentativas_avaliacao")
+          .select("*")
+          .gte("criado_em", startDate.toISOString())
+          .lte("criado_em", endDate.toISOString())
+          .order("criado_em", { ascending: false })
+      ]);
       
       if (treinamentosError) {
         console.error("Erro ao buscar treinamentos:", treinamentosError);
       }
 
-      // Buscar progresso (excluindo master users)
-      let progressoQuery = supabase.from("progresso_treinamentos").select("*");
-      if (treinamentosData && treinamentosData.length > 0) {
-        progressoQuery = progressoQuery.in("treinamento_id", treinamentosData.map(t => t.id));
-      }
-      const { data: progressoData } = await progressoQuery;
-
-      // Get master user IDs to exclude them from counts
-      const { data: masterRoles } = await supabase
-        .from("usuario_roles")
-        .select("usuario_id")
-        .eq("role", "master");
       const masterUserIds = new Set((masterRoles || []).map(r => r.usuario_id));
 
-      // Filter out master users from progress data
-      const filteredProgressoData = (progressoData || []).filter(p => !masterUserIds.has(p.usuario_id));
-
-      // Buscar atividades recentes (apenas sobre treinamentos, excluindo Master)
-      const { data: atividadesData } = await supabase
-        .from("atividades")
-        .select("*")
-        .in("tipo", ["treinamento_iniciado", "treinamento_concluido", "avaliacao_realizada", "certificado_emitido", "progresso_atualizado"])
-        .order("criado_em", { ascending: false })
-        .limit(30);
-
-      // Buscar tentativas de avaliação por usuário
-      let tentativasQuery = supabase
-        .from("tentativas_avaliacao")
-        .select("*")
-        .order("criado_em", { ascending: false });
-
+      // 5. Progresso (precisa do treinamentosData)
+      let progressoData: any[] = [];
       if (treinamentosData && treinamentosData.length > 0) {
-        tentativasQuery = tentativasQuery.in("treinamento_id", treinamentosData.map(t => t.id));
+        const { data } = await supabase
+          .from("progresso_treinamentos")
+          .select("*")
+          .in("treinamento_id", treinamentosData.map(t => t.id))
+          .gte("updated_at", startDate.toISOString())
+          .lte("updated_at", endDate.toISOString());
+        progressoData = data || [];
       }
 
-      const { data: tentativasData } = await tentativasQuery;
-
-      // Filter out master users from tentativas
+      // Filter out master users from progress data
+      const filteredProgressoData = progressoData.filter(p => !masterUserIds.has(p.usuario_id));
       const filteredTentativas = (tentativasData || []).filter(t => !masterUserIds.has(t.usuario_id));
 
       // Buscar perfis dos usuários que fizeram tentativas
@@ -357,22 +347,29 @@ export default function Dashboard() {
         </div>
         
         {/* Filtros */}
-        <div className="flex gap-2">
-          <Select 
+        <div className="flex flex-wrap items-center gap-4">
+          <PeriodFilter 
             value={filters.period} 
-            onValueChange={(value) => setFilters(prev => ({ ...prev, period: value as any }))}
+            onChange={(value) => setFilters(prev => ({ ...prev, period: value }))}
+            customStartDate={filters.startDate}
+            customEndDate={filters.endDate}
+            onCustomDateChange={(start, end) => setFilters(prev => ({ 
+              ...prev, 
+              startDate: start, 
+              endDate: end,
+              period: 'custom'
+            }))}
+          />
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => fetchDashboardData()}
+            disabled={isLoading}
+            title="Atualizar dados"
           >
-            <SelectTrigger className="w-[150px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Esta semana</SelectItem>
-              <SelectItem value="month">Este mês</SelectItem>
-              <SelectItem value="all">Todos</SelectItem>
-            </SelectContent>
-          </Select>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
 
@@ -568,22 +565,22 @@ export default function Dashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Award className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+              <Award className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.certificadosEmitidos}</p>
               <p className="text-sm text-muted-foreground">Certificados Emitidos</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.taxaConclusao}%</p>
               <p className="text-sm text-muted-foreground">Taxa de Sucesso</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Users className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+              <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.totalParticipantes}</p>
               <p className="text-sm text-muted-foreground">Usuários Ativos</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Clock className="h-8 w-8 mx-auto mb-2 text-purple-500" />
+              <Clock className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.horasTreinamento}h</p>
               <p className="text-sm text-muted-foreground">Tempo Total</p>
             </div>
