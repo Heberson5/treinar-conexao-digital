@@ -181,11 +181,11 @@ export function AppSidebar() {
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-      : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground"
+      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 
   return (
     <Sidebar className={open ? "w-64" : "w-16"} collapsible="icon">
-      <SidebarContent className="bg-card border-r">
+      <SidebarContent className="bg-sidebar border-r">
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <img src={sidebarLogo || logoImage} alt="Logo" className="h-8 w-8 object-contain" />
