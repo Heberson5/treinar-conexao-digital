@@ -238,8 +238,9 @@ function formatDuration(minutes: number | null): string {
 export default function EditarTreinamentoModerno() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getTrainingById, updateTraining } = useTraining();
+  const { getTrainingById, updateTraining, createTraining } = useTraining();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [training, setTraining] = useState<Training | null>(null);
   const [dbTraining, setDbTraining] = useState<TrainingDB | null>(null);
   const [loading, setLoading] = useState(true);
