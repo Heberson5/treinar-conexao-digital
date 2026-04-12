@@ -194,22 +194,57 @@ export function PlansProvider({ children }: { children: ReactNode }) {
 
   const planosAtivos = planos.filter(p => p.ativo)
 
-  const atualizarPlano = (id: string, dados: Partial<Plano>) => {
-    setPlanos(prev => prev.map(p => 
-      p.id === id ? { ...p, ...dados } : p
-    ))
+  const atualizarPlano = async (id: string, dados: Partial<Plano>) => {
+    try {
+      // Mapear dados do objeto Plano para as colunas do banco (snake_case)
+      const updateData: any = {}
+      if (dados.nome !== undefined) updateData.nome = dados.nome
+      if (dados.preco !== undefined) updateData.preco = dados.preco
+      if (dados.descricao !== undefined) updateData.descricao = dados.descricao
+      if (dados.limiteUsuarios !== undefined) updateData.limite_usuarios = dados.limiteUsuarios
+      if (dados.limiteTreinamentos !== undefined) updateData.limite_treinamentos = dados.limiteTreinamentos
+      if (dados.ativo !== undefined) updateData.ativo = dados.ativo
+      if (dados.popular !== undefined) updateData.popular = dados.popular
+      if (dados.recursos !== undefined) updateData.recursos = dados.recursos.map(r => ({
+        id: r.recursoId,
+        habilitado: r.habilitado,
+        descricao: r.descricaoCustomizada
+      }))
+
+      if (Object.keys(updateData).length > 0) {
+        const { error } = await supabase
+          .from("planos")
+          .update(updateData)
+          .eq("id", id)
+
+        if (error) {
+          console.error("Erro ao persistir alteração no plano:", error)
+          throw error
+        }
+      }
+
+      setPlanos(prev => prev.map(p => 
+        p.id === id ? { ...p, ...dados } : p
+      ))
+    } catch (error) {
+      console.error("Erro ao atualizar plano:", error)
+    }
   }
 
-  const atualizarRecursoPlano = (planoId: string, recursoId: RecursoId, dados: Partial<RecursoPlano>) => {
-    setPlanos(prev => prev.map(p => {
-      if (p.id !== planoId) return p
-      return {
-        ...p,
-        recursos: p.recursos.map(r => 
-          r.recursoId === recursoId ? { ...r, ...dados } : r
-        )
-      }
-    }))
+  const atualizarRecursoPlano = async (planoId: string, recursoId: RecursoId, dados: Partial<RecursoPlano>) => {
+    setPlanos(prev => {
+      const plano = prev.find(p => p.id === planoId)
+      if (!plano) return prev
+
+      const novosRecursos = plano.recursos.map(r => 
+        r.recursoId === recursoId ? { ...r, ...dados } : r
+      )
+      
+      // Chamamos a função de atualização persistente
+      atualizarPlano(planoId, { recursos: novosRecursos })
+      
+      return prev.map(p => p.id === planoId ? { ...p, recursos: novosRecursos } : p)
+    })
   }
 
   const getPlanoById = (id: string) => planos.find(p => p.id === id)
