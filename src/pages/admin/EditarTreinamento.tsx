@@ -20,7 +20,7 @@ export default function EditarTreinamento() {
   const navigate = useNavigate();
   const { id } = useParams();
   const trainingId = id ? Number(id) : undefined;
-  const { trainings, getTrainingById, updateTraining } = useTraining();
+  const { trainings, getTrainingById, updateTraining, createTraining } = useTraining();
   const { departments } = useDepartments();
   const { toast } = useToast();
   const { planos, getLimiteRecurso } = usePlans();
@@ -187,7 +187,6 @@ export default function EditarTreinamento() {
     const isStandardModel = trainingId <= 12;
 
     if (isStandardModel) {
-      const { createTraining } = useTraining();
       createTraining({
         titulo: formData.titulo,
         subtitulo: formData.subtitulo,
