@@ -565,22 +565,22 @@ export default function Dashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Award className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+              <Award className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.certificadosEmitidos}</p>
               <p className="text-sm text-muted-foreground">Certificados Emitidos</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.taxaConclusao}%</p>
               <p className="text-sm text-muted-foreground">Taxa de Sucesso</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Users className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+              <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.totalParticipantes}</p>
               <p className="text-sm text-muted-foreground">Usuários Ativos</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <Clock className="h-8 w-8 mx-auto mb-2 text-purple-500" />
+              <Clock className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.horasTreinamento}h</p>
               <p className="text-sm text-muted-foreground">Tempo Total</p>
             </div>
