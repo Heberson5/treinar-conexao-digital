@@ -351,6 +351,14 @@ export default function Dashboard() {
           <PeriodFilter 
             value={filters.period} 
             onChange={(value) => setFilters(prev => ({ ...prev, period: value }))}
+            customStartDate={filters.startDate}
+            customEndDate={filters.endDate}
+            onCustomDateChange={(start, end) => setFilters(prev => ({ 
+              ...prev, 
+              startDate: start, 
+              endDate: end,
+              period: 'custom'
+            }))}
           />
           
           <Button 
