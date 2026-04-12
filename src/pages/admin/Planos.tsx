@@ -46,9 +46,9 @@ export default function Planos() {
     setFormData({ ...plano })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editandoPlano && formData) {
-      atualizarPlano(editandoPlano.id, formData)
+      await atualizarPlano(editandoPlano.id, formData)
       toast({
         title: "Plano atualizado",
         description: `O plano ${formData.nome} foi atualizado com sucesso.`
@@ -58,13 +58,14 @@ export default function Planos() {
     }
   }
 
-  const handleToggleAtivo = (plano: Plano) => {
-    atualizarPlano(plano.id, { ativo: !plano.ativo })
+  const handleToggleAtivo = async (plano: Plano) => {
+    const novoEstado = !plano.ativo
+    await atualizarPlano(plano.id, { ativo: novoEstado })
     toast({
-      title: plano.ativo ? "Plano desativado" : "Plano ativado",
-      description: plano.ativo 
-        ? `O plano ${plano.nome} foi desativado e não aparecerá mais na página inicial.`
-        : `O plano ${plano.nome} foi ativado e agora aparecerá na página inicial.`
+      title: novoEstado ? "Plano ativado" : "Plano desativado",
+      description: novoEstado 
+        ? `O plano ${plano.nome} foi ativado e agora aparecerá na página inicial.`
+        : `O plano ${plano.nome} foi desativado e não aparecerá mais na página inicial.`
     })
   }
 
