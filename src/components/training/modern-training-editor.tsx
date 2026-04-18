@@ -936,24 +936,30 @@ export function ModernTrainingEditor({
               ) : (
                 <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center bg-muted/20 hover:bg-muted/30 transition-colors">
                   <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">Cole uma URL do YouTube, Vimeo ou faça upload</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setUploadContext({
-                          sectionId: formData.sections[sectionIndex].id,
-                          blockId: block.id,
-                          type: "video",
-                        });
-                        fileInputRef.current?.click();
-                      }}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload
-                    </Button>
-                  </div>
+                  <p className="text-muted-foreground mb-4">
+                    {canUploadVideo
+                      ? "Cole uma URL do YouTube, Vimeo ou faça upload"
+                      : "Cole uma URL do YouTube, Vimeo ou outro provedor de vídeo"}
+                  </p>
+                  {canUploadVideo && (
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setUploadContext({
+                            sectionId: formData.sections[sectionIndex].id,
+                            blockId: block.id,
+                            type: "video",
+                          });
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </Button>
+                    </div>
+                  )}
                   <div className="mt-4">
                     <Input
                       placeholder="Cole a URL do vídeo..."
