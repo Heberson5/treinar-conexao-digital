@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export interface RichTextBlock {
   id: string;
@@ -55,6 +56,7 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ blocks, onBlocksChange }: RichTextEditorProps) {
   const { user } = useAuth();
+  const { canUploadVideo } = usePermissions();
   const { rewriteText, checkAIAccess } = useAIRewrite();
   const [showAIButton, setShowAIButton] = useState(false);
   const [rewritingBlockId, setRewritingBlockId] = useState<string | null>(null);
