@@ -57,6 +57,7 @@ const permissoesDisponiveis: Permission[] = [
   { id: "trainings.manage", nome: "Gerenciar Treinamentos", descricao: "Acesso completo para gerenciar todos os aspectos dos treinamentos", categoria: "Treinamentos", ativo: true },
   { id: "trainings.assign", nome: "Atribuir Treinamentos", descricao: "Permite atribuir treinamentos a usuários ou departamentos", categoria: "Treinamentos", ativo: true },
   { id: "trainings.certificates", nome: "Gerenciar Certificados", descricao: "Acesso para visualizar e emitir certificados", categoria: "Treinamentos", ativo: true },
+  { id: "trainings.upload_video", nome: "Upload de Vídeo", descricao: "Permite enviar arquivos de vídeo locais. Sem esta permissão, o usuário só pode informar links de vídeo (YouTube, etc.). Concedido apenas pelo Master.", categoria: "Treinamentos", ativo: true, masterOnly: true },
   { id: "catalog.view", nome: "Visualizar Catálogo", descricao: "Acesso para visualizar o catálogo de treinamentos disponíveis", categoria: "Catálogo", ativo: true },
   { id: "catalog.manage", nome: "Gerenciar Catálogo", descricao: "Permite organizar e configurar o catálogo de treinamentos", categoria: "Catálogo", ativo: true },
   { id: "users.view", nome: "Visualizar Usuários", descricao: "Permite visualizar a lista de usuários cadastrados", categoria: "Usuários", ativo: true },
