@@ -92,6 +92,7 @@ import {
 } from "lucide-react";
 import { useAIRewrite } from "@/hooks/use-ai-rewrite";
 import { useAuth } from "@/contexts/auth-context";
+import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -210,6 +211,7 @@ export function ModernTrainingEditor({
   isEditing = false,
 }: ModernTrainingEditorProps) {
   const { user } = useAuth();
+  const { canUploadVideo } = usePermissions();
   const { rewriteText, checkAIAccess } = useAIRewrite();
   const [showAIButton, setShowAIButton] = useState(false);
   const [rewritingBlockId, setRewritingBlockId] = useState<string | null>(null);
