@@ -924,6 +924,39 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          atualizado_em: string
+          auth: string
+          criado_em: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          usuario_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          auth: string
+          criado_em?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          usuario_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          auth?: string
+          criado_em?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       questoes_treinamento: {
         Row: {
           atualizado_em: string | null
