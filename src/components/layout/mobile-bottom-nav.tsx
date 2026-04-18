@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, GraduationCap, BookOpen, Calendar, User } from "lucide-react";
+import { LayoutDashboard, GraduationCap, BookOpen, Calendar, FileText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -15,7 +15,8 @@ const items: MobileNavItem[] = [
   { label: "Meus", url: "/meus-treinamentos", icon: GraduationCap, roles: ["master", "admin", "instrutor", "usuario"] },
   { label: "Catálogo", url: "/catalogo", icon: BookOpen, roles: ["master", "admin", "instrutor", "usuario"] },
   { label: "Agenda", url: "/calendario", icon: Calendar, roles: ["master", "admin", "instrutor", "usuario"] },
-  { label: "Perfil", url: "/perfil", icon: User, roles: ["master", "admin", "instrutor", "usuario"] },
+  { label: "Relatórios", url: "/relatorios", icon: FileText, roles: ["master", "admin", "instrutor"] },
+  { label: "Config.", url: "/admin/configuracoes", icon: Settings, roles: ["master"] },
 ];
 
 export function MobileBottomNav() {
@@ -31,7 +32,8 @@ export function MobileBottomNav() {
         return { ...it, url: "/meus-treinamentos" };
       }
       return it;
-    });
+    })
+    .slice(0, 5); // Bottom nav: máximo 5 itens
 
   return (
     <nav
