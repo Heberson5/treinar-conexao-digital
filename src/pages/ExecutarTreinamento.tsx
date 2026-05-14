@@ -69,6 +69,12 @@ export default function ExecutarTreinamento() {
   const [ratingComment, setRatingComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Modo Avaliação (exame): esconde conteúdo e bloqueia retorno ao estudo
+  const examStorageKey = id && user?.id ? `exam_started_${user.id}_${id}` : "";
+  const [examMode, setExamMode] = useState(false);
+  const [examKey, setExamKey] = useState(0); // força remount do QuizViewer ao reiniciar
+  const [showExamWarning, setShowExamWarning] = useState(false);
+
   const targetDuration = training?.duracao_minutos || 60;
   const minimumTimeRequired = Math.ceil(targetDuration * 0.5); // 50% do tempo
 
