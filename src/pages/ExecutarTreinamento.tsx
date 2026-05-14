@@ -150,6 +150,50 @@ export default function ExecutarTreinamento() {
     loadTraining();
   }, [id, user?.id]);
 
+  // Se já iniciou a avaliação anteriormente (e não foi aprovado), volta direto ao modo avaliação
+  useEffect(() => {
+    if (!examStorageKey) return;
+    if (quizApproved) {
+      localStorage.removeItem(examStorageKey);
+      return;
+    }
+    if (hasQuiz && localStorage.getItem(examStorageKey) === "1") {
+      setExamMode(true);
+    }
+  }, [examStorageKey, hasQuiz, quizApproved]);
+
+  // Em modo avaliação: trocar de aba / minimizar / sair => reinicia a avaliação
+  useEffect(() => {
+    if (!examMode || quizApproved) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        // marca para reiniciar quando voltar
+        sessionStorage.setItem("exam_violation", "1");
+      } else if (sessionStorage.getItem("exam_violation") === "1") {
+        sessionStorage.removeItem("exam_violation");
+        setExamKey((k) => k + 1);
+        toast.error("Avaliação reiniciada: você saiu da tela antes de finalizar.", { duration: 6000 });
+      }
+    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [examMode, quizApproved]);
+
+  const startExam = () => {
+    if (examStorageKey) localStorage.setItem(examStorageKey, "1");
+    setExamMode(true);
+    setShowExamWarning(false);
+  };
+
   // Carregar ou criar progresso
   useEffect(() => {
     async function loadProgress() {
