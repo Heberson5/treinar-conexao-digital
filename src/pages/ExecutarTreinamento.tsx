@@ -69,6 +69,12 @@ export default function ExecutarTreinamento() {
   const [ratingComment, setRatingComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Modo Avaliação (exame): esconde conteúdo e bloqueia retorno ao estudo
+  const examStorageKey = id && user?.id ? `exam_started_${user.id}_${id}` : "";
+  const [examMode, setExamMode] = useState(false);
+  const [examKey, setExamKey] = useState(0); // força remount do QuizViewer ao reiniciar
+  const [showExamWarning, setShowExamWarning] = useState(false);
+
   const targetDuration = training?.duracao_minutos || 60;
   const minimumTimeRequired = Math.ceil(targetDuration * 0.5); // 50% do tempo
 
@@ -143,6 +149,50 @@ export default function ExecutarTreinamento() {
 
     loadTraining();
   }, [id, user?.id]);
+
+  // Se já iniciou a avaliação anteriormente (e não foi aprovado), volta direto ao modo avaliação
+  useEffect(() => {
+    if (!examStorageKey) return;
+    if (quizApproved) {
+      localStorage.removeItem(examStorageKey);
+      return;
+    }
+    if (hasQuiz && localStorage.getItem(examStorageKey) === "1") {
+      setExamMode(true);
+    }
+  }, [examStorageKey, hasQuiz, quizApproved]);
+
+  // Em modo avaliação: trocar de aba / minimizar / sair => reinicia a avaliação
+  useEffect(() => {
+    if (!examMode || quizApproved) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        // marca para reiniciar quando voltar
+        sessionStorage.setItem("exam_violation", "1");
+      } else if (sessionStorage.getItem("exam_violation") === "1") {
+        sessionStorage.removeItem("exam_violation");
+        setExamKey((k) => k + 1);
+        toast.error("Avaliação reiniciada: você saiu da tela antes de finalizar.", { duration: 6000 });
+      }
+    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [examMode, quizApproved]);
+
+  const startExam = () => {
+    if (examStorageKey) localStorage.setItem(examStorageKey, "1");
+    setExamMode(true);
+    setShowExamWarning(false);
+  };
 
   // Carregar ou criar progresso
   useEffect(() => {
@@ -1808,137 +1858,195 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
         </div>
       </div>
 
-      {/* Card de progresso do tempo */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Tempo de Estudo
+      {/* Modo Avaliação: mostra somente o quiz */}
+      {examMode && id && hasQuiz && !quizApproved ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Avaliação em andamento
             </CardTitle>
-            {!timer.isPageVisible && (
-              <Badge variant="destructive" className="gap-1">
-                <Pause className="h-3 w-3" />
-                Timer pausado - volte para esta aba
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Barra de progresso principal */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progresso do tempo</span>
-              <span>{progressPercent}%</span>
-            </div>
-            <Progress value={progressPercent} className="h-3" />
-          </div>
-
-          {/* Indicador de tempo mínimo (50%) */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="flex items-center gap-1">
-                Tempo mínimo obrigatório (50% = {minimumTimeRequired} min)
-                {canComplete && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-              </span>
-              <span>{minimumTimeReachedPercent}%</span>
-            </div>
-            <Progress 
-              value={minimumTimeReachedPercent} 
-              className={`h-2 ${canComplete ? '[&>div]:bg-green-500' : '[&>div]:bg-amber-500'}`} 
-            />
-          </div>
-
-          {/* Mensagem informativa */}
-          <div className={`p-3 rounded-lg text-sm ${
-            canComplete 
-              ? 'bg-green-500/10 text-green-700 dark:text-green-400' 
-              : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-          }`}>
-            {canComplete ? (
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Você atingiu o tempo mínimo! Pode concluir o treinamento quando quiser.</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>
-                  Permaneça pelo menos {minimumTimeRequired} minutos para poder concluir. 
-                  Faltam {Math.max(0, Math.ceil((minimumTimeRequired * 60 - timer.activeTime) / 60))} minutos.
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Aviso sobre fechamento */}
-          <p className="text-xs text-muted-foreground">
-            ⚠️ Se você fechar esta página, o tempo será reiniciado. 
-            Alternar entre abas apenas pausa o contador.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Conteúdo do treinamento */}
-      <Card>
-        <CardContent className="p-6 md:p-8">
-          <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground">
-            {renderFormattedContent(content)}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quiz Section - opens in separate view */}
-      {id && hasQuiz && !quizApproved && canComplete && (
-        <Card className="sticky bottom-4 mb-4">
-          <CardContent className="p-4">
-            <QuizViewer 
-              treinamentoId={id} 
+            <p className="text-sm text-muted-foreground">
+              Permaneça nesta tela até finalizar. Sair, trocar de aba ou fechar o navegador irá reiniciar a avaliação.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <QuizViewer
+              key={examKey}
+              treinamentoId={id}
               notaMinima={7}
-              onAprovado={() => setQuizApproved(true)}
+              onAprovado={() => {
+                setQuizApproved(true);
+                if (examStorageKey) localStorage.removeItem(examStorageKey);
+              }}
             />
           </CardContent>
         </Card>
-      )}
-
-      {/* Botão de conclusão - só aparece quando aprovado na avaliação (se houver) */}
-      {(!hasQuiz || quizApproved) && (
-        <Card className="sticky bottom-4">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-muted-foreground">
-                {canComplete ? (
-                  <span className="text-green-600 dark:text-green-400 font-medium">
-                    ✓ Pronto para concluir!
-                  </span>
-                ) : (
-                  <span>
-                    Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
-                  </span>
+      ) : (
+        <>
+          {/* Card de progresso do tempo */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Tempo de Estudo
+                </CardTitle>
+                {!timer.isPageVisible && (
+                  <Badge variant="destructive" className="gap-1">
+                    <Pause className="h-3 w-3" />
+                    Timer pausado - volte para esta aba
+                  </Badge>
                 )}
               </div>
-              <Button 
-                size="lg" 
-                onClick={handleComplete}
-                disabled={!canComplete}
-                className="gap-2 w-full md:w-auto"
-              >
-                <Award className="h-5 w-5" />
-                Concluir Treinamento
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progresso do tempo</span>
+                  <span>{progressPercent}%</span>
+                </div>
+                <Progress value={progressPercent} className="h-3" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1">
+                    Tempo mínimo obrigatório (50% = {minimumTimeRequired} min)
+                    {canComplete && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  </span>
+                  <span>{minimumTimeReachedPercent}%</span>
+                </div>
+                <Progress
+                  value={minimumTimeReachedPercent}
+                  className={`h-2 ${canComplete ? '[&>div]:bg-green-500' : '[&>div]:bg-amber-500'}`}
+                />
+              </div>
+
+              <div className={`p-3 rounded-lg text-sm ${
+                canComplete
+                  ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+              }`}>
+                {canComplete ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Você atingiu o tempo mínimo! Pode concluir o treinamento quando quiser.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>
+                      Permaneça pelo menos {minimumTimeRequired} minutos para poder concluir.
+                      Faltam {Math.max(0, Math.ceil((minimumTimeRequired * 60 - timer.activeTime) / 60))} minutos.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Se você fechar esta página, o tempo será reiniciado.
+                Alternar entre abas apenas pausa o contador.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Conteúdo do treinamento */}
+          <Card>
+            <CardContent className="p-6 md:p-8">
+              <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground">
+                {renderFormattedContent(content)}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Iniciar Avaliação (após tempo mínimo) */}
+          {id && hasQuiz && !quizApproved && canComplete && (
+            <Card className="sticky bottom-4 mb-4">
+              <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Você atingiu o tempo mínimo. Quando iniciar a avaliação, o conteúdo será ocultado.
+                </div>
+                <Button size="lg" className="gap-2 w-full md:w-auto" onClick={() => setShowExamWarning(true)}>
+                  <Award className="h-5 w-5" />
+                  Iniciar Avaliação
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Botão de conclusão - sem quiz ou já aprovado */}
+          {(!hasQuiz || quizApproved) && (
+            <Card className="sticky bottom-4">
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-muted-foreground">
+                    {canComplete ? (
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        ✓ Pronto para concluir!
+                      </span>
+                    ) : (
+                      <span>
+                        Complete pelo menos {minimumTimeRequired} minutos de estudo para concluir.
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={handleComplete}
+                    disabled={!canComplete}
+                    className="gap-2 w-full md:w-auto"
+                  >
+                    <Award className="h-5 w-5" />
+                    Concluir Treinamento
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {hasQuiz && !quizApproved && !canComplete && (
+            <Card className="sticky bottom-4">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                Complete pelo menos {minimumTimeRequired} minutos de estudo para liberar a avaliação.
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
-      {/* Mensagem quando precisa fazer a avaliação */}
-      {hasQuiz && !quizApproved && !canComplete && (
-        <Card className="sticky bottom-4">
-          <CardContent className="p-4 text-center text-sm text-muted-foreground">
-            Complete pelo menos {minimumTimeRequired} minutos de estudo para liberar a avaliação.
-          </CardContent>
-        </Card>
-      )}
+      {/* Diálogo de aviso antes de iniciar a avaliação */}
+      <Dialog open={showExamWarning} onOpenChange={setShowExamWarning}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Atenção antes de iniciar
+            </DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">
+                Ao iniciar a avaliação, o conteúdo do treinamento será ocultado e você não poderá voltar a estudá-lo.
+              </span>
+              <span className="block">
+                Você deve permanecer nesta tela até finalizar. Se trocar de aba, minimizar, fechar o navegador ou sair do sistema, a avaliação será reiniciada do zero.
+              </span>
+              <span className="block font-medium text-foreground">
+                Deseja iniciar agora?
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowExamWarning(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={startExam} className="gap-2">
+              <Award className="h-4 w-4" />
+              Iniciar Avaliação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Diálogo de Avaliação */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
