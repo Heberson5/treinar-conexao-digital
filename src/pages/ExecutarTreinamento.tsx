@@ -2182,6 +2182,34 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Resumo da avaliação */}
+      <Dialog open={showSummary} onOpenChange={setShowSummary}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Resumo da sua avaliação
+            </DialogTitle>
+            <DialogDescription>
+              Veja como foi sua jornada de estudo e avaliação neste treinamento.
+            </DialogDescription>
+          </DialogHeader>
+          {examSummary && (
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Tentativas</p><p className="text-2xl font-bold">{examSummary.tentativas}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Última nota</p><p className="text-2xl font-bold">{examSummary.ultimaNota.toFixed(1)}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Reinícios</p><p className="text-2xl font-bold">{examSummary.reinicios}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Saídas da tela</p><p className="text-2xl font-bold">{examSummary.violacoes}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Pausas no estudo</p><p className="text-2xl font-bold">{examSummary.pausas}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Tempo de estudo</p><p className="text-2xl font-bold">{examSummary.tempoEstudoMin} min</p></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowSummary(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
