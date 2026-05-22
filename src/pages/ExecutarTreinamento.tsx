@@ -169,19 +169,21 @@ export default function ExecutarTreinamento() {
 
   // Em modo avaliação: trocar de aba / minimizar / sair => reinicia a avaliação
   useEffect(() => {
-    if (!examMode || quizApproved) return;
+    if (!examMode || quizApproved || !id) return;
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
-        // marca para reiniciar quando voltar
         sessionStorage.setItem("exam_violation", "1");
+        registrarEventoTentativa("avaliacao_violacao", id, { motivo: "visibility_hidden" });
       } else if (sessionStorage.getItem("exam_violation") === "1") {
         sessionStorage.removeItem("exam_violation");
         setExamKey((k) => k + 1);
+        registrarEventoTentativa("avaliacao_reiniciada", id, { motivo: "retorno_apos_violacao" });
         toast.error("Avaliação reiniciada: você saiu da tela antes de finalizar.", { duration: 6000 });
       }
     };
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (id) registrarEventoTentativa("avaliacao_violacao", id, { motivo: "before_unload" });
       e.preventDefault();
       e.returnValue = "";
     };
@@ -191,13 +193,53 @@ export default function ExecutarTreinamento() {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [examMode, quizApproved]);
+  }, [examMode, quizApproved, id]);
+
+  // Registrar início de estudo e detectar pausas (timer.isPageVisible)
+  useEffect(() => {
+    if (!id || examMode) return;
+    if (prevVisibleRef.current && !timer.isPageVisible) {
+      registrarEventoTentativa("estudo_pausado", id, { tempoAtivoSeg: timer.activeTime });
+    } else if (!prevVisibleRef.current && timer.isPageVisible) {
+      registrarEventoTentativa("estudo_retomado", id, { tempoAtivoSeg: timer.activeTime });
+    }
+    prevVisibleRef.current = timer.isPageVisible;
+  }, [timer.isPageVisible, id, examMode, timer.activeTime]);
+
+  useEffect(() => {
+    if (id) {
+      studyStartRef.current = Date.now();
+      registrarEventoTentativa("estudo_iniciado", id, {});
+    }
+  }, [id]);
 
   const startExam = () => {
     if (examStorageKey) localStorage.setItem(examStorageKey, "1");
+    if (id) registrarEventoTentativa("avaliacao_iniciada", id, { tempoEstudoSeg: timer.activeTime });
     setExamMode(true);
     setShowExamWarning(false);
   };
+
+  const handleExamFinalizada = useCallback(async (info: { nota: number; aprovado: boolean; duracaoSegundos: number; tempoEstudoSegundos: number; numeroTentativa: number }) => {
+    if (!id || !user?.id) return;
+    await registrarEventoTentativa("avaliacao_finalizada", id, info);
+    // Carregar resumo
+    const [{ data: tentativas }, { data: eventos }] = await Promise.all([
+      supabase.from("tentativas_avaliacao").select("nota").eq("treinamento_id", id).eq("usuario_id", user.id).order("criado_em", { ascending: false }),
+      (supabase as any).from("tentativas_eventos").select("tipo_evento").eq("treinamento_id", id).eq("usuario_id", user.id),
+    ]);
+    const ev = (eventos || []) as Array<{ tipo_evento: string }>;
+    setExamSummary({
+      tentativas: tentativas?.length || 0,
+      reinicios: ev.filter(e => e.tipo_evento === "avaliacao_reiniciada").length,
+      violacoes: ev.filter(e => e.tipo_evento === "avaliacao_violacao").length,
+      pausas: ev.filter(e => e.tipo_evento === "estudo_pausado").length,
+      ultimaNota: info.nota,
+      tempoEstudoMin: Math.floor(info.tempoEstudoSegundos / 60),
+    });
+    setShowSummary(true);
+  }, [id, user?.id]);
+
 
   // Carregar ou criar progresso
   useEffect(() => {
