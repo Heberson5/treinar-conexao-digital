@@ -1922,6 +1922,8 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
               key={examKey}
               treinamentoId={id}
               notaMinima={7}
+              tempoEstudoSegundos={timer.activeTime}
+              onTentativaFinalizada={handleExamFinalizada}
               onAprovado={() => {
                 setQuizApproved(true);
                 if (examStorageKey) localStorage.removeItem(examStorageKey);
