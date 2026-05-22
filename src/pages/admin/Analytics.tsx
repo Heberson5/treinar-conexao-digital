@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -46,8 +46,8 @@ export default function Analytics() {
   const [trainingStats, setTrainingStats] = useState<TrainingStats[]>([])
   const [engajamentoDiario, setEngajamentoDiario] = useState<any[]>([])
 
-  const fetchAnalytics = useCallback(async () => {
-    setIsLoading(true)
+  const fetchAnalytics = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true)
     const startDate = selectedPeriod === "custom" && customStartDate
       ? customStartDate.toISOString()
       : getStartDateFromPeriod(selectedPeriod).toISOString()
@@ -173,13 +173,21 @@ export default function Analytics() {
 
   useEffect(() => { fetchAnalytics() }, [fetchAnalytics])
 
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = setTimeout(() => fetchAnalytics(true), 2000)
+    }
     const channel = supabase
       .channel('analytics-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => fetchAnalytics())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => fetchAnalytics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, scheduleRefresh)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      supabase.removeChannel(channel)
+    }
   }, [fetchAnalytics])
 
   const getPeriodLabel = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -66,8 +66,8 @@ export default function Relatorios() {
   const [trainingReports, setTrainingReports] = useState<TrainingReport[]>([])
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
 
-  const fetchReportData = useCallback(async () => {
-    setIsLoading(true)
+  const fetchReportData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true)
     const startDate = selectedPeriod === "custom" && customStartDate
       ? customStartDate.toISOString()
       : getStartDateFromPeriod(selectedPeriod).toISOString()
@@ -169,13 +169,21 @@ export default function Relatorios() {
 
   useEffect(() => { fetchReportData() }, [fetchReportData])
 
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = setTimeout(() => fetchReportData(true), 2000)
+    }
     const channel = supabase
       .channel('relatorios-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => fetchReportData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => fetchReportData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, scheduleRefresh)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      supabase.removeChannel(channel)
+    }
   }, [fetchReportData])
 
   const getPeriodLabel = () => {

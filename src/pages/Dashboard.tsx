@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO, subDays } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -77,8 +77,9 @@ export default function Dashboard() {
     departmentId: "",
   });
 
-  const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchDashboardData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+
     try {
       const now = new Date();
       let startDate: Date = filters.period === 'custom' && filters.startDate ? filters.startDate : getStartDateFromPeriod(filters.period);
@@ -255,22 +256,22 @@ export default function Dashboard() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Realtime subscriptions
+  // Realtime subscriptions (debounced silent refresh - evita flicker)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = setTimeout(() => fetchDashboardData(true), 2000);
+    };
     const channel = supabase
       .channel('dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, () => {
-        fetchDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, () => {
-        fetchDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'atividades' }, () => {
-        fetchDashboardData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progresso_treinamentos' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tentativas_avaliacao' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'atividades' }, scheduleRefresh)
       .subscribe();
 
     return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       supabase.removeChannel(channel);
     };
   }, [fetchDashboardData]);
