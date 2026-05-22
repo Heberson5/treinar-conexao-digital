@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { registrarEventoTentativa } from "@/lib/exam-events";
 
 interface TrainingData {
   id: string;
@@ -74,6 +75,10 @@ export default function ExecutarTreinamento() {
   const [examMode, setExamMode] = useState(false);
   const [examKey, setExamKey] = useState(0); // força remount do QuizViewer ao reiniciar
   const [showExamWarning, setShowExamWarning] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [examSummary, setExamSummary] = useState<{ tentativas: number; reinicios: number; violacoes: number; pausas: number; ultimaNota: number; tempoEstudoMin: number } | null>(null);
+  const studyStartRef = useRef<number>(Date.now());
+  const prevVisibleRef = useRef<boolean>(true);
 
   const targetDuration = training?.duracao_minutos || 60;
   const minimumTimeRequired = Math.ceil(targetDuration * 0.5); // 50% do tempo
