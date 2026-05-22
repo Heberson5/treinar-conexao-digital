@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +31,9 @@ interface QuizViewerProps {
   treinamentoId: string
   notaMinima?: number
   tempoLimite?: number
+  tempoEstudoSegundos?: number
   onAprovado?: () => void
+  onTentativaFinalizada?: (info: { nota: number; aprovado: boolean; duracaoSegundos: number; tempoEstudoSegundos: number; numeroTentativa: number }) => void
 }
 
 const TIPO_COLORS: Record<string, string> = {
@@ -52,7 +54,7 @@ const KAHOOT_COLORS = [
   "bg-orange-500 hover:bg-orange-600",
 ]
 
-export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onAprovado }: QuizViewerProps) {
+export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tempoEstudoSegundos = 0, onAprovado, onTentativaFinalizada }: QuizViewerProps) {
   const { toast } = useToast()
   const { user } = useAuth()
   const [questoes, setQuestoes] = useState<Questao[]>([])
@@ -65,6 +67,7 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
   const [timeLeft, setTimeLeft] = useState(0)
   const [quizStarted, setQuizStarted] = useState(false)
   const [puzzleOrders, setPuzzleOrders] = useState<Record<string, number[]>>({})
+  const quizStartRef = useRef<number>(0)
 
   useEffect(() => { loadData() }, [treinamentoId])
 
@@ -133,6 +136,7 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
 
   const startQuiz = () => {
     setQuizStarted(true)
+    quizStartRef.current = Date.now()
     if (tempoLimite > 0) setTimeLeft(tempoLimite * 60)
     // Re-shuffle questions and options when starting
     setQuestoes(prev => {
@@ -194,19 +198,31 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
     const nota = questoes.length > 0 ? (acertos / questoes.length) * 10 : 0
     const aprovado = nota >= notaMinima
 
+    const duracaoSegundos = quizStartRef.current ? Math.floor((Date.now() - quizStartRef.current) / 1000) : 0
+    let numeroTentativa = 1
     try {
       if (user) {
+        const { count } = await supabase
+          .from("tentativas_avaliacao")
+          .select("id", { count: "exact", head: true })
+          .eq("treinamento_id", treinamentoId)
+          .eq("usuario_id", user.id)
+        numeroTentativa = (count || 0) + 1
         await supabase.from("tentativas_avaliacao").insert({
           treinamento_id: treinamentoId,
           usuario_id: user.id,
           respostas: Object.entries(respostas).map(([questao_id, resposta]) => ({ questao_id, resposta })),
           nota,
-          aprovado
-        })
+          aprovado,
+          duracao_segundos: duracaoSegundos,
+          tempo_estudo_segundos: tempoEstudoSegundos,
+          numero_tentativa: numeroTentativa,
+        } as any)
       }
     } catch (e) { console.error(e) }
 
     setResultado({ nota, aprovado, detalhes })
+    onTentativaFinalizada?.({ nota, aprovado, duracaoSegundos, tempoEstudoSegundos, numeroTentativa })
 
     if (aprovado) {
       toast({ title: "Parabéns! Você foi aprovado! 🎉", description: `Nota: ${nota.toFixed(1)}` })
@@ -217,7 +233,7 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, onA
     }
 
     setIsSubmitting(false)
-  }, [questoes, respostas, notaMinima, user, treinamentoId, onAprovado, toast])
+  }, [questoes, respostas, notaMinima, user, treinamentoId, onAprovado, onTentativaFinalizada, tempoEstudoSegundos, toast])
 
   const handleRetry = () => {
     // Redirecionar de volta ao conteúdo para re-estudo
