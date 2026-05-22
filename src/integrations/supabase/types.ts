@@ -1029,30 +1029,39 @@ export type Database = {
         Row: {
           aprovado: boolean
           criado_em: string | null
+          duracao_segundos: number | null
           id: string
           nota: number
           numero: number | null
+          numero_tentativa: number | null
           respostas: Json
+          tempo_estudo_segundos: number | null
           treinamento_id: string
           usuario_id: string
         }
         Insert: {
           aprovado?: boolean
           criado_em?: string | null
+          duracao_segundos?: number | null
           id?: string
           nota?: number
           numero?: number | null
+          numero_tentativa?: number | null
           respostas?: Json
+          tempo_estudo_segundos?: number | null
           treinamento_id: string
           usuario_id: string
         }
         Update: {
           aprovado?: boolean
           criado_em?: string | null
+          duracao_segundos?: number | null
           id?: string
           nota?: number
           numero?: number | null
+          numero_tentativa?: number | null
           respostas?: Json
+          tempo_estudo_segundos?: number | null
           treinamento_id?: string
           usuario_id?: string
         }
@@ -1065,6 +1074,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tentativas_eventos: {
+        Row: {
+          criado_em: string
+          detalhes: Json | null
+          id: string
+          tipo_evento: string
+          treinamento_id: string
+          usuario_id: string
+        }
+        Insert: {
+          criado_em?: string
+          detalhes?: Json | null
+          id?: string
+          tipo_evento: string
+          treinamento_id: string
+          usuario_id: string
+        }
+        Update: {
+          criado_em?: string
+          detalhes?: Json | null
+          id?: string
+          tipo_evento?: string
+          treinamento_id?: string
+          usuario_id?: string
+        }
+        Relationships: []
       }
       treinamentos: {
         Row: {

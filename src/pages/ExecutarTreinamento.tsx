@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { registrarEventoTentativa } from "@/lib/exam-events";
 
 interface TrainingData {
   id: string;
@@ -74,6 +75,10 @@ export default function ExecutarTreinamento() {
   const [examMode, setExamMode] = useState(false);
   const [examKey, setExamKey] = useState(0); // força remount do QuizViewer ao reiniciar
   const [showExamWarning, setShowExamWarning] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [examSummary, setExamSummary] = useState<{ tentativas: number; reinicios: number; violacoes: number; pausas: number; ultimaNota: number; tempoEstudoMin: number } | null>(null);
+  const studyStartRef = useRef<number>(Date.now());
+  const prevVisibleRef = useRef<boolean>(true);
 
   const targetDuration = training?.duracao_minutos || 60;
   const minimumTimeRequired = Math.ceil(targetDuration * 0.5); // 50% do tempo
@@ -164,19 +169,21 @@ export default function ExecutarTreinamento() {
 
   // Em modo avaliação: trocar de aba / minimizar / sair => reinicia a avaliação
   useEffect(() => {
-    if (!examMode || quizApproved) return;
+    if (!examMode || quizApproved || !id) return;
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
-        // marca para reiniciar quando voltar
         sessionStorage.setItem("exam_violation", "1");
+        registrarEventoTentativa("avaliacao_violacao", id, { motivo: "visibility_hidden" });
       } else if (sessionStorage.getItem("exam_violation") === "1") {
         sessionStorage.removeItem("exam_violation");
         setExamKey((k) => k + 1);
+        registrarEventoTentativa("avaliacao_reiniciada", id, { motivo: "retorno_apos_violacao" });
         toast.error("Avaliação reiniciada: você saiu da tela antes de finalizar.", { duration: 6000 });
       }
     };
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (id) registrarEventoTentativa("avaliacao_violacao", id, { motivo: "before_unload" });
       e.preventDefault();
       e.returnValue = "";
     };
@@ -186,13 +193,53 @@ export default function ExecutarTreinamento() {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [examMode, quizApproved]);
+  }, [examMode, quizApproved, id]);
+
+  // Registrar início de estudo e detectar pausas (timer.isPageVisible)
+  useEffect(() => {
+    if (!id || examMode) return;
+    if (prevVisibleRef.current && !timer.isPageVisible) {
+      registrarEventoTentativa("estudo_pausado", id, { tempoAtivoSeg: timer.activeTime });
+    } else if (!prevVisibleRef.current && timer.isPageVisible) {
+      registrarEventoTentativa("estudo_retomado", id, { tempoAtivoSeg: timer.activeTime });
+    }
+    prevVisibleRef.current = timer.isPageVisible;
+  }, [timer.isPageVisible, id, examMode, timer.activeTime]);
+
+  useEffect(() => {
+    if (id) {
+      studyStartRef.current = Date.now();
+      registrarEventoTentativa("estudo_iniciado", id, {});
+    }
+  }, [id]);
 
   const startExam = () => {
     if (examStorageKey) localStorage.setItem(examStorageKey, "1");
+    if (id) registrarEventoTentativa("avaliacao_iniciada", id, { tempoEstudoSeg: timer.activeTime });
     setExamMode(true);
     setShowExamWarning(false);
   };
+
+  const handleExamFinalizada = useCallback(async (info: { nota: number; aprovado: boolean; duracaoSegundos: number; tempoEstudoSegundos: number; numeroTentativa: number }) => {
+    if (!id || !user?.id) return;
+    await registrarEventoTentativa("avaliacao_finalizada", id, info);
+    // Carregar resumo
+    const [{ data: tentativas }, { data: eventos }] = await Promise.all([
+      supabase.from("tentativas_avaliacao").select("nota").eq("treinamento_id", id).eq("usuario_id", user.id).order("criado_em", { ascending: false }),
+      (supabase as any).from("tentativas_eventos").select("tipo_evento").eq("treinamento_id", id).eq("usuario_id", user.id),
+    ]);
+    const ev = (eventos || []) as Array<{ tipo_evento: string }>;
+    setExamSummary({
+      tentativas: tentativas?.length || 0,
+      reinicios: ev.filter(e => e.tipo_evento === "avaliacao_reiniciada").length,
+      violacoes: ev.filter(e => e.tipo_evento === "avaliacao_violacao").length,
+      pausas: ev.filter(e => e.tipo_evento === "estudo_pausado").length,
+      ultimaNota: info.nota,
+      tempoEstudoMin: Math.floor(info.tempoEstudoSegundos / 60),
+    });
+    setShowSummary(true);
+  }, [id, user?.id]);
+
 
   // Carregar ou criar progresso
   useEffect(() => {
@@ -1875,6 +1922,8 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
               key={examKey}
               treinamentoId={id}
               notaMinima={7}
+              tempoEstudoSegundos={timer.activeTime}
+              onTentativaFinalizada={handleExamFinalizada}
               onAprovado={() => {
                 setQuizApproved(true);
                 if (examStorageKey) localStorage.removeItem(examStorageKey);
@@ -2130,6 +2179,34 @@ Continue aplicando o que aprendeu e busque sempre aprimorar seus conhecimentos.
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resumo da avaliação */}
+      <Dialog open={showSummary} onOpenChange={setShowSummary}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Resumo da sua avaliação
+            </DialogTitle>
+            <DialogDescription>
+              Veja como foi sua jornada de estudo e avaliação neste treinamento.
+            </DialogDescription>
+          </DialogHeader>
+          {examSummary && (
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Tentativas</p><p className="text-2xl font-bold">{examSummary.tentativas}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Última nota</p><p className="text-2xl font-bold">{examSummary.ultimaNota.toFixed(1)}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Reinícios</p><p className="text-2xl font-bold">{examSummary.reinicios}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Saídas da tela</p><p className="text-2xl font-bold">{examSummary.violacoes}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Pausas no estudo</p><p className="text-2xl font-bold">{examSummary.pausas}</p></div>
+              <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Tempo de estudo</p><p className="text-2xl font-bold">{examSummary.tempoEstudoMin} min</p></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowSummary(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
