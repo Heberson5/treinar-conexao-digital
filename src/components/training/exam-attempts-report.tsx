@@ -75,11 +75,15 @@ export default function ExamAttemptsReport() {
   const periodSelected = period !== "" && (period !== "custom" || (!!customStart && !!customEnd))
 
   const fetchData = useCallback(async () => {
-    if (!user) return
+    if (!user || !periodSelected) return
     setLoading(true)
     try {
       const empresaFilter = isMaster && empresaSelecionada && empresaSelecionada !== "todas"
         ? empresaSelecionada : null
+
+      const startDate = getStartDateFromPeriod(period as PeriodValue, customStart)
+      const endDate = period === "custom" && customEnd ? new Date(customEnd) : new Date()
+      endDate.setHours(23, 59, 59, 999)
 
       let treinQ = supabase.from("treinamentos").select("id, titulo, empresa_id")
       if (empresaFilter) treinQ = treinQ.eq("empresa_id", empresaFilter)
@@ -92,6 +96,8 @@ export default function ExamAttemptsReport() {
         .from("tentativas_avaliacao")
         .select("*")
         .in("treinamento_id", trIds)
+        .gte("criado_em", startDate.toISOString())
+        .lte("criado_em", endDate.toISOString())
         .order("criado_em", { ascending: false })
 
       const userIds: string[] = Array.from(new Set((tentativas || []).map((t: any) => t.usuario_id as string)))
