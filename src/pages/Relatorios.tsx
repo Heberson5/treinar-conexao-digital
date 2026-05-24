@@ -16,6 +16,7 @@ import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 import { exportData } from "@/lib/export-utils"
 import { useToast } from "@/hooks/use-toast"
 import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter"
+import ExamAttemptsReport from "@/components/training/exam-attempts-report"
 
 interface ReportData {
   totalTreinamentos: number
@@ -283,10 +284,11 @@ export default function Relatorios() {
       </div>
 
       <Tabs defaultValue="geral" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="geral" className="text-xs sm:text-sm">Geral</TabsTrigger>
           <TabsTrigger value="departamentos" className="text-xs sm:text-sm">Departamentos</TabsTrigger>
           <TabsTrigger value="treinamentos" className="text-xs sm:text-sm">Treinamentos</TabsTrigger>
+          <TabsTrigger value="avaliacoes" className="text-xs sm:text-sm">Avaliações</TabsTrigger>
           <TabsTrigger value="participantes" className="text-xs sm:text-sm hidden sm:flex">Participantes</TabsTrigger>
           <TabsTrigger value="mensal" className="text-xs sm:text-sm hidden sm:flex">Evolução</TabsTrigger>
         </TabsList>
@@ -454,6 +456,11 @@ export default function Relatorios() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Relatório de Avaliações */}
+        <TabsContent value="avaliacoes" className="space-y-6">
+          <ExamAttemptsReport />
         </TabsContent>
 
         {/* Relatório de Participantes */}
