@@ -65,9 +65,14 @@ export default function ExamAttemptsReport() {
   const { user } = useAuth()
   const { empresaSelecionada, isMaster } = useEmpresaFilter()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<AttemptRow[]>([])
   const [visibleColumns, setVisibleColumns] = useState<string[]>(ALL_COLUMNS.map(c => c.key))
+  const [period, setPeriod] = useState<PeriodValue | "">("")
+  const [customStart, setCustomStart] = useState<Date | undefined>()
+  const [customEnd, setCustomEnd] = useState<Date | undefined>()
+  const [selectedUser, setSelectedUser] = useState<string>("todos")
+  const periodSelected = period !== "" && (period !== "custom" || (!!customStart && !!customEnd))
 
   const fetchData = useCallback(async () => {
     if (!user) return
