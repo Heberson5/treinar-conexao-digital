@@ -147,17 +147,28 @@ export default function ExamAttemptsReport() {
     } finally {
       setLoading(false)
     }
-  }, [user, isMaster, empresaSelecionada, toast])
+  }, [user, isMaster, empresaSelecionada, toast, period, customStart, customEnd, periodSelected])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const enriched = useMemo(() => rows.map(r => ({
+  const availableUsers = useMemo(() => {
+    const map = new Map<string, string>()
+    rows.forEach(r => { if (!map.has(r.usuario_id)) map.set(r.usuario_id, r.usuario_nome) })
+    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
+  }, [rows])
+
+  const filteredRows = useMemo(() => {
+    if (selectedUser === "todos") return rows
+    return rows.filter(r => r.usuario_id === selectedUser)
+  }, [rows, selectedUser])
+
+  const enriched = useMemo(() => filteredRows.map(r => ({
     ...r,
     aprovado_str: r.aprovado ? "Aprovado" : "Reprovado",
     data_str: new Date(r.criado_em).toLocaleString("pt-BR"),
     duracao_str: fmtSecs(r.duracao_segundos),
     estudo_str: fmtSecs(r.tempo_estudo_segundos),
-  })), [rows])
+  })), [filteredRows])
 
   // Stats
   const stats = useMemo(() => {
