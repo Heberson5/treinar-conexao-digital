@@ -16,6 +16,7 @@ import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
 import { exportData } from "@/lib/export-utils"
 import { useToast } from "@/hooks/use-toast"
 import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter"
+import ExamAttemptsReport from "@/components/training/exam-attempts-report"
 
 interface ReportData {
   totalTreinamentos: number
