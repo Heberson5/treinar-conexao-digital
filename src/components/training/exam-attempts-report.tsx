@@ -398,6 +398,8 @@ export default function ExamAttemptsReport() {
           </Table>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   )
 }
