@@ -215,28 +215,82 @@ export default function ExamAttemptsReport() {
     exportData(format, {
       filename: `relatorio_avaliacoes_${new Date().toISOString().split("T")[0]}`,
       title: "Relatório de Avaliações",
-      subtitle: `${rows.length} tentativas`,
+      subtitle: `${filteredRows.length} tentativas`,
       columns: cols,
       data: enriched,
     })
     toast({ title: "Exportação concluída" })
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
+  // Reset selected user when period changes
+  useEffect(() => { setSelectedUser("todos") }, [period, customStart, customEnd])
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h2 className="text-lg sm:text-xl font-bold">Relatório de Avaliações</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <PeriodFilter
+            value={(period || "30d") as PeriodValue}
+            onChange={(v) => setPeriod(v)}
+            customStartDate={customStart}
+            customEndDate={customEnd}
+            onCustomDateChange={(s, e) => { setCustomStart(s); setCustomEnd(e) }}
+          />
+          <Select
+            value={selectedUser}
+            onValueChange={setSelectedUser}
+            disabled={!periodSelected || rows.length === 0}
+          >
+            <SelectTrigger className="w-[200px]">
+              <Users className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Usuário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os usuários</SelectItem>
+              {availableUsers.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {!periodSelected ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Selecione um período acima para visualizar o relatório de avaliações.
+          </CardContent>
+        </Card>
+      ) : loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : (
+      <>
+      <div className="flex justify-end gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm"><Settings2 className="mr-1 h-4 w-4" />Colunas</Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64">
+            <div className="space-y-2">
+              <p className="text-sm font-medium mb-2">Personalizar colunas</p>
+              {ALL_COLUMNS.map(col => (
+                <div key={col.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`col-${col.key}`}
+                    checked={visibleColumns.includes(col.key)}
+                    onCheckedChange={() => toggleCol(col.key)}
+                  />
+                  <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">{col.header}</label>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm"><Settings2 className="mr-1 h-4 w-4" />Colunas</Button>
