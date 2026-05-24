@@ -458,6 +458,11 @@ export default function Relatorios() {
           </Card>
         </TabsContent>
 
+        {/* Relatório de Avaliações */}
+        <TabsContent value="avaliacoes" className="space-y-6">
+          <ExamAttemptsReport />
+        </TabsContent>
+
         {/* Relatório de Participantes */}
         <TabsContent value="participantes" className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
