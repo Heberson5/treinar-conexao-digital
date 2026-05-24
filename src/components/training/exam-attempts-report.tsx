@@ -172,18 +172,18 @@ export default function ExamAttemptsReport() {
 
   // Stats
   const stats = useMemo(() => {
-    const total = rows.length
-    const aprovados = rows.filter(r => r.aprovado).length
-    const violacoes = rows.reduce((s, r) => s + r.violacoes, 0)
-    const reinicios = rows.reduce((s, r) => s + r.reinicios, 0)
-    const mediaNota = total ? (rows.reduce((s, r) => s + r.nota, 0) / total) : 0
+    const total = filteredRows.length
+    const aprovados = filteredRows.filter(r => r.aprovado).length
+    const violacoes = filteredRows.reduce((s, r) => s + r.violacoes, 0)
+    const reinicios = filteredRows.reduce((s, r) => s + r.reinicios, 0)
+    const mediaNota = total ? (filteredRows.reduce((s, r) => s + r.nota, 0) / total) : 0
     return { total, aprovados, violacoes, reinicios, mediaNota }
-  }, [rows])
+  }, [filteredRows])
 
   // Chart: notes by attempt number (avg)
   const chartByAttempt = useMemo(() => {
     const map = new Map<number, { tentativa: string; mediaNota: number; n: number }>()
-    rows.forEach(r => {
+    filteredRows.forEach(r => {
       const cur = map.get(r.numero_tentativa) || { tentativa: `${r.numero_tentativa}ª`, mediaNota: 0, n: 0 }
       cur.mediaNota += r.nota
       cur.n += 1
@@ -191,12 +191,12 @@ export default function ExamAttemptsReport() {
     })
     return Array.from(map.values()).map(v => ({ tentativa: v.tentativa, mediaNota: +(v.mediaNota / v.n).toFixed(2) }))
       .sort((a, b) => a.tentativa.localeCompare(b.tentativa))
-  }, [rows])
+  }, [filteredRows])
 
   // Chart: top trainings by avg score
   const chartByTraining = useMemo(() => {
     const map = new Map<string, { titulo: string; nota: number; n: number }>()
-    rows.forEach(r => {
+    filteredRows.forEach(r => {
       const cur = map.get(r.treinamento_id) || { titulo: r.treinamento_titulo, nota: 0, n: 0 }
       cur.nota += r.nota; cur.n += 1
       map.set(r.treinamento_id, cur)
@@ -204,7 +204,7 @@ export default function ExamAttemptsReport() {
     return Array.from(map.values())
       .map(v => ({ titulo: v.titulo.length > 18 ? v.titulo.slice(0, 18) + "…" : v.titulo, mediaNota: +(v.nota / v.n).toFixed(2), tentativas: v.n }))
       .slice(0, 10)
-  }, [rows])
+  }, [filteredRows])
 
   const toggleCol = (key: string) => {
     setVisibleColumns(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
