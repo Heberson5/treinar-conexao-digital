@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  Download, FileText, Settings2, BarChart3, AlertTriangle, RefreshCw, Clock, Award,
+  Download, FileText, Settings2, BarChart3, AlertTriangle, RefreshCw, Clock, Award, Users,
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -18,6 +19,7 @@ import {
 } from "recharts"
 import { exportData } from "@/lib/export-utils"
 import { useToast } from "@/hooks/use-toast"
+import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter"
 
 interface AttemptRow {
   id: string
@@ -63,16 +65,25 @@ export default function ExamAttemptsReport() {
   const { user } = useAuth()
   const { empresaSelecionada, isMaster } = useEmpresaFilter()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<AttemptRow[]>([])
   const [visibleColumns, setVisibleColumns] = useState<string[]>(ALL_COLUMNS.map(c => c.key))
+  const [period, setPeriod] = useState<PeriodValue | "">("")
+  const [customStart, setCustomStart] = useState<Date | undefined>()
+  const [customEnd, setCustomEnd] = useState<Date | undefined>()
+  const [selectedUser, setSelectedUser] = useState<string>("todos")
+  const periodSelected = period !== "" && (period !== "custom" || (!!customStart && !!customEnd))
 
   const fetchData = useCallback(async () => {
-    if (!user) return
+    if (!user || !periodSelected) return
     setLoading(true)
     try {
       const empresaFilter = isMaster && empresaSelecionada && empresaSelecionada !== "todas"
         ? empresaSelecionada : null
+
+      const startDate = getStartDateFromPeriod(period as PeriodValue, customStart)
+      const endDate = period === "custom" && customEnd ? new Date(customEnd) : new Date()
+      endDate.setHours(23, 59, 59, 999)
 
       let treinQ = supabase.from("treinamentos").select("id, titulo, empresa_id")
       if (empresaFilter) treinQ = treinQ.eq("empresa_id", empresaFilter)
@@ -85,6 +96,8 @@ export default function ExamAttemptsReport() {
         .from("tentativas_avaliacao")
         .select("*")
         .in("treinamento_id", trIds)
+        .gte("criado_em", startDate.toISOString())
+        .lte("criado_em", endDate.toISOString())
         .order("criado_em", { ascending: false })
 
       const userIds: string[] = Array.from(new Set((tentativas || []).map((t: any) => t.usuario_id as string)))
@@ -134,32 +147,43 @@ export default function ExamAttemptsReport() {
     } finally {
       setLoading(false)
     }
-  }, [user, isMaster, empresaSelecionada, toast])
+  }, [user, isMaster, empresaSelecionada, toast, period, customStart, customEnd, periodSelected])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const enriched = useMemo(() => rows.map(r => ({
+  const availableUsers = useMemo(() => {
+    const map = new Map<string, string>()
+    rows.forEach(r => { if (!map.has(r.usuario_id)) map.set(r.usuario_id, r.usuario_nome) })
+    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
+  }, [rows])
+
+  const filteredRows = useMemo(() => {
+    if (selectedUser === "todos") return rows
+    return rows.filter(r => r.usuario_id === selectedUser)
+  }, [rows, selectedUser])
+
+  const enriched = useMemo(() => filteredRows.map(r => ({
     ...r,
     aprovado_str: r.aprovado ? "Aprovado" : "Reprovado",
     data_str: new Date(r.criado_em).toLocaleString("pt-BR"),
     duracao_str: fmtSecs(r.duracao_segundos),
     estudo_str: fmtSecs(r.tempo_estudo_segundos),
-  })), [rows])
+  })), [filteredRows])
 
   // Stats
   const stats = useMemo(() => {
-    const total = rows.length
-    const aprovados = rows.filter(r => r.aprovado).length
-    const violacoes = rows.reduce((s, r) => s + r.violacoes, 0)
-    const reinicios = rows.reduce((s, r) => s + r.reinicios, 0)
-    const mediaNota = total ? (rows.reduce((s, r) => s + r.nota, 0) / total) : 0
+    const total = filteredRows.length
+    const aprovados = filteredRows.filter(r => r.aprovado).length
+    const violacoes = filteredRows.reduce((s, r) => s + r.violacoes, 0)
+    const reinicios = filteredRows.reduce((s, r) => s + r.reinicios, 0)
+    const mediaNota = total ? (filteredRows.reduce((s, r) => s + r.nota, 0) / total) : 0
     return { total, aprovados, violacoes, reinicios, mediaNota }
-  }, [rows])
+  }, [filteredRows])
 
   // Chart: notes by attempt number (avg)
   const chartByAttempt = useMemo(() => {
     const map = new Map<number, { tentativa: string; mediaNota: number; n: number }>()
-    rows.forEach(r => {
+    filteredRows.forEach(r => {
       const cur = map.get(r.numero_tentativa) || { tentativa: `${r.numero_tentativa}ª`, mediaNota: 0, n: 0 }
       cur.mediaNota += r.nota
       cur.n += 1
@@ -167,12 +191,12 @@ export default function ExamAttemptsReport() {
     })
     return Array.from(map.values()).map(v => ({ tentativa: v.tentativa, mediaNota: +(v.mediaNota / v.n).toFixed(2) }))
       .sort((a, b) => a.tentativa.localeCompare(b.tentativa))
-  }, [rows])
+  }, [filteredRows])
 
   // Chart: top trainings by avg score
   const chartByTraining = useMemo(() => {
     const map = new Map<string, { titulo: string; nota: number; n: number }>()
-    rows.forEach(r => {
+    filteredRows.forEach(r => {
       const cur = map.get(r.treinamento_id) || { titulo: r.treinamento_titulo, nota: 0, n: 0 }
       cur.nota += r.nota; cur.n += 1
       map.set(r.treinamento_id, cur)
@@ -180,7 +204,7 @@ export default function ExamAttemptsReport() {
     return Array.from(map.values())
       .map(v => ({ titulo: v.titulo.length > 18 ? v.titulo.slice(0, 18) + "…" : v.titulo, mediaNota: +(v.nota / v.n).toFixed(2), tentativas: v.n }))
       .slice(0, 10)
-  }, [rows])
+  }, [filteredRows])
 
   const toggleCol = (key: string) => {
     setVisibleColumns(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
@@ -191,55 +215,88 @@ export default function ExamAttemptsReport() {
     exportData(format, {
       filename: `relatorio_avaliacoes_${new Date().toISOString().split("T")[0]}`,
       title: "Relatório de Avaliações",
-      subtitle: `${rows.length} tentativas`,
+      subtitle: `${filteredRows.length} tentativas`,
       columns: cols,
       data: enriched,
     })
     toast({ title: "Exportação concluída" })
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
+  // Reset selected user when period changes
+  useEffect(() => { setSelectedUser("todos") }, [period, customStart, customEnd])
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h2 className="text-lg sm:text-xl font-bold">Relatório de Avaliações</h2>
-        <div className="flex gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm"><Settings2 className="mr-1 h-4 w-4" />Colunas</Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64">
-              <div className="space-y-2">
-                <p className="text-sm font-medium mb-2">Personalizar colunas</p>
-                {ALL_COLUMNS.map(col => (
-                  <div key={col.key} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`col-${col.key}`}
-                      checked={visibleColumns.includes(col.key)}
-                      onCheckedChange={() => toggleCol(col.key)}
-                    />
-                    <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">{col.header}</label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="sm" onClick={() => handleExport("excel")}>
-            <Download className="mr-1 h-4 w-4" />Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
-            <FileText className="mr-1 h-4 w-4" />PDF
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          <PeriodFilter
+            value={(period || "30d") as PeriodValue}
+            onChange={(v) => setPeriod(v)}
+            customStartDate={customStart}
+            customEndDate={customEnd}
+            onCustomDateChange={(s, e) => { setCustomStart(s); setCustomEnd(e) }}
+          />
+          <Select
+            value={selectedUser}
+            onValueChange={setSelectedUser}
+            disabled={!periodSelected || rows.length === 0}
+          >
+            <SelectTrigger className="w-[200px]">
+              <Users className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Usuário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os usuários</SelectItem>
+              {availableUsers.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      {!periodSelected ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Selecione um período acima para visualizar o relatório de avaliações.
+          </CardContent>
+        </Card>
+      ) : loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : (
+      <>
+      <div className="flex justify-end gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm"><Settings2 className="mr-1 h-4 w-4" />Colunas</Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64">
+            <div className="space-y-2">
+              <p className="text-sm font-medium mb-2">Personalizar colunas</p>
+              {ALL_COLUMNS.map(col => (
+                <div key={col.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`col-${col.key}`}
+                    checked={visibleColumns.includes(col.key)}
+                    onCheckedChange={() => toggleCol(col.key)}
+                  />
+                  <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">{col.header}</label>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Button variant="outline" size="sm" onClick={() => handleExport("excel")}>
+          <Download className="mr-1 h-4 w-4" />Excel
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
+          <FileText className="mr-1 h-4 w-4" />PDF
+        </Button>
       </div>
 
       {/* Stats */}
@@ -341,6 +398,8 @@ export default function ExamAttemptsReport() {
           </Table>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   )
 }
