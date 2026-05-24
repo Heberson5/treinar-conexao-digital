@@ -291,33 +291,12 @@ export default function ExamAttemptsReport() {
             </div>
           </PopoverContent>
         </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm"><Settings2 className="mr-1 h-4 w-4" />Colunas</Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64">
-              <div className="space-y-2">
-                <p className="text-sm font-medium mb-2">Personalizar colunas</p>
-                {ALL_COLUMNS.map(col => (
-                  <div key={col.key} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`col-${col.key}`}
-                      checked={visibleColumns.includes(col.key)}
-                      onCheckedChange={() => toggleCol(col.key)}
-                    />
-                    <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">{col.header}</label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="sm" onClick={() => handleExport("excel")}>
-            <Download className="mr-1 h-4 w-4" />Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
-            <FileText className="mr-1 h-4 w-4" />PDF
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => handleExport("excel")}>
+          <Download className="mr-1 h-4 w-4" />Excel
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
+          <FileText className="mr-1 h-4 w-4" />PDF
+        </Button>
       </div>
 
       {/* Stats */}
