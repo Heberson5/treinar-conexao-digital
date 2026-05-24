@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  Download, FileText, Settings2, BarChart3, AlertTriangle, RefreshCw, Clock, Award,
+  Download, FileText, Settings2, BarChart3, AlertTriangle, RefreshCw, Clock, Award, Users,
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -18,6 +19,7 @@ import {
 } from "recharts"
 import { exportData } from "@/lib/export-utils"
 import { useToast } from "@/hooks/use-toast"
+import { PeriodFilter, PeriodValue, getStartDateFromPeriod } from "@/components/shared/PeriodFilter"
 
 interface AttemptRow {
   id: string
