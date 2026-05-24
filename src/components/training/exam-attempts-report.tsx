@@ -87,7 +87,7 @@ export default function ExamAttemptsReport() {
         .in("treinamento_id", trIds)
         .order("criado_em", { ascending: false })
 
-      const userIds = Array.from(new Set((tentativas || []).map((t: any) => t.usuario_id)))
+      const userIds: string[] = Array.from(new Set((tentativas || []).map((t: any) => t.usuario_id as string)))
       const { data: perfis } = await supabase
         .from("perfis").select("id, nome").in("id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"])
       const userMap = new Map((perfis || []).map((p: any) => [p.id, p.nome]))
