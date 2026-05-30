@@ -6,6 +6,7 @@ import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
 import { PWAInstallPrompt } from "@/components/layout/pwa-install-prompt"
 import { useCompanyTheme } from "@/hooks/use-company-theme"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useIdleLogout } from "@/hooks/use-idle-logout"
 
 interface MainLayoutProps {
   children: ReactNode
@@ -15,6 +16,8 @@ interface MainLayoutProps {
 export function MainLayout({ children, onLogout }: MainLayoutProps) {
   // Hook para aplicar tema da empresa quando Master filtra
   useCompanyTheme();
+  // Logoff automático por inatividade / fechar navegador
+  useIdleLogout();
   const isMobile = useIsMobile();
 
   return (
