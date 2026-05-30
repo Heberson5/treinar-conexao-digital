@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, AlertTriangle } from "lucide-react"
 import { RegistrationForm } from "./registration-form"
 import { PasswordRecoveryForm } from "./password-recovery-form"
+import { podeTeentarLogin, registrarTentativaLogin, formatarDesbloqueio } from "@/lib/login-attempts"
 
 type AuthMode = "login" | "register" | "recovery"
 
@@ -17,19 +18,38 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>("login")
+  const [bloqueio, setBloqueio] = useState<string | null>(null)
   const { login } = useAuth()
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
+    setBloqueio(null)
+
+    // 1. Verifica bloqueio por tentativas
+    const check = await podeTeentarLogin(email)
+    if (!check.permitido) {
+      const quando = formatarDesbloqueio(check.desbloqueio_em)
+      const msg = `Conta bloqueada por excesso de tentativas. Redefina sua senha ou tente novamente em ${quando}.`
+      setBloqueio(msg)
+      toast({ title: "Acesso bloqueado", description: msg, variant: "destructive" })
+      setIsLoading(false)
+      return
+    }
+
     const result = await login(email, password)
-    
+
+    // 2. Registra a tentativa
+    await registrarTentativaLogin(email, result.success)
+
     if (!result.success) {
+      const restantes = Math.max(0, (check.restantes ?? 0) - 1)
       toast({
         title: "Erro no login",
-        description: result.error || "Email ou senha incorretos",
+        description: `${result.error || "Email ou senha incorretos"}${
+          restantes > 0 ? ` (${restantes} tentativa(s) restante(s))` : " — última tentativa antes do bloqueio"
+        }`,
         variant: "destructive"
       })
     } else {
@@ -38,7 +58,7 @@ export function LoginForm() {
         description: "Login realizado com sucesso"
       })
     }
-    
+
     setIsLoading(false)
   }
 
