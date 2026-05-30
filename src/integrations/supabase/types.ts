@@ -330,27 +330,45 @@ export type Database = {
       configuracoes_sistema: {
         Row: {
           atualizado_em: string | null
+          backup_config: Json
+          backup_destino: string
+          bloqueio_horas: number
           favicon_url: string | null
           id: string
           logo_sidebar_url: string | null
+          logoff_on_close: boolean
           nome_sistema: string
           numero: number | null
+          session_timeout_min: number
+          tentativas_login_max: number
         }
         Insert: {
           atualizado_em?: string | null
+          backup_config?: Json
+          backup_destino?: string
+          bloqueio_horas?: number
           favicon_url?: string | null
           id?: string
           logo_sidebar_url?: string | null
+          logoff_on_close?: boolean
           nome_sistema?: string
           numero?: number | null
+          session_timeout_min?: number
+          tentativas_login_max?: number
         }
         Update: {
           atualizado_em?: string | null
+          backup_config?: Json
+          backup_destino?: string
+          bloqueio_horas?: number
           favicon_url?: string | null
           id?: string
           logo_sidebar_url?: string | null
+          logoff_on_close?: boolean
           nome_sistema?: string
           numero?: number | null
+          session_timeout_min?: number
+          tentativas_login_max?: number
         }
         Relationships: []
       }
@@ -484,6 +502,7 @@ export type Database = {
           custom_css: string | null
           featured_trainings_enabled: boolean | null
           features_section: Json | null
+          footer_section: Json
           hero_background_color: string | null
           hero_badge: string | null
           hero_cta_primary: string | null
@@ -493,6 +512,8 @@ export type Database = {
           id: string
           logo_url: string | null
           numero: number | null
+          sections_alignment: Json
+          sections_order: Json
           show_annual_toggle: boolean | null
           sobre_nos: string | null
           stats_section: Json | null
@@ -508,6 +529,7 @@ export type Database = {
           custom_css?: string | null
           featured_trainings_enabled?: boolean | null
           features_section?: Json | null
+          footer_section?: Json
           hero_background_color?: string | null
           hero_badge?: string | null
           hero_cta_primary?: string | null
@@ -517,6 +539,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           numero?: number | null
+          sections_alignment?: Json
+          sections_order?: Json
           show_annual_toggle?: boolean | null
           sobre_nos?: string | null
           stats_section?: Json | null
@@ -532,6 +556,7 @@ export type Database = {
           custom_css?: string | null
           featured_trainings_enabled?: boolean | null
           features_section?: Json | null
+          footer_section?: Json
           hero_background_color?: string | null
           hero_badge?: string | null
           hero_cta_primary?: string | null
@@ -541,6 +566,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           numero?: number | null
+          sections_alignment?: Json
+          sections_order?: Json
           show_annual_toggle?: boolean | null
           sobre_nos?: string | null
           stats_section?: Json | null
@@ -1102,6 +1129,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tentativas_login: {
+        Row: {
+          criado_em: string
+          email: string
+          id: string
+          ip: string | null
+          sucesso: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: string
+          ip?: string | null
+          sucesso?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: string
+          ip?: string | null
+          sucesso?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       treinamentos: {
         Row: {
           atualizado_em: string | null
@@ -1272,8 +1326,13 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      pode_tentar_login: { Args: { p_email: string }; Returns: Json }
       registrar_cnpj_demo: {
         Args: { p_cnpj: string; p_empresa_id: string }
+        Returns: undefined
+      }
+      registrar_tentativa_login: {
+        Args: { p_email: string; p_sucesso: boolean }
         Returns: undefined
       }
       verificar_cnpj_demo_disponivel: {

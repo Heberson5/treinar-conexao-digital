@@ -54,9 +54,37 @@ export function LandingPreview({ sections, selectedSectionId, onSelectSection }:
         </div>
       ))}
 
-      <footer className="bg-background border-t py-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-muted-foreground text-sm">
-          &copy; {new Date().getFullYear()} Empresa. Todos os direitos reservados.
+      <footer className="bg-foreground text-background py-12">
+        <div className="max-w-5xl mx-auto px-4 grid md:grid-cols-4 gap-8">
+          <div className="md:col-span-1">
+            <h3 className="font-bold text-lg mb-2">Sauberlich System</h3>
+            <p className="text-sm opacity-70">A plataforma mais avançada para treinamentos corporativos.</p>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-3 text-sm">Empresa</h4>
+            <ul className="space-y-2 text-sm opacity-80">
+              <li><Link to="/sobre" className="hover:opacity-100">Sobre Nós</Link></li>
+              <li><Link to="/termos" className="hover:opacity-100">Termos de Uso</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-3 text-sm">Suporte</h4>
+            <ul className="space-y-2 text-sm opacity-80">
+              <li><a href="#" className="hover:opacity-100">Central de Ajuda</a></li>
+              <li><a href="#" className="hover:opacity-100">Contato</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-3 text-sm">Redes Sociais</h4>
+            <ul className="space-y-2 text-sm opacity-80">
+              <li><a href="#" className="hover:opacity-100">LinkedIn</a></li>
+              <li><a href="#" className="hover:opacity-100">Instagram</a></li>
+              <li><a href="#" className="hover:opacity-100">YouTube</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-5xl mx-auto px-4 mt-8 pt-6 border-t border-background/20 text-center text-sm opacity-60">
+          &copy; {new Date().getFullYear()} Sauberlich System. Todos os direitos reservados.
         </div>
       </footer>
     </div>
