@@ -136,18 +136,59 @@ export default function Permissoes() {
     const fetchRoles = async () => {
       setIsLoading(true)
       try {
+        const empresaId = (user as any)?.empresa_id ?? null
+
         // Fetch all roles with user counts
         const { data: rolesData } = await supabase
           .from("usuario_roles")
           .select("role, usuario_id")
 
-        // Count users per role
         const roleCounts: Record<string, number> = {}
         if (rolesData) {
           for (const r of rolesData) {
             roleCounts[r.role] = (roleCounts[r.role] || 0) + 1
           }
         }
+
+        // Buscar permissões customizadas salvas no banco
+        let permsQuery = supabase.from("permissoes_role").select("role, permissao_id, ativo")
+        if (empresaId) {
+          permsQuery = permsQuery.or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+        } else {
+          permsQuery = permsQuery.is("empresa_id", null)
+        }
+        const { data: permsCustom } = await permsQuery
+
+        const customByRole: Record<TipoRoleDb, string[] | null> = {
+          master: null, admin: null, instrutor: null, usuario: null,
+        }
+        if (permsCustom && permsCustom.length > 0) {
+          const seen = new Set<TipoRoleDb>()
+          permsCustom.forEach((row: any) => seen.add(row.role))
+          seen.forEach((r) => { customByRole[r] = [] })
+          permsCustom.forEach((row: any) => {
+            if (row.ativo) customByRole[row.role as TipoRoleDb]!.push(row.permissao_id)
+          })
+        }
+
+        const padraoAdmin = [
+          "trainings.view","trainings.create","trainings.edit","trainings.delete","trainings.manage","trainings.assign","trainings.certificates",
+          "catalog.view","catalog.manage",
+          "users.view","users.create","users.edit","users.delete","users.roles","users.import","users.progress",
+          "reports.view","reports.export","reports.advanced","reports.department","reports.compliance",
+          "departments.view","departments.create","departments.edit","departments.delete",
+          "integrations.view","integrations.configure","integrations.ai",
+          "system.settings","system.notifications",
+        ]
+        const padraoInstrutor = [
+          "trainings.view","trainings.create","trainings.edit","trainings.assign","trainings.certificates",
+          "catalog.view",
+          "users.view","users.progress",
+          "reports.view","reports.export","reports.department",
+          "departments.view",
+          "integrations.ai",
+        ]
+        const padraoUsuario = ["trainings.view","catalog.view"]
 
         const builtRoles: Role[] = [
           {
@@ -165,43 +206,28 @@ export default function Permissoes() {
             nome: "Administrador",
             descricao: "Gestão completa da empresa - usuários, treinamentos, relatórios e configurações",
             cor: "bg-blue-500",
-            permissoes: [
-              "trainings.view", "trainings.create", "trainings.edit", "trainings.delete", "trainings.manage", "trainings.assign", "trainings.certificates",
-              "catalog.view", "catalog.manage",
-              "users.view", "users.create", "users.edit", "users.delete", "users.roles", "users.import", "users.progress",
-              "reports.view", "reports.export", "reports.advanced", "reports.department", "reports.compliance",
-              "departments.view", "departments.create", "departments.edit", "departments.delete",
-              "integrations.view", "integrations.configure", "integrations.ai",
-              "system.settings", "system.notifications"
-            ],
+            permissoes: customByRole.admin ?? padraoAdmin,
             usuariosCount: roleCounts["admin"] || 0,
-            ativo: true
+            ativo: true,
           },
           {
             id: 3,
             nome: "Instrutor",
             descricao: "Criação e gestão de treinamentos - pode criar conteúdo e acompanhar progresso dos alunos",
             cor: "bg-green-500",
-            permissoes: [
-              "trainings.view", "trainings.create", "trainings.edit", "trainings.assign", "trainings.certificates",
-              "catalog.view",
-              "users.view", "users.progress",
-              "reports.view", "reports.export", "reports.department",
-              "departments.view",
-              "integrations.ai"
-            ],
+            permissoes: customByRole.instrutor ?? padraoInstrutor,
             usuariosCount: roleCounts["instrutor"] || 0,
-            ativo: true
+            ativo: true,
           },
           {
             id: 4,
             nome: "Usuário",
             descricao: "Acesso para realizar treinamentos - visualiza conteúdos e certificados próprios",
             cor: "bg-gray-500",
-            permissoes: ["trainings.view", "catalog.view"],
+            permissoes: customByRole.usuario ?? padraoUsuario,
             usuariosCount: roleCounts["usuario"] || 0,
-            ativo: true
-          }
+            ativo: true,
+          },
         ]
         setRoles(builtRoles)
       } catch (error) {
@@ -219,10 +245,14 @@ export default function Permissoes() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'usuario_roles' }, () => {
         fetchRoles()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'permissoes_role' }, () => {
+        fetchRoles()
+      })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [user])
+
 
   // Filter permissions: admins should not see masterOnly permissions
   const visiblePermissions = isMaster
