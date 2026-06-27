@@ -15,6 +15,18 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/integrations/supabase/client"
+import { invalidatePermissionsCache } from "@/hooks/use-permissions"
+
+type TipoRoleDb = "master" | "admin" | "instrutor" | "usuario"
+function nomeParaRole(nome: string): TipoRoleDb | null {
+  const n = nome.toLowerCase()
+  if (n.startsWith("master")) return "master"
+  if (n.startsWith("admin")) return "admin"
+  if (n.startsWith("instru")) return "instrutor"
+  if (n.startsWith("usu")) return "usuario"
+  return null
+}
+
 
 interface Permission {
   id: string
