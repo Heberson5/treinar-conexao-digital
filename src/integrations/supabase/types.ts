@@ -766,6 +766,44 @@ export type Database = {
           },
         ]
       }
+      permissoes_role: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          criado_em: string
+          empresa_id: string | null
+          id: string
+          permissao_id: string
+          role: Database["public"]["Enums"]["tipo_role"]
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          permissao_id: string
+          role: Database["public"]["Enums"]["tipo_role"]
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          permissao_id?: string
+          role?: Database["public"]["Enums"]["tipo_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissoes_role_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plano_contratos: {
         Row: {
           ativo: boolean | null

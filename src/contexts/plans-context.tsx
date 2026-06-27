@@ -190,7 +190,21 @@ export function PlansProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     carregarPlanos()
+
+    // Realtime: refletir ativação/desativação de planos imediatamente
+    // na landing pública e em qualquer tela que consuma usePlans()
+    const channel = supabase
+      .channel("planos-realtime-public")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "planos" },
+        () => { carregarPlanos() }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
+
 
   const planosAtivos = planos.filter(p => p.ativo)
 
