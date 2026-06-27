@@ -284,13 +284,49 @@ export default function Permissoes() {
     setIsCreateRoleOpen(true)
   }
 
-  const handleUpdateRole = () => {
+  const handleUpdateRole = async () => {
     if (!editingRole) return
-    setRoles(roles.map(r => r.id === editingRole.id ? { ...editingRole, ...newRole } : r))
-    setIsCreateRoleOpen(false)
-    resetForm()
-    toast({ title: "Papel atualizado!", description: "O papel foi atualizado com sucesso." })
+    const roleDb = nomeParaRole(editingRole.nome)
+    if (!roleDb || editingRole.isMasterRole) {
+      // Master ou papel customizado não persiste no banco (mantém local)
+      setRoles(roles.map(r => r.id === editingRole.id ? { ...editingRole, ...newRole } : r))
+      setIsCreateRoleOpen(false)
+      resetForm()
+      toast({ title: "Papel atualizado!", description: "O papel foi atualizado com sucesso." })
+      return
+    }
+    try {
+      const empresaId = (user as any)?.empresa_id ?? null
+      // Apaga registros anteriores deste papel/empresa e reinsere o conjunto atual
+      const del = supabase.from("permissoes_role").delete().eq("role", roleDb)
+      const delScoped = empresaId
+        ? del.eq("empresa_id", empresaId)
+        : del.is("empresa_id", null)
+      const { error: delErr } = await delScoped
+      if (delErr) throw delErr
+
+      if (newRole.permissoes.length > 0) {
+        const rows = newRole.permissoes.map(pid => ({
+          empresa_id: empresaId,
+          role: roleDb,
+          permissao_id: pid,
+          ativo: true,
+        }))
+        const { error: insErr } = await supabase.from("permissoes_role").insert(rows)
+        if (insErr) throw insErr
+      }
+
+      invalidatePermissionsCache(empresaId)
+      setRoles(roles.map(r => r.id === editingRole.id ? { ...editingRole, ...newRole } : r))
+      setIsCreateRoleOpen(false)
+      resetForm()
+      toast({ title: "Papel atualizado!", description: "Permissões salvas com sucesso." })
+    } catch (err: any) {
+      console.error("Erro ao salvar permissões:", err)
+      toast({ title: "Erro ao salvar", description: err.message ?? "Tente novamente", variant: "destructive" })
+    }
   }
+
 
   const handleDeleteRole = (id: number) => {
     const role = roles.find(r => r.id === id)
