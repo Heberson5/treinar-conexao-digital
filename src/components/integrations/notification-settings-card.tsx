@@ -93,7 +93,7 @@ export function NotificationSettingsCard() {
                 Enviar lembrete antes do início de treinamentos agendados
               </p>
               <div className="mt-3">
-                <Label className="text-sm">Anteced��ncia do lembrete</Label>
+                <Label className="text-sm">Antecedência do lembrete</Label>
                 <Select 
                   value={notificationSettings.reminderHoursBefore.toString()}
                   onValueChange={(value) => updateNotificationSettings({ reminderHoursBefore: parseInt(value) })}
