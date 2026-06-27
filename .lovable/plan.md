@@ -1,89 +1,90 @@
-## Escopo
+# Plano de implementação
 
-Sete melhorias em diferentes áreas administrativas. Implementarei nessa ordem, com commits lógicos por área.
-
----
-
-### 1. Lista completa de fusos horários (Configurações → Geral)
-- Substituir a lista atual (3 itens) por uma lista completa de timezones IANA, agrupada por região (Américas, Europa, Ásia, África, Oceania, Pacífico, Atlântico, UTC).
-- Manter `America/Sao_Paulo` como padrão.
-
-### 2. Logoff automático e bloqueio após tentativas (aba Segurança)
-- Adicionar três campos na aba Segurança:
-  - **Tempo de inatividade (min)** para logoff automático (default 30).
-  - **Logoff ao fechar navegador** (switch — invalida sessão no `beforeunload`).
-  - **Tentativas máximas de login** (já existe, mas será aplicado de fato).
-  - **Período de bloqueio (h)** após esgotar tentativas (default 24).
-- Persistir em `configuracoes_sistema` (novas colunas: `session_timeout_min`, `logoff_on_close`, `tentativas_login_max`, `bloqueio_horas`).
-- Criar hook `useIdleLogout` que escuta mouse/teclado/touch, dispara `supabase.auth.signOut()` após N min de inatividade. Integrar em `MainLayout`.
-- Criar tabela `tentativas_login` (email, ip, criado_em, sucesso). Edge function `check-login-attempts` consultada antes do `signInWithPassword`. Se atingiu o máximo nas últimas X horas → bloquear até "redefinir senha" (reset por email zera contagem) ou expirar janela.
-- Mensagem clara ao usuário: "Conta bloqueada por excesso de tentativas. Redefina sua senha ou tente novamente em HH:MM."
-
-### 3. Filtro por data na aba Auditoria
-- Adicionar dois `DatePicker` (de/até) + botão "Hoje" / "Limpar".
-- Default: data atual (00:00 → 23:59).
-- Filtrar `criado_em` no Supabase + combinar com busca textual existente.
-
-### 4. Configuração de Backup
-- Na aba Backup, adicionar:
-  - Select **Destino**: `Local (download)`, `Lovable Cloud Storage`, `Google Drive (link)`, `Dropbox (link)`, `S3 (URL)`.
-  - Campo condicional de **URL/Token** quando destino externo.
-  - **Pasta/Bucket** de destino.
-  - Botão "Testar conexão" e "Executar backup agora".
-- Persistir em `configuracoes_sistema` (`backup_destino`, `backup_config jsonb`).
-- Backup local: gera JSON com dump das tabelas principais e baixa no browser (já é o que dá pra fazer client-side sem servidor de cron — destinos externos guardam apenas a configuração; execução automática real exigiria edge function agendada, fora do escopo).
-
-### 5. Landing Page Editor — drag & drop e alinhamento
-- Refatorar `LandingPageEditor.tsx` para usar `@dnd-kit/sortable` (já listo no projeto? se não, instalar).
-- Cada seção (Hero, Stats, Features, Trainings, CTA, **Footer novo**) vira um bloco arrastável.
-- Dentro de cada seção, elementos editáveis (título, subtítulo, badge, CTAs, ícones) com:
-  - Edição inline (clique para editar).
-  - Controles de **alinhamento horizontal** (esq/centro/dir) e **vertical** (topo/meio/base) via toggle group, salvos em `alignment: { h, v }` no JSON da seção.
-  - Botão "mover para cima/baixo" além do drag.
-- Renderizar essas configurações em `landing-preview.tsx` aplicando classes Tailwind (`text-left/center/right`, `items-start/center/end`).
-
-### 6. Seção faltante após CTA Final
-- Adicionar **Footer Section** ao schema da landing page (`footer_section jsonb`): logo, descrição, links (Sobre, Termos, Contato), redes sociais, copyright.
-- Renderizar abaixo do CTA em `landing-preview.tsx` e na home pública.
-- Tornar editável no editor.
-
-### 7. Termos de Uso reformulados (jurídico)
-- Reescrever `landing_page_config.termos_de_uso` com um texto completo estilo jurídico brasileiro:
-  - Preâmbulo, Definições, Objeto, Cadastro e Conta, Licença de uso, Obrigações do usuário, Propriedade intelectual, Pagamentos e cancelamento, Suspensão e rescisão, Limitação de responsabilidade, LGPD e privacidade, Confidencialidade, Comunicações, Alterações, Foro, Disposições finais.
-  - Formatação Markdown com numeração (Cláusula 1ª, 1.1, 1.1.1) e cabeçalhos hierárquicos.
-- Atualizar via `UPDATE` na tabela.
+São 4 frentes grandes. Vou executar em ordem de prioridade, em entregas separadas para você validar cada uma antes da próxima.
 
 ---
 
-## Detalhes técnicos
+## Frente 1 — Editor Landing Page estilo Canva
 
-**Migrations necessárias:**
-1. `configuracoes_sistema`: novas colunas `session_timeout_min int default 30`, `logoff_on_close bool default false`, `tentativas_login_max int default 5`, `bloqueio_horas int default 24`, `backup_destino text default 'local'`, `backup_config jsonb default '{}'`.
-2. `landing_page_config`: nova coluna `footer_section jsonb default '{...}'`, `sections_order jsonb default '[]'`, e cada seção JSON ganha campo `alignment`.
-3. Nova tabela `tentativas_login` (email text, ip text, sucesso bool, criado_em timestamptz). RLS: insert público (auth), select master.
-4. Função `pode_tentar_login(p_email text)` returns bool — verifica janela de bloqueio.
+**Objetivo:** trocar o editor por seções/forms por uma tela com canvas WYSIWYG onde cada elemento (texto, imagem, botão, ícone, stat, feature) é arrastável, redimensionável e editável inline.
 
-**Edge functions:**
-- `check-login-attempts` — chamada antes do login para validar bloqueio (usa service role, lê `tentativas_login` e `configuracoes_sistema`).
-- `record-login-attempt` — registra cada tentativa.
+**Abordagem técnica:**
+- Modelo de dados: nova coluna `canvas_layout jsonb` em `landing_page_config` armazenando array de seções, cada uma com `elements[]` (id, type, x, y, w, h, content, style, align).
+- Biblioteca: `react-rnd` para drag/resize (leve, sem conflito com dnd-kit existente).
+- Painel esquerdo: lista de seções (Hero, Stats, Features, Planos, CTA, Footer) + botão "+ adicionar elemento".
+- Canvas central: render fiel à landing pública com handles de mover/redimensionar quando selecionado.
+- Painel direito (inspector): edição de texto, cor, fonte, alinhamento (esq/centro/dir, topo/meio/base), tamanho, link.
+- Toolbar superior: desfazer/refazer, dispositivo (desktop/tablet/mobile), salvar, pré-visualizar.
+- Render público: `landing-preview.tsx` lê `canvas_layout` quando existir; fallback para o formato antigo.
 
-**Arquivos a criar:**
-- `src/lib/timezones.ts` (lista completa IANA)
-- `src/hooks/use-idle-logout.ts`
-- `src/components/landing/sortable-section.tsx`
-- `src/components/landing/alignment-controls.tsx`
-- `src/components/landing/footer-section-editor.tsx`
-- `supabase/functions/check-login-attempts/index.ts`
-- `supabase/functions/record-login-attempt/index.ts`
+**Arquivos:**
+- `src/pages/admin/LandingPageEditor.tsx` (refatoração total)
+- `src/components/landing/canvas/` (novo: `Canvas.tsx`, `ElementRenderer.tsx`, `Inspector.tsx`, `SectionList.tsx`, `Toolbar.tsx`, `types.ts`)
+- `src/components/landing/landing-preview.tsx` (suporte ao novo formato)
+- Migration: adiciona `canvas_layout jsonb` em `landing_page_config`
+- `bun add react-rnd`
 
-**Arquivos a editar:**
-- `src/pages/admin/Configuracoes.tsx` (timezone list, aba Segurança nova, aba Auditoria filtro data, aba Backup destino)
-- `src/components/auth/login-form.tsx` (chamar edge function antes/depois do login)
-- `src/components/layout/main-layout.tsx` (hook de inatividade)
-- `src/pages/admin/LandingPageEditor.tsx` (dnd + alignment + footer)
-- `src/components/landing/landing-preview.tsx` (render alinhamento + footer)
-- `src/pages/Index.tsx` (footer público)
+---
 
-## Confirmação
+## Frente 2 — Automação dos planos na home
 
-Posso prosseguir com tudo? Se algum item for prioridade diferente (ex.: "faça só 1, 2 e 3 agora"), me avise.
+**Objetivo:** seção de planos da landing pública refletir automaticamente `planos` ativos do banco (nome, preço, recursos, limites), respeitando `show_annual_toggle`.
+
+**Mudanças:**
+- `src/components/landing/landing-preview.tsx` e página pública `Index.tsx`: substituir dados mockados/estáticos por query `from('planos').select('*').eq('ativo', true).order('preco')`.
+- Card por plano: nome, preço (mensal/anual conforme toggle), bullets de `recursos` (jsonb), CTA "Assinar" → `/checkout?plano={id}`.
+- Destaque visual no plano marcado como `destaque=true` (se coluna existir; senão no de preço médio).
+- Loading skeleton + estado vazio.
+
+**Arquivos:** `src/components/landing/landing-plans-section.tsx` (novo), `Index.tsx`, `landing-preview.tsx`.
+
+---
+
+## Frente 3 — Integração Mobizon (SMS)
+
+**Objetivo:** SMS via Mobizon com gatilhos configuráveis: senha provisória, 2FA, lembrete de treinamento agendado, novo treinamento publicado.
+
+**Mudanças:**
+
+1. **Secret:** solicitar `MOBIZON_API_KEY` via formulário seguro quando você confirmar que tem a chave (você respondeu "Ainda não" — então deixo a estrutura pronta e peço a chave quando for ativar).
+
+2. **Edge function `send-sms`:** wrapper Mobizon (`api.mobizon.com.br/service/Message/SendSMSMessage`), recebe `{to, text, trigger}`, registra em `auditoria`.
+
+3. **Tabela `sms_gatilhos`:** `id, tipo (reset_senha | login_2fa | lembrete_treinamento | novo_treinamento), ativo bool, antecedencia_min int, template_texto text, empresa_id`.
+
+4. **Tela "SMS / Mobizon"** dentro de `/admin/integracoes` (nova aba):
+   - Status da conexão + botão testar envio
+   - Lista de gatilhos com switch ativar/desativar, antecedência (para lembrete), template editável com variáveis ({nome}, {treinamento}, {horario}, {codigo})
+
+5. **Fluxos:**
+   - Reset: `password-recovery-form.tsx` ganha opção "Enviar por SMS" → edge function `request-sms-password-reset` gera senha provisória, atualiza usuário (service role), envia SMS.
+   - 2FA: após login bem-sucedido, se `perfis.telefone` + 2FA ativo → tela de código, edge function `verify-2fa-code`.
+   - Lembrete agendado: cron (`pg_cron`) a cada 5min chama edge `dispatch-sms-reminders` que varre `lembretes` próximos e envia.
+   - Novo treinamento: trigger ao publicar (`UPDATE treinamentos SET publicado=true`) enfileira SMS aos usuários autorizados.
+
+**Arquivos:** 3 edge functions, 1 migration, `src/components/integrations/mobizon-sms-card.tsx`, edição em `password-recovery-form.tsx` e `login-form.tsx`, `src/pages/admin/Integracoes.tsx`.
+
+---
+
+## Frente 4 — Corrigir edição de permissões
+
+**Objetivo:** salvar alterações em `/admin/permissoes`.
+
+**Investigação prevista:** ler `src/pages/admin/Permissoes.tsx` + `use-permissions.ts`. Atualmente as permissões estão **hardcoded** em `PERMISSOES_POR_ROLE` no hook — por isso o "salvar" não persiste. Solução:
+- Criar tabela `permissoes_role (role tipo_role, permissao_id text, ativo bool)`
+- `usePermissions` lê da tabela com cache
+- `Permissoes.tsx` salva via upsert
+- Master vê tudo, ignora tabela
+
+---
+
+## Ordem de execução
+
+Entrego e paro para você validar a cada frente:
+
+1. **Frente 4** primeiro (rápida, desbloqueia outras telas) — ~1 turno
+2. **Frente 2** (automação planos, escopo pequeno) — ~1 turno
+3. **Frente 3** (Mobizon: estrutura + tela + 1 fluxo por vez) — ~3 turnos
+4. **Frente 1** (Editor Canva, maior complexidade) — ~3-4 turnos
+
+Confirma essa ordem? Se sim, começo agora pela **Frente 4 (permissões)** e **Frente 2 (planos)** no mesmo turno, e seguimos.
