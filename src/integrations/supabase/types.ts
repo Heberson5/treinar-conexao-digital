@@ -1090,6 +1090,123 @@ export type Database = {
           },
         ]
       }
+      sms_configuracoes: {
+        Row: {
+          api_key_configurada: boolean
+          ativo: boolean
+          atualizado_em: string
+          criado_em: string
+          empresa_id: string | null
+          id: string
+          modo_teste: boolean
+          provedor: string
+          remetente: string | null
+        }
+        Insert: {
+          api_key_configurada?: boolean
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          modo_teste?: boolean
+          provedor?: string
+          remetente?: string | null
+        }
+        Update: {
+          api_key_configurada?: boolean
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string | null
+          id?: string
+          modo_teste?: boolean
+          provedor?: string
+          remetente?: string | null
+        }
+        Relationships: []
+      }
+      sms_envios: {
+        Row: {
+          criado_em: string
+          empresa_id: string | null
+          enviado_em: string | null
+          erro: string | null
+          gatilho: string
+          id: string
+          mensagem: string
+          resposta_provedor: Json
+          status: string
+          telefone: string
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          empresa_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          gatilho: string
+          id?: string
+          mensagem: string
+          resposta_provedor?: Json
+          status?: string
+          telefone: string
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          empresa_id?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          gatilho?: string
+          id?: string
+          mensagem?: string
+          resposta_provedor?: Json
+          status?: string
+          telefone?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      sms_gatilhos: {
+        Row: {
+          antecedencia_minutos: number | null
+          ativo: boolean
+          atualizado_em: string
+          codigo: string
+          criado_em: string
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          template: string
+        }
+        Insert: {
+          antecedencia_minutos?: number | null
+          ativo?: boolean
+          atualizado_em?: string
+          codigo: string
+          criado_em?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          template: string
+        }
+        Update: {
+          antecedencia_minutos?: number | null
+          ativo?: boolean
+          atualizado_em?: string
+          codigo?: string
+          criado_em?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          template?: string
+        }
+        Relationships: []
+      }
       tentativas_avaliacao: {
         Row: {
           aprovado: boolean
@@ -1363,6 +1480,10 @@ export type Database = {
       get_empresa_id_do_usuario: {
         Args: { p_user_id: string }
         Returns: string
+      }
+      pode_gerenciar_usuario_alvo: {
+        Args: { p_usuario_alvo: string }
+        Returns: boolean
       }
       pode_tentar_login: { Args: { p_email: string }; Returns: Json }
       registrar_cnpj_demo: {
