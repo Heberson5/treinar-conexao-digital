@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     }
 
     const { userId, newEmail, newPassword } = await req.json();
+    const normalizedNewEmail = newEmail ? String(newEmail).trim().toLowerCase() : "";
 
     if (!userId || (!newEmail && !newPassword)) {
       return new Response(JSON.stringify({ error: "Informe o usuário e o e-mail e/ou senha para atualizar." }), {
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (newEmail && !/^\S+@\S+\.\S+$/.test(String(newEmail).trim())) {
+    if (newEmail && !/^\S+@\S+\.\S+$/.test(normalizedNewEmail)) {
       return new Response(JSON.stringify({ error: "E-mail inválido." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,8 +111,8 @@ Deno.serve(async (req) => {
     }
 
     const authUpdates: Record<string, unknown> = {};
-    if (newEmail) {
-      authUpdates.email = String(newEmail).trim();
+    if (normalizedNewEmail) {
+      authUpdates.email = normalizedNewEmail;
       authUpdates.email_confirm = true;
     }
     if (newPassword) {
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
     }
 
     const perfilUpdates: Record<string, unknown> = {};
-    if (newEmail) perfilUpdates.email = String(newEmail).trim();
+    if (normalizedNewEmail) perfilUpdates.email = normalizedNewEmail;
     if (newPassword) {
       perfilUpdates.data_ultima_troca_senha = new Date().toISOString();
       perfilUpdates.trocar_senha_primeiro_login = false;
@@ -143,8 +144,12 @@ Deno.serve(async (req) => {
     }
 
     // Registra sucesso para quebrar a sequência de falhas e desbloquear tentativas de login.
-    const emailParaDesbloqueio = String(newEmail || targetPerfil.email || "").trim().toLowerCase();
-    if (emailParaDesbloqueio) {
+    const emailsParaDesbloqueio = new Set(
+      [targetPerfil.email, normalizedNewEmail]
+        .map((email) => String(email || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    for (const emailParaDesbloqueio of emailsParaDesbloqueio) {
       await adminClient
         .from("tentativas_login")
         .insert({ email: emailParaDesbloqueio, sucesso: true });
