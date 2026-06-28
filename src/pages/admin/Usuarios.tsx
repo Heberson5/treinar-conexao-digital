@@ -391,6 +391,8 @@ export default function Usuarios() {
   }
 
   const handleCreateUsuario = async () => {
+    const emailNormalizado = novoEmail.trim().toLowerCase()
+
     if (!novoNome.trim() || !novoEmail.trim()) {
       toast({
         title: "Campos obrigatórios",
@@ -401,7 +403,7 @@ export default function Usuarios() {
     }
 
     const emailRegex = /\S+@\S+\.\S+/
-    if (!emailRegex.test(novoEmail.trim())) {
+    if (!emailRegex.test(emailNormalizado)) {
       toast({
         title: "E-mail inválido",
         description: "Informe um e-mail válido para o usuário.",
@@ -434,7 +436,7 @@ export default function Usuarios() {
     try {
       // Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: novoEmail.trim(),
+        email: emailNormalizado,
         password: novaSenha,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
@@ -520,6 +522,7 @@ export default function Usuarios() {
 
   const handleUpdateUsuario = async () => {
     if (!editingUser) return
+    const emailNormalizado = novoEmail.trim().toLowerCase()
 
     if (!novoNome.trim()) {
       toast({
@@ -551,14 +554,14 @@ export default function Usuarios() {
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
 
-      const emailAlterado = novoEmail.trim() && novoEmail.trim() !== editingUser.email
+      const emailAlterado = Boolean(emailNormalizado && emailNormalizado !== editingUser.email.trim().toLowerCase())
       const senhaAlterada = Boolean(novaSenha.trim())
 
       // Atualizar e-mail e/ou senha no Supabase Auth via função administrativa.
       // A senha não pode ser alterada diretamente pela tabela perfis.
       if (emailAlterado || senhaAlterada) {
         const emailRegex = /\S+@\S+\.\S+/
-        if (emailAlterado && !emailRegex.test(novoEmail.trim())) {
+        if (emailAlterado && !emailRegex.test(emailNormalizado)) {
           toast({
             title: "E-mail inválido",
             description: "Informe um e-mail válido.",
@@ -573,7 +576,7 @@ export default function Usuarios() {
           {
             body: {
               userId: editingUser.id,
-              newEmail: emailAlterado ? novoEmail.trim() : undefined,
+              newEmail: emailAlterado ? emailNormalizado : undefined,
               newPassword: senhaAlterada ? novaSenha : undefined,
             },
           }
@@ -595,7 +598,7 @@ export default function Usuarios() {
         .from("perfis")
         .update({
           nome: novoNome.trim(),
-          email: novoEmail.trim(),
+          email: emailNormalizado,
           empresa_id: novaEmpresa || null,
           departamento_id: novoDepartamento || null,
           cargo: novoCargo || null,
@@ -636,7 +639,7 @@ export default function Usuarios() {
             ? {
                 ...u,
                 nome: novoNome.trim(),
-                email: novoEmail.trim(),
+                email: emailNormalizado,
                 empresa_id: novaEmpresa || null,
                 departamento_id: novoDepartamento || null,
                 cargo: novoCargo || null,
