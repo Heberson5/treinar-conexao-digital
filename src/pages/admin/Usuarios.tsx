@@ -210,7 +210,10 @@ export default function Usuarios() {
   // Carregar dados
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
 
       setIsLoading(true)
       try {
@@ -305,7 +308,7 @@ export default function Usuarios() {
             departamento_id: perfil.departamento_id,
             departamento_nome: departamento?.nome,
             cargo: perfil.cargo,
-            status: perfil.ativo ? "ativo" : "inativo",
+            status: (perfil.ativo ? "ativo" : "inativo") as StatusUsuario,
             papel: (roleInfo?.role as PapelUsuario) || "usuario",
             ultimoAcesso: "N/A",
             trocar_senha_primeiro_login: perfil.trocar_senha_primeiro_login || false,
