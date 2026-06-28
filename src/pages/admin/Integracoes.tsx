@@ -3,7 +3,8 @@ import { CalendarIntegrationCard } from "@/components/integrations/calendar-inte
 import { PaymentIntegrationCard } from "@/components/integrations/payment-integration-card"
 import { NotificationSettingsCard } from "@/components/integrations/notification-settings-card"
 import { AIIntegrationCard } from "@/components/integrations/ai-integration-card"
-import { Calendar, CreditCard, Bell, Zap, Sparkles } from "lucide-react"
+import { MobizonSmsCard } from "@/components/integrations/mobizon-sms-card"
+import { Calendar, CreditCard, Bell, Zap, Sparkles, MessageSquare } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function Integracoes() {
@@ -21,7 +22,7 @@ export default function Integracoes() {
       </div>
 
       {/* Status Geral */}
-      <div className={`grid grid-cols-1 gap-4 ${isMaster ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${isMaster ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
         <div className="p-4 border rounded-lg bg-card">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -79,11 +80,22 @@ export default function Integracoes() {
             </div>
           </div>
         </div>
+        <div className="p-4 border rounded-lg bg-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-cyan-100 rounded-lg">
+              <MessageSquare className="h-5 w-5 text-cyan-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">SMS</p>
+              <p className="font-medium">Mobizon pronto</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tabs de Integrações */}
       <Tabs defaultValue="calendar" className="space-y-6">
-        <TabsList className={`grid w-full max-w-lg ${isMaster ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full max-w-2xl ${isMaster ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Calendário
@@ -97,6 +109,10 @@ export default function Integracoes() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger value="sms" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            SMS
           </TabsTrigger>
           <TabsTrigger value="ai" className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
@@ -116,6 +132,10 @@ export default function Integracoes() {
 
         <TabsContent value="notifications">
           <NotificationSettingsCard />
+        </TabsContent>
+
+        <TabsContent value="sms">
+          <MobizonSmsCard />
         </TabsContent>
 
         <TabsContent value="ai">
