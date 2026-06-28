@@ -17,6 +17,13 @@ import {
   Shield,
   Zap,
   Quote,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight as ArrowRightIcon,
 } from "lucide-react"
 import type { LandingSection } from "./visual-section-editor"
 
@@ -28,20 +35,34 @@ interface LandingPreviewProps {
   sections: LandingSection[]
   selectedSectionId: string | null
   onSelectSection: (id: string | null) => void
+  onUpdateSectionData?: (sectionId: string, data: Record<string, any>) => void
+  onMoveSection?: (sectionId: string, direction: "up" | "down") => void
 }
 
-export function LandingPreview({ sections, selectedSectionId, onSelectSection }: LandingPreviewProps) {
+export function LandingPreview({
+  sections,
+  selectedSectionId,
+  onSelectSection,
+  onUpdateSectionData,
+  onMoveSection,
+}: LandingPreviewProps) {
   const visibleSections = sections.filter((s) => s.visible)
 
   return (
     <div className="min-h-screen bg-background border rounded-xl overflow-hidden shadow-inner">
-      {visibleSections.map((section) => (
+      {visibleSections.map((section) => {
+        const isSelected = selectedSectionId === section.id
+        const offsetX = Number(section.data.canvasOffsetX || 0)
+        const offsetY = Number(section.data.canvasOffsetY || 0)
+
+        return (
         <div
           key={section.id}
           className={cn(
             "relative group cursor-pointer transition-all",
-            selectedSectionId === section.id && "ring-2 ring-primary ring-inset"
+            isSelected && "ring-2 ring-primary ring-inset"
           )}
+          style={{ transform: `translate(${offsetX}px, ${offsetY}px)` }}
           onClick={() => onSelectSection(section.id)}
         >
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
@@ -50,9 +71,17 @@ export function LandingPreview({ sections, selectedSectionId, onSelectSection }:
               {section.type}
             </Badge>
           </div>
+          {isSelected && onUpdateSectionData && (
+            <CanvasToolbar
+              section={section}
+              onUpdate={(data) => onUpdateSectionData(section.id, data)}
+              onMove={onMoveSection ? (direction) => onMoveSection(section.id, direction) : undefined}
+            />
+          )}
           <PreviewSection section={section} />
         </div>
-      ))}
+        )
+      })}
 
       <footer className="bg-foreground text-background py-12">
         <div className="max-w-5xl mx-auto px-4 grid md:grid-cols-4 gap-8">
@@ -91,8 +120,70 @@ export function LandingPreview({ sections, selectedSectionId, onSelectSection }:
   )
 }
 
+function CanvasToolbar({
+  section,
+  onUpdate,
+  onMove,
+}: {
+  section: LandingSection
+  onUpdate: (data: Record<string, any>) => void
+  onMove?: (direction: "up" | "down") => void
+}) {
+  const updateCanvas = (changes: Record<string, any>) => onUpdate({ ...section.data, ...changes })
+  const nudge = (x: number, y: number) =>
+    updateCanvas({
+      canvasOffsetX: Number(section.data.canvasOffsetX || 0) + x,
+      canvasOffsetY: Number(section.data.canvasOffsetY || 0) + y,
+    })
+
+  return (
+    <div
+      className="absolute right-3 top-3 z-30 flex flex-wrap items-center gap-1 rounded-lg border bg-background/95 p-1.5 shadow-lg backdrop-blur"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Alinhar à esquerda" onClick={() => updateCanvas({ canvasAlign: "left", textAlign: "left" })}>
+        <AlignLeft className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Centralizar" onClick={() => updateCanvas({ canvasAlign: "center", textAlign: "center" })}>
+        <AlignCenter className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Alinhar à direita" onClick={() => updateCanvas({ canvasAlign: "right", textAlign: "right" })}>
+        <AlignRight className="h-3.5 w-3.5" />
+      </Button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Mover seção para cima" onClick={() => onMove?.("up")}>
+        <ArrowUp className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Mover seção para baixo" onClick={() => onMove?.("down")}>
+        <ArrowDown className="h-3.5 w-3.5" />
+      </Button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ajustar para esquerda" onClick={() => nudge(-8, 0)}>
+        <ArrowLeft className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ajustar para direita" onClick={() => nudge(8, 0)}>
+        <ArrowRightIcon className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ajustar para cima" onClick={() => nudge(0, -8)}>
+        <ArrowUp className="h-3.5 w-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ajustar para baixo" onClick={() => nudge(0, 8)}>
+        <ArrowDown className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+}
+
+function sectionTextAlignClass(section: LandingSection) {
+  const align = section.data.canvasAlign || section.data.textAlign
+  if (align === "left") return "text-left"
+  if (align === "right") return "text-right"
+  return "text-center"
+}
+
 function PreviewSection({ section }: { section: LandingSection }) {
   const { data } = section
+  const textAlignClass = sectionTextAlignClass(section)
 
   switch (section.type) {
     case "hero":
@@ -100,7 +191,7 @@ function PreviewSection({ section }: { section: LandingSection }) {
         <section className={`relative overflow-hidden bg-gradient-to-r ${data.bgColor || "from-primary via-primary/80 to-primary/60"}`}>
           <div className="relative max-w-5xl mx-auto px-4 py-16">
             <div className="grid lg:grid-cols-2 gap-8 items-center">
-              <div className="space-y-6">
+              <div className={cn("space-y-6", textAlignClass)}>
                 {data.badge && (
                   <Badge className="bg-white/20 text-white border-white/30">
                     {data.badge}
@@ -112,13 +203,13 @@ function PreviewSection({ section }: { section: LandingSection }) {
                 <p className="text-lg text-white/90">
                   {data.subtitle || "Subtítulo descritivo"}
                 </p>
-                <div className="flex gap-3">
+                <div className={cn("flex gap-3", data.canvasAlign === "center" && "justify-center", data.canvasAlign === "right" && "justify-end")}>
                   <Button size="lg" className="bg-white text-primary hover:bg-white/90">
                     <Play className="mr-2 h-4 w-4" />
                     {data.ctaPrimary || "Comece Agora"}
                   </Button>
                 </div>
-                <div className="flex items-center gap-4 text-white/80 text-sm">
+                <div className={cn("flex items-center gap-4 text-white/80 text-sm", data.canvasAlign === "center" && "justify-center", data.canvasAlign === "right" && "justify-end")}>
                   <div className="flex items-center gap-1">
                     <CheckCircle className="h-4 w-4" />
                     <span>Setup rápido</span>
@@ -215,7 +306,7 @@ function PreviewSection({ section }: { section: LandingSection }) {
     case "custom-text":
       return (
         <section className={cn("py-16", data.bgColor)}>
-          <div className={cn("max-w-3xl mx-auto px-4", `text-${data.textAlign || "center"}`)}>
+            <div className={cn("max-w-3xl mx-auto px-4", textAlignClass)}>
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">{data.title || "Título"}</h2>
             {data.subtitle && <p className="text-lg text-muted-foreground mb-4">{data.subtitle}</p>}
             {data.content && <p className="text-foreground leading-relaxed">{data.content}</p>}
