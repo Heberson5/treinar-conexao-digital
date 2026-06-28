@@ -177,7 +177,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
 export default function Usuarios() {
   const { toast } = useToast()
   const { user } = useAuth()
-  const { isMaster } = useEmpresaFilter()
+  const { isMaster, empresaSelecionada } = useEmpresaFilter()
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
@@ -314,15 +314,17 @@ export default function Usuarios() {
 
   // Base visível: não-master nunca vê master nem usuários de outras empresas
   const usuariosVisiveis = useMemo(
-    () =>
-      usuarios.filter((u) => {
-        if (!isMaster) {
-          if (u.papel === "master") return false
-          if (user?.empresa_id && u.empresa_id !== user.empresa_id) return false
-        }
+    () => {
+      const empresaAcessada = isMaster ? empresaSelecionada : user?.empresa_id
+
+      return usuarios.filter((u) => {
+        if (!isMaster && u.papel === "master") return false
+        if (!isMaster && !user?.empresa_id) return false
+        if (empresaAcessada && u.empresa_id !== empresaAcessada) return false
         return true
-      }),
-    [usuarios, isMaster, user?.empresa_id]
+      })
+    },
+    [usuarios, isMaster, empresaSelecionada, user?.empresa_id]
   )
 
   // Métricas
