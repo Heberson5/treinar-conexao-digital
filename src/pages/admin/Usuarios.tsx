@@ -217,41 +217,18 @@ export default function Usuarios() {
 
       setIsLoading(true)
       try {
-        // Carregar perfis com roles
-        let perfisQuery = supabase
-          .from("perfis")
-          .select(`
-            id,
-            nome,
-            email,
-            empresa_id,
-            departamento_id,
-            cargo,
-            ativo,
-            trocar_senha_primeiro_login,
-            dias_para_trocar_senha
-          `)
-
-        // Administrador de empresa só carrega usuários da própria empresa já na consulta.
-        // Isso evita que o card de total use dados globais caso o contexto ainda esteja carregando.
-        if (!isMaster) {
-          if (!user.empresa_id) {
-            setUsuarios([])
-            return
-          }
-          perfisQuery = perfisQuery.eq("empresa_id", user.empresa_id)
-        }
-
-        const { data: perfisData, error: perfisError } = await perfisQuery
+        // Carregar usuários por RPC segura no banco.
+        // Para admins de empresa, a própria função já exclui Masters e outras empresas.
+        const { data: perfisData, error: perfisError } = await supabase.rpc("listar_usuarios_visiveis_admin")
 
         if (perfisError) {
           console.error("Erro ao carregar perfis:", perfisError)
+          toast({
+            title: "Erro ao carregar usuários",
+            description: perfisError.message,
+            variant: "destructive",
+          })
         }
-
-        // Carregar roles
-        const { data: rolesData } = await supabase
-          .from("usuario_roles")
-          .select("usuario_id, role")
 
         // Carregar empresas
         let empresasQuery = supabase
@@ -293,9 +270,8 @@ export default function Usuarios() {
         if (departamentosData) setDepartamentos(departamentosData)
         if (cargosData) setCargos(cargosData)
 
-        // Montar usuários
+        // Montar usuários com a base já filtrada pelo banco
         const usuariosList: Usuario[] = (perfisData || []).map((perfil) => {
-          const roleInfo = rolesData?.find((r) => r.usuario_id === perfil.id)
           const empresa = empresasData?.find((e) => e.id === perfil.empresa_id)
           const departamento = departamentosData?.find((d) => d.id === perfil.departamento_id)
 
@@ -307,16 +283,13 @@ export default function Usuarios() {
             empresa_nome: empresa?.nome_fantasia || empresa?.nome || "Sem empresa",
             departamento_id: perfil.departamento_id,
             departamento_nome: departamento?.nome,
-            cargo: perfil.cargo,
+            cargo: perfil.cargo || null,
             status: (perfil.ativo ? "ativo" : "inativo") as StatusUsuario,
-            papel: (roleInfo?.role as PapelUsuario) || "usuario",
+            papel: (perfil.papel as PapelUsuario) || "usuario",
             ultimoAcesso: "N/A",
             trocar_senha_primeiro_login: perfil.trocar_senha_primeiro_login || false,
-            dias_para_trocar_senha: perfil.dias_para_trocar_senha,
+            dias_para_trocar_senha: perfil.dias_para_trocar_senha || null,
           }
-        }).filter((usuario) => {
-          if (isMaster) return true
-          return usuario.papel !== "master" && usuario.empresa_id === user.empresa_id
         })
 
         setUsuarios(usuariosList)
