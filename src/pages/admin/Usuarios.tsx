@@ -210,57 +210,68 @@ export default function Usuarios() {
   // Carregar dados
   useEffect(() => {
     const loadData = async () => {
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       try {
-        // Carregar perfis com roles
-        const { data: perfisData, error: perfisError } = await supabase
-          .from("perfis")
-          .select(`
-            id,
-            nome,
-            email,
-            empresa_id,
-            departamento_id,
-            cargo,
-            ativo,
-            trocar_senha_primeiro_login,
-            dias_para_trocar_senha
-          `)
+        // Carregar usuários por RPC segura no banco.
+        // Para admins de empresa, a própria função já exclui Masters e outras empresas.
+        const { data: perfisData, error: perfisError } = await supabase.rpc("listar_usuarios_visiveis_admin")
 
         if (perfisError) {
           console.error("Erro ao carregar perfis:", perfisError)
+          toast({
+            title: "Erro ao carregar usuários",
+            description: perfisError.message,
+            variant: "destructive",
+          })
         }
 
-        // Carregar roles
-        const { data: rolesData } = await supabase
-          .from("usuario_roles")
-          .select("usuario_id, role")
-
         // Carregar empresas
-        const { data: empresasData } = await supabase
+        let empresasQuery = supabase
           .from("empresas")
           .select("id, nome, nome_fantasia")
           .eq("ativo", true)
 
+        if (!isMaster && user.empresa_id) {
+          empresasQuery = empresasQuery.eq("id", user.empresa_id)
+        }
+
+        const { data: empresasData } = await empresasQuery
+
         // Carregar departamentos
-        const { data: departamentosData } = await supabase
+        let departamentosQuery = supabase
           .from("departamentos")
           .select("id, nome, empresa_id")
           .eq("ativo", true)
 
+        if (!isMaster && user.empresa_id) {
+          departamentosQuery = departamentosQuery.eq("empresa_id", user.empresa_id)
+        }
+
+        const { data: departamentosData } = await departamentosQuery
+
         // Carregar cargos
-        const { data: cargosData } = await supabase
+        let cargosQuery = supabase
           .from("cargos")
           .select("id, nome, empresa_id")
           .eq("ativo", true)
+
+        if (!isMaster && user.empresa_id) {
+          cargosQuery = cargosQuery.eq("empresa_id", user.empresa_id)
+        }
+
+        const { data: cargosData } = await cargosQuery
 
         if (empresasData) setEmpresas(empresasData)
         if (departamentosData) setDepartamentos(departamentosData)
         if (cargosData) setCargos(cargosData)
 
-        // Montar usuários
+        // Montar usuários com a base já filtrada pelo banco
         const usuariosList: Usuario[] = (perfisData || []).map((perfil) => {
-          const roleInfo = rolesData?.find((r) => r.usuario_id === perfil.id)
           const empresa = empresasData?.find((e) => e.id === perfil.empresa_id)
           const departamento = departamentosData?.find((d) => d.id === perfil.departamento_id)
 
@@ -272,12 +283,12 @@ export default function Usuarios() {
             empresa_nome: empresa?.nome_fantasia || empresa?.nome || "Sem empresa",
             departamento_id: perfil.departamento_id,
             departamento_nome: departamento?.nome,
-            cargo: perfil.cargo,
-            status: perfil.ativo ? "ativo" : "inativo",
-            papel: (roleInfo?.role as PapelUsuario) || "usuario",
+            cargo: perfil.cargo || null,
+            status: (perfil.ativo ? "ativo" : "inativo") as StatusUsuario,
+            papel: (perfil.papel as PapelUsuario) || "usuario",
             ultimoAcesso: "N/A",
             trocar_senha_primeiro_login: perfil.trocar_senha_primeiro_login || false,
-            dias_para_trocar_senha: perfil.dias_para_trocar_senha,
+            dias_para_trocar_senha: perfil.dias_para_trocar_senha || null,
           }
         })
 
@@ -288,7 +299,7 @@ export default function Usuarios() {
     }
 
     loadData()
-  }, [])
+  }, [user, isMaster])
 
   // Filtrar departamentos e cargos pela empresa selecionada no form
   const departamentosFiltrados = useMemo(() => {
@@ -303,21 +314,23 @@ export default function Usuarios() {
 
   // Base visível: não-master nunca vê master nem usuários de outras empresas
   const usuariosVisiveis = useMemo(
-    () =>
-      usuarios.filter((u) => {
-        if (!isMaster) {
-          if (u.papel === "master") return false
-          if (user?.empresa_id && u.empresa_id !== user.empresa_id) return false
-        }
+    () => {
+      const empresaAcessada = isMaster ? empresaSelecionada : user?.empresa_id
+
+      return usuarios.filter((u) => {
+        if (!isMaster && u.papel === "master") return false
+        if (!isMaster && !user?.empresa_id) return false
+        if (empresaAcessada && u.empresa_id !== empresaAcessada) return false
         return true
-      }),
-    [usuarios, isMaster, user?.empresa_id]
+      })
+    },
+    [usuarios, isMaster, empresaSelecionada, user?.empresa_id]
   )
 
   // Métricas
   const totalUsuarios = usuariosVisiveis.length
   const usuariosAtivos = usuariosVisiveis.filter((u) => u.status === "ativo").length
-  const usuariosAdmins = usuariosVisiveis.filter((u) => u.papel === "admin" || u.papel === "master").length
+  const usuariosAdmins = usuariosVisiveis.filter((u) => u.papel === "admin" || (isMaster && u.papel === "master")).length
   const empresasAtendidas = new Set(usuariosVisiveis.map((u) => u.empresa_id).filter(Boolean)).size
 
   // Filtros
@@ -380,6 +393,8 @@ export default function Usuarios() {
   }
 
   const handleCreateUsuario = async () => {
+    const emailNormalizado = novoEmail.trim().toLowerCase()
+
     if (!novoNome.trim() || !novoEmail.trim()) {
       toast({
         title: "Campos obrigatórios",
@@ -390,7 +405,7 @@ export default function Usuarios() {
     }
 
     const emailRegex = /\S+@\S+\.\S+/
-    if (!emailRegex.test(novoEmail.trim())) {
+    if (!emailRegex.test(emailNormalizado)) {
       toast({
         title: "E-mail inválido",
         description: "Informe um e-mail válido para o usuário.",
@@ -423,7 +438,7 @@ export default function Usuarios() {
     try {
       // Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: novoEmail.trim(),
+        email: emailNormalizado,
         password: novaSenha,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
@@ -509,6 +524,7 @@ export default function Usuarios() {
 
   const handleUpdateUsuario = async () => {
     if (!editingUser) return
+    const emailNormalizado = novoEmail.trim().toLowerCase()
 
     if (!novoNome.trim()) {
       toast({
@@ -540,10 +556,14 @@ export default function Usuarios() {
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
 
-      // Atualizar e-mail se foi alterado
-      if (novoEmail.trim() && novoEmail.trim() !== editingUser.email) {
+      const emailAlterado = Boolean(emailNormalizado && emailNormalizado !== editingUser.email.trim().toLowerCase())
+      const senhaAlterada = Boolean(novaSenha.trim())
+
+      // Atualizar e-mail e/ou senha no Supabase Auth via função administrativa.
+      // A senha não pode ser alterada diretamente pela tabela perfis.
+      if (emailAlterado || senhaAlterada) {
         const emailRegex = /\S+@\S+\.\S+/
-        if (!emailRegex.test(novoEmail.trim())) {
+        if (emailAlterado && !emailRegex.test(emailNormalizado)) {
           toast({
             title: "E-mail inválido",
             description: "Informe um e-mail válido.",
@@ -553,15 +573,21 @@ export default function Usuarios() {
           return
         }
 
-        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+        const { data: authResult, error: authError } = await supabase.functions.invoke(
           "update-user-email",
-          { body: { userId: editingUser.id, newEmail: novoEmail.trim() } }
+          {
+            body: {
+              userId: editingUser.id,
+              newEmail: emailAlterado ? emailNormalizado : undefined,
+              newPassword: senhaAlterada ? novaSenha : undefined,
+            },
+          }
         )
 
-        if (emailError || emailResult?.error) {
+        if (authError || authResult?.error) {
           toast({
-            title: "Erro ao atualizar e-mail",
-            description: emailResult?.error || emailError?.message || "Não foi possível atualizar o e-mail.",
+            title: "Erro ao atualizar acesso",
+            description: authResult?.error || authError?.message || "Não foi possível atualizar e-mail/senha.",
             variant: "destructive",
           })
           setIsSaving(false)
@@ -574,7 +600,7 @@ export default function Usuarios() {
         .from("perfis")
         .update({
           nome: novoNome.trim(),
-          email: novoEmail.trim(),
+          email: emailNormalizado,
           empresa_id: novaEmpresa || null,
           departamento_id: novoDepartamento || null,
           cargo: novoCargo || null,
@@ -615,7 +641,7 @@ export default function Usuarios() {
             ? {
                 ...u,
                 nome: novoNome.trim(),
-                email: novoEmail.trim(),
+                email: emailNormalizado,
                 empresa_id: novaEmpresa || null,
                 departamento_id: novoDepartamento || null,
                 cargo: novoCargo || null,

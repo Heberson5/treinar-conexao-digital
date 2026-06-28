@@ -26,9 +26,10 @@ export function LoginForm() {
     e.preventDefault()
     setIsLoading(true)
     setBloqueio(null)
+    const emailNormalizado = email.trim().toLowerCase()
 
     // 1. Verifica bloqueio por tentativas
-    const check = await podeTeentarLogin(email)
+    const check = await podeTeentarLogin(emailNormalizado)
     if (!check.permitido) {
       const quando = formatarDesbloqueio(check.desbloqueio_em)
       const msg = `Conta bloqueada por excesso de tentativas. Redefina sua senha ou tente novamente em ${quando}.`
@@ -38,10 +39,10 @@ export function LoginForm() {
       return
     }
 
-    const result = await login(email, password)
+    const result = await login(emailNormalizado, password)
 
     // 2. Registra a tentativa
-    await registrarTentativaLogin(email, result.success)
+    await registrarTentativaLogin(emailNormalizado, result.success)
 
     if (!result.success) {
       const restantes = Math.max(0, (check.restantes ?? 0) - 1)

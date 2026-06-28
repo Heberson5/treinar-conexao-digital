@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/integrations/supabase/client"
+import type { Json } from "@/integrations/supabase/types"
 import { MarkdownEditor } from "@/components/landing/markdown-editor"
 import {
   VisualSectionEditor,
@@ -47,10 +48,13 @@ interface LandingPageConfig {
   custom_css: string | null
   termos_de_uso: string | null
   sobre_nos: string | null
+  footer_section?: any
+  sections_order?: Json | null
+  sections_alignment?: Json | null
 }
 
 function configToSections(config: LandingPageConfig): LandingSection[] {
-  return [
+  const baseSections: LandingSection[] = [
     {
       id: "hero",
       type: "hero",
@@ -98,6 +102,33 @@ function configToSections(config: LandingPageConfig): LandingSection[] {
       },
     },
   ]
+
+  const savedSections = Array.isArray(config.sections_order) ? config.sections_order : []
+  const alignment =
+    config.sections_alignment && !Array.isArray(config.sections_alignment) && typeof config.sections_alignment === "object"
+      ? config.sections_alignment as Record<string, any>
+      : {}
+
+  if (savedSections.length && typeof savedSections[0] === "object") {
+    return savedSections.map((section: any) => ({
+      ...section,
+      data: { ...(section.data || {}), ...(alignment[section.id] || {}) },
+    }))
+  }
+
+  const orderedSections = savedSections.length
+    ? [
+        ...savedSections
+          .map((id) => baseSections.find((section) => section.id === id))
+          .filter(Boolean),
+        ...baseSections.filter((section) => !savedSections.includes(section.id)),
+      ] as LandingSection[]
+    : baseSections
+
+  return orderedSections.map((section) => ({
+    ...section,
+    data: { ...section.data, ...(alignment[section.id] || {}) },
+  }))
 }
 
 function sectionsToConfig(
@@ -172,8 +203,27 @@ export default function LandingPageEditor() {
     if (!config) return
     setIsSaving(true)
     try {
+      const serializedSections = sections.map((section) => ({
+        id: section.id,
+        type: section.type,
+        visible: section.visible,
+        data: JSON.parse(JSON.stringify(section.data || {})),
+      })) as Json
+      const serializedAlignment = Object.fromEntries(
+        sections.map((section) => [
+          section.id,
+          {
+            canvasAlign: section.data.canvasAlign || section.data.textAlign || "center",
+            canvasVAlign: section.data.canvasVAlign || "center",
+            canvasOffsetX: section.data.canvasOffsetX || 0,
+            canvasOffsetY: section.data.canvasOffsetY || 0,
+          },
+        ])
+      ) as Json
       const updates = {
         ...sectionsToConfig(sections, config),
+        sections_order: serializedSections,
+        sections_alignment: serializedAlignment,
         company_name: config.company_name,
         company_description: config.company_description,
         logo_url: config.logo_url,
@@ -209,6 +259,19 @@ export default function LandingPageEditor() {
     },
     []
   )
+
+  const moveSection = useCallback((sectionId: string, direction: "up" | "down") => {
+    setSections((prev) => {
+      const index = prev.findIndex((section) => section.id === sectionId)
+      if (index === -1) return prev
+      const nextIndex = direction === "up" ? index - 1 : index + 1
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev
+      const updated = [...prev]
+      const [section] = updated.splice(index, 1)
+      updated.splice(nextIndex, 0, section)
+      return updated
+    })
+  }, [])
 
   const selectedSection = sections.find((s) => s.id === selectedSectionId)
 
@@ -309,6 +372,8 @@ export default function LandingPageEditor() {
                     sections={sections}
                     selectedSectionId={selectedSectionId}
                     onSelectSection={setSelectedSectionId}
+                    onUpdateSectionData={updateSectionData}
+                    onMoveSection={moveSection}
                   />
                 </ScrollArea>
               </div>

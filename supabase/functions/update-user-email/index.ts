@@ -51,20 +51,76 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { userId, newEmail } = await req.json();
+    const { userId, newEmail, newPassword } = await req.json();
+    const normalizedNewEmail = newEmail ? String(newEmail).trim().toLowerCase() : "";
 
-    if (!userId || !newEmail) {
-      return new Response(JSON.stringify({ error: "userId and newEmail are required" }), {
+    if (!userId || (!newEmail && !newPassword)) {
+      return new Response(JSON.stringify({ error: "Informe o usuário e o e-mail e/ou senha para atualizar." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Update email in auth.users using admin API
-    const { data, error } = await adminClient.auth.admin.updateUserById(userId, {
-      email: newEmail,
-      email_confirm: true,
-    });
+    if (newEmail && !/^\S+@\S+\.\S+$/.test(normalizedNewEmail)) {
+      return new Response(JSON.stringify({ error: "E-mail inválido." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (newPassword && String(newPassword).length < 8) {
+      return new Response(JSON.stringify({ error: "A senha deve ter no mínimo 8 caracteres." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: targetPerfil } = await adminClient
+      .from("perfis")
+      .select("id, email, empresa_id")
+      .eq("id", userId)
+      .single();
+
+    if (!targetPerfil) {
+      return new Response(JSON.stringify({ error: "Usuário não encontrado." }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (roleData.role === "admin") {
+      const { data: callerPerfil } = await adminClient
+        .from("perfis")
+        .select("empresa_id")
+        .eq("id", caller.id)
+        .single();
+
+      const { data: targetRole } = await adminClient
+        .from("usuario_roles")
+        .select("role")
+        .eq("usuario_id", userId)
+        .eq("role", "master")
+        .maybeSingle();
+
+      if (!callerPerfil?.empresa_id || targetPerfil.empresa_id !== callerPerfil.empresa_id || targetRole?.role === "master") {
+        return new Response(JSON.stringify({ error: "Sem permissão para alterar este usuário." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const authUpdates: Record<string, unknown> = {};
+    if (normalizedNewEmail) {
+      authUpdates.email = normalizedNewEmail;
+      authUpdates.email_confirm = true;
+    }
+    if (newPassword) {
+      authUpdates.password = String(newPassword);
+    }
+
+    // Update e-mail/password in auth.users using admin API.
+    const { error } = await adminClient.auth.admin.updateUserById(userId, authUpdates);
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
@@ -73,11 +129,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update email in perfis table
-    await adminClient
-      .from("perfis")
-      .update({ email: newEmail })
-      .eq("id", userId);
+    const perfilUpdates: Record<string, unknown> = {};
+    if (normalizedNewEmail) perfilUpdates.email = normalizedNewEmail;
+    if (newPassword) {
+      perfilUpdates.data_ultima_troca_senha = new Date().toISOString();
+      perfilUpdates.trocar_senha_primeiro_login = false;
+    }
+
+    if (Object.keys(perfilUpdates).length > 0) {
+      await adminClient
+        .from("perfis")
+        .update(perfilUpdates)
+        .eq("id", userId);
+    }
+
+    // Registra sucesso para quebrar a sequência de falhas e desbloquear tentativas de login.
+    const emailsParaDesbloqueio = new Set(
+      [targetPerfil.email, normalizedNewEmail]
+        .map((email) => String(email || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    for (const emailParaDesbloqueio of emailsParaDesbloqueio) {
+      await adminClient
+        .from("tentativas_login")
+        .insert({ email: emailParaDesbloqueio, sucesso: true });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
