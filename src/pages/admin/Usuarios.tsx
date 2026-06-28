@@ -177,7 +177,7 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
 export default function Usuarios() {
   const { toast } = useToast()
   const { user } = useAuth()
-  const { isMaster, empresaSelecionada } = useEmpresaFilter()
+  const { isMaster } = useEmpresaFilter()
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
@@ -210,10 +210,12 @@ export default function Usuarios() {
   // Carregar dados
   useEffect(() => {
     const loadData = async () => {
+      if (!user) return
+
       setIsLoading(true)
       try {
         // Carregar perfis com roles
-        const { data: perfisData, error: perfisError } = await supabase
+        let perfisQuery = supabase
           .from("perfis")
           .select(`
             id,
@@ -227,6 +229,18 @@ export default function Usuarios() {
             dias_para_trocar_senha
           `)
 
+        // Administrador de empresa só carrega usuários da própria empresa já na consulta.
+        // Isso evita que o card de total use dados globais caso o contexto ainda esteja carregando.
+        if (!isMaster) {
+          if (!user.empresa_id) {
+            setUsuarios([])
+            return
+          }
+          perfisQuery = perfisQuery.eq("empresa_id", user.empresa_id)
+        }
+
+        const { data: perfisData, error: perfisError } = await perfisQuery
+
         if (perfisError) {
           console.error("Erro ao carregar perfis:", perfisError)
         }
@@ -237,22 +251,40 @@ export default function Usuarios() {
           .select("usuario_id, role")
 
         // Carregar empresas
-        const { data: empresasData } = await supabase
+        let empresasQuery = supabase
           .from("empresas")
           .select("id, nome, nome_fantasia")
           .eq("ativo", true)
 
+        if (!isMaster && user.empresa_id) {
+          empresasQuery = empresasQuery.eq("id", user.empresa_id)
+        }
+
+        const { data: empresasData } = await empresasQuery
+
         // Carregar departamentos
-        const { data: departamentosData } = await supabase
+        let departamentosQuery = supabase
           .from("departamentos")
           .select("id, nome, empresa_id")
           .eq("ativo", true)
 
+        if (!isMaster && user.empresa_id) {
+          departamentosQuery = departamentosQuery.eq("empresa_id", user.empresa_id)
+        }
+
+        const { data: departamentosData } = await departamentosQuery
+
         // Carregar cargos
-        const { data: cargosData } = await supabase
+        let cargosQuery = supabase
           .from("cargos")
           .select("id, nome, empresa_id")
           .eq("ativo", true)
+
+        if (!isMaster && user.empresa_id) {
+          cargosQuery = cargosQuery.eq("empresa_id", user.empresa_id)
+        }
+
+        const { data: cargosData } = await cargosQuery
 
         if (empresasData) setEmpresas(empresasData)
         if (departamentosData) setDepartamentos(departamentosData)
@@ -279,6 +311,9 @@ export default function Usuarios() {
             trocar_senha_primeiro_login: perfil.trocar_senha_primeiro_login || false,
             dias_para_trocar_senha: perfil.dias_para_trocar_senha,
           }
+        }).filter((usuario) => {
+          if (isMaster) return true
+          return usuario.papel !== "master" && usuario.empresa_id === user.empresa_id
         })
 
         setUsuarios(usuariosList)
@@ -288,7 +323,7 @@ export default function Usuarios() {
     }
 
     loadData()
-  }, [])
+  }, [user, isMaster])
 
   // Filtrar departamentos e cargos pela empresa selecionada no form
   const departamentosFiltrados = useMemo(() => {
@@ -317,7 +352,7 @@ export default function Usuarios() {
   // Métricas
   const totalUsuarios = usuariosVisiveis.length
   const usuariosAtivos = usuariosVisiveis.filter((u) => u.status === "ativo").length
-  const usuariosAdmins = usuariosVisiveis.filter((u) => u.papel === "admin" || u.papel === "master").length
+  const usuariosAdmins = usuariosVisiveis.filter((u) => u.papel === "admin" || (isMaster && u.papel === "master")).length
   const empresasAtendidas = new Set(usuariosVisiveis.map((u) => u.empresa_id).filter(Boolean)).size
 
   // Filtros
@@ -540,10 +575,14 @@ export default function Usuarios() {
         ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
         : null
 
-      // Atualizar e-mail se foi alterado
-      if (novoEmail.trim() && novoEmail.trim() !== editingUser.email) {
+      const emailAlterado = novoEmail.trim() && novoEmail.trim() !== editingUser.email
+      const senhaAlterada = Boolean(novaSenha.trim())
+
+      // Atualizar e-mail e/ou senha no Supabase Auth via função administrativa.
+      // A senha não pode ser alterada diretamente pela tabela perfis.
+      if (emailAlterado || senhaAlterada) {
         const emailRegex = /\S+@\S+\.\S+/
-        if (!emailRegex.test(novoEmail.trim())) {
+        if (emailAlterado && !emailRegex.test(novoEmail.trim())) {
           toast({
             title: "E-mail inválido",
             description: "Informe um e-mail válido.",
@@ -553,15 +592,21 @@ export default function Usuarios() {
           return
         }
 
-        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+        const { data: authResult, error: authError } = await supabase.functions.invoke(
           "update-user-email",
-          { body: { userId: editingUser.id, newEmail: novoEmail.trim() } }
+          {
+            body: {
+              userId: editingUser.id,
+              newEmail: emailAlterado ? novoEmail.trim() : undefined,
+              newPassword: senhaAlterada ? novaSenha : undefined,
+            },
+          }
         )
 
-        if (emailError || emailResult?.error) {
+        if (authError || authResult?.error) {
           toast({
-            title: "Erro ao atualizar e-mail",
-            description: emailResult?.error || emailError?.message || "Não foi possível atualizar o e-mail.",
+            title: "Erro ao atualizar acesso",
+            description: authResult?.error || authError?.message || "Não foi possível atualizar e-mail/senha.",
             variant: "destructive",
           })
           setIsSaving(false)
