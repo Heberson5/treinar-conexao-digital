@@ -1481,6 +1481,21 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      listar_usuarios_visiveis_admin: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          cargo: string
+          departamento_id: string
+          dias_para_trocar_senha: number
+          email: string
+          empresa_id: string
+          id: string
+          nome: string
+          papel: Database["public"]["Enums"]["tipo_role"]
+          trocar_senha_primeiro_login: boolean
+        }[]
+      }
       pode_gerenciar_usuario_alvo: {
         Args: { p_usuario_alvo: string }
         Returns: boolean
