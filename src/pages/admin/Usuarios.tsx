@@ -301,19 +301,29 @@ export default function Usuarios() {
     return cargos.filter((c) => !c.empresa_id || c.empresa_id === novaEmpresa)
   }, [cargos, novaEmpresa])
 
+  // Base visível: não-master nunca vê master nem usuários de outras empresas
+  const usuariosVisiveis = useMemo(
+    () =>
+      usuarios.filter((u) => {
+        if (!isMaster) {
+          if (u.papel === "master") return false
+          if (user?.empresa_id && u.empresa_id !== user.empresa_id) return false
+        }
+        return true
+      }),
+    [usuarios, isMaster, user?.empresa_id]
+  )
+
   // Métricas
-  const totalUsuarios = usuarios.length
-  const usuariosAtivos = usuarios.filter((u) => u.status === "ativo").length
-  const usuariosAdmins = usuarios.filter((u) => u.papel === "admin" || u.papel === "master").length
-  const empresasAtendidas = new Set(usuarios.map((u) => u.empresa_id).filter(Boolean)).size
+  const totalUsuarios = usuariosVisiveis.length
+  const usuariosAtivos = usuariosVisiveis.filter((u) => u.status === "ativo").length
+  const usuariosAdmins = usuariosVisiveis.filter((u) => u.papel === "admin" || u.papel === "master").length
+  const empresasAtendidas = new Set(usuariosVisiveis.map((u) => u.empresa_id).filter(Boolean)).size
 
   // Filtros
   const usuariosFiltrados = useMemo(
     () =>
-      usuarios.filter((usuario) => {
-        // Non-master users should not see master users
-        if (!isMaster && usuario.papel === "master") return false
-
+      usuariosVisiveis.filter((usuario) => {
         const term = searchTerm.toLowerCase()
         const matchesSearch =
           !term ||
@@ -329,7 +339,7 @@ export default function Usuarios() {
 
         return matchesSearch && matchesStatus && matchesEmpresa
       }),
-    [usuarios, searchTerm, statusFilter, empresaFilter, isMaster]
+    [usuariosVisiveis, searchTerm, statusFilter, empresaFilter]
   )
 
   const resetForm = () => {
