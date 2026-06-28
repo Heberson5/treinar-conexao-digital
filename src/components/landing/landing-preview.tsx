@@ -12,7 +12,6 @@ import {
   Clock,
   CheckCircle,
   TrendingUp,
-  ArrowRight,
   Building,
   Shield,
   Zap,
