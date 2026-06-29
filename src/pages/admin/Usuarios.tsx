@@ -41,6 +41,8 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { useOnlineUsers } from "@/hooks/use-online-users"
+
 import {
   Building2,
   Filter,
