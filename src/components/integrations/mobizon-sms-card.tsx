@@ -166,14 +166,17 @@ export function MobizonSmsCard() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const configPayload = {
+      const configPayload: any = {
         empresa_id: targetEmpresaId,
         provedor: "mobizon",
         ativo: config.ativo,
         modo_teste: config.modo_teste,
         remetente: config.remetente || null,
-        api_key_configurada: config.api_key_configurada,
+        api_key: config.api_key || null,
+        api_id: config.api_id || null,
+        api_key_configurada: !!(config.api_key && config.api_key.trim().length > 0),
       }
+
 
       if (config.id) {
         const { error } = await supabase.from("sms_configuracoes").update(configPayload).eq("id", config.id)
