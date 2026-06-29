@@ -20,7 +20,10 @@ type SmsConfig = {
   modo_teste: boolean
   remetente: string | null
   api_key_configurada: boolean
+  api_key: string | null
+  api_id: string | null
 }
+
 
 type SmsTriggerCode = "senha_provisoria" | "dois_fatores" | "lembrete_agendado" | "novo_treinamento"
 
