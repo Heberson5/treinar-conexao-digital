@@ -41,6 +41,8 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { useEmpresaFilter } from "@/contexts/empresa-filter-context"
+import { useOnlineUsers } from "@/hooks/use-online-users"
+
 import {
   Building2,
   Filter,
@@ -178,6 +180,8 @@ export default function Usuarios() {
   const { toast } = useToast()
   const { user } = useAuth()
   const { isMaster, empresaSelecionada } = useEmpresaFilter()
+  const onlineIds = useOnlineUsers()
+
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
@@ -727,7 +731,7 @@ export default function Usuarios() {
       </div>
 
       {/* Métricas */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={`grid gap-4 ${isMaster ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
@@ -764,18 +768,21 @@ export default function Usuarios() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Empresas</CardTitle>
-            <div className="rounded-full bg-amber-500/10 p-2">
-              <Building2 className="h-4 w-4 text-amber-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{empresasAtendidas}</div>
-          </CardContent>
-        </Card>
+        {isMaster && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Empresas</CardTitle>
+              <div className="rounded-full bg-amber-500/10 p-2">
+                <Building2 className="h-4 w-4 text-amber-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{empresasAtendidas}</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
 
       {/* Filtros */}
       <Card>
@@ -853,16 +860,28 @@ export default function Usuarios() {
                     className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-lg border p-4 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src="" alt={usuario.nome} />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {getInitials(usuario.nome)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src="" alt={usuario.nome} />
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            {getInitials(usuario.nome)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span
+                          className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${
+                            onlineIds.has(usuario.id) ? "bg-emerald-500" : "bg-slate-400"
+                          }`}
+                          title={onlineIds.has(usuario.id) ? "Online" : "Offline"}
+                        />
+                      </div>
 
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h4 className="font-medium">{usuario.nome}</h4>
+                          {onlineIds.has(usuario.id) && (
+                            <Badge className="bg-emerald-500 text-white text-xs">Online</Badge>
+                          )}
+
 
                           <Badge
                             className={`${getPapelColor(usuario.papel)} text-white text-xs flex items-center gap-1`}

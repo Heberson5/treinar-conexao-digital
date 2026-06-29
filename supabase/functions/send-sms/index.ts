@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const shouldSimulate = !mobizonApiKey || !config?.ativo || config?.modo_teste || !config?.api_key_configurada || !trigger?.ativo;
+    const effectiveApiKey = (config as any)?.api_key || mobizonApiKey;
+    const shouldSimulate = !effectiveApiKey || !config?.ativo || config?.modo_teste || !trigger?.ativo;
 
     if (shouldSimulate) {
       const { data: log } = await adminClient
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
           mensagem,
           status: "simulado",
           resposta_provedor: {
-            reason: !mobizonApiKey ? "MOBIZON_API_KEY ausente" : "integração em modo teste/inativa ou gatilho desativado",
+            reason: !effectiveApiKey ? "Chave Mobizon ausente" : "integração em modo teste/inativa ou gatilho desativado",
           },
           enviado_em: new Date().toISOString(),
         })
@@ -135,7 +136,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const params = new URLSearchParams({ apiKey: mobizonApiKey, recipient: telefone, text: mensagem });
+    const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient: telefone, text: mensagem });
+
     const providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
     const providerText = await providerResponse.text();
     let providerJson: Record<string, unknown> = {};

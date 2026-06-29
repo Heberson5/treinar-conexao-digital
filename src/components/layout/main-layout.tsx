@@ -7,6 +7,7 @@ import { PWAInstallPrompt } from "@/components/layout/pwa-install-prompt"
 import { useCompanyTheme } from "@/hooks/use-company-theme"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useIdleLogout } from "@/hooks/use-idle-logout"
+import { useOnlineUsers } from "@/hooks/use-online-users"
 
 interface MainLayoutProps {
   children: ReactNode
@@ -18,7 +19,10 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
   useCompanyTheme();
   // Logoff automático por inatividade / fechar navegador
   useIdleLogout();
+  // Registra o usuário atual no canal de presença global
+  useOnlineUsers();
   const isMobile = useIsMobile();
+
 
   return (
     <SidebarProvider>
