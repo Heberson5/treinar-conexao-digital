@@ -60,7 +60,11 @@ const defaultMasterItems = [
 ]
 
 export function AppSidebar() {
-  const { open } = useSidebar()
+  const { open, isMobile, setOpenMobile } = useSidebar()
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false)
+  }
+
   const location = useLocation()
   const { user } = useAuth()
   const userRole = user?.role || 'usuario'
