@@ -123,6 +123,9 @@ export function MobizonSmsCard() {
           modo_teste: configData?.modo_teste ?? true,
           remetente: configData?.remetente ?? null,
           api_key_configurada: configData?.api_key_configurada ?? false,
+          api_key: (configData as any)?.api_key ?? null,
+          api_id: (configData as any)?.api_id ?? null,
+
         })
 
         let triggerQuery = supabase.from("sms_gatilhos").select("*")
