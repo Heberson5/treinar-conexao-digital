@@ -1092,6 +1092,8 @@ export type Database = {
       }
       sms_configuracoes: {
         Row: {
+          api_id: string | null
+          api_key: string | null
           api_key_configurada: boolean
           ativo: boolean
           atualizado_em: string
@@ -1103,6 +1105,8 @@ export type Database = {
           remetente: string | null
         }
         Insert: {
+          api_id?: string | null
+          api_key?: string | null
           api_key_configurada?: boolean
           ativo?: boolean
           atualizado_em?: string
@@ -1114,6 +1118,8 @@ export type Database = {
           remetente?: string | null
         }
         Update: {
+          api_id?: string | null
+          api_key?: string | null
           api_key_configurada?: boolean
           ativo?: boolean
           atualizado_em?: string
