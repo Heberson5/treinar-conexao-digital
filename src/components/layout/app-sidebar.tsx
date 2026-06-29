@@ -210,7 +210,7 @@ export function AppSidebar() {
               {mainMenuItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
-                    <NavLink to={item.url} className={getNavClass}>
+                    <NavLink to={item.url} className={getNavClass} onClick={handleNavClick}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {open && <span>{item.title}</span>}
                     </NavLink>
@@ -229,7 +229,7 @@ export function AppSidebar() {
                 {adminMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
-                      <NavLink to={item.url} className={getNavClass}>
+                      <NavLink to={item.url} className={getNavClass} onClick={handleNavClick}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
                       </NavLink>
@@ -249,7 +249,7 @@ export function AppSidebar() {
                 {masterMenuItems.map(item => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
-                      <NavLink to={item.url} className={getNavClass}>
+                      <NavLink to={item.url} className={getNavClass} onClick={handleNavClick}>
                         <item.icon className="mr-2 h-4 w-4" />
                         {open && <span>{item.title}</span>}
                       </NavLink>
