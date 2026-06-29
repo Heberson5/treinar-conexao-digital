@@ -93,7 +93,10 @@ export function MobizonSmsCard() {
     modo_teste: true,
     remetente: null,
     api_key_configurada: false,
+    api_key: null,
+    api_id: null,
   })
+
   const [triggers, setTriggers] = useState<SmsTrigger[]>(DEFAULT_TRIGGERS)
   const [history, setHistory] = useState<Array<Record<string, any>>>([])
 
