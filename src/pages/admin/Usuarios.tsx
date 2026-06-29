@@ -180,6 +180,8 @@ export default function Usuarios() {
   const { toast } = useToast()
   const { user } = useAuth()
   const { isMaster, empresaSelecionada } = useEmpresaFilter()
+  const onlineIds = useOnlineUsers()
+
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
