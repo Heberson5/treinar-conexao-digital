@@ -302,19 +302,42 @@ export function MobizonSmsCard() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
+              <Label>API Key Mobizon</Label>
+              <Input
+                type="password"
+                value={config.api_key || ""}
+                onChange={(e) => setConfig((prev) => ({ ...prev, api_key: e.target.value }))}
+                placeholder="Cole aqui a chave de API"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">Encontrada no painel Mobizon &gt; API.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>API ID / Conta</Label>
+              <Input
+                value={config.api_id || ""}
+                onChange={(e) => setConfig((prev) => ({ ...prev, api_id: e.target.value }))}
+                placeholder="Identificador da conta (opcional)"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Remetente/assinatura</Label>
               <Input value={config.remetente || ""} onChange={(e) => setConfig((prev) => ({ ...prev, remetente: e.target.value }))} placeholder="Ex: Sauberlich" />
             </div>
             <div className="space-y-2">
-              <Label>Teste de envio</Label>
+              <Label>Testar integração</Label>
               <div className="flex gap-2">
-                <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="DDD + número" />
+                <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="DDD + número (ex: 11999999999)" />
                 <Button variant="outline" onClick={handleTest} disabled={isTesting}>
-                  {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  Enviar teste
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">Salve antes de testar para usar a chave cadastrada.</p>
             </div>
           </div>
+
 
           <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
             <div>
