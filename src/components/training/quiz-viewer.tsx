@@ -351,7 +351,7 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tem
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Sua resposta: <strong>{respostas[q.id] || "—"}</strong> | Correta: <strong>{q.resposta_correta}</strong>
+                  Sua resposta: <strong>{respostas[q.id] || "—"}</strong> — {correta ? "Correta" : "Incorreta"}
                 </p>
               </CardContent>
             </Card>
