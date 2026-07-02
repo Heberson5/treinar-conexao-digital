@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,27 @@ serve(async (req) => {
   }
 
   try {
+    // ---- Auth ----
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authed = createClient(supabaseUrl, supabaseAnon, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await authed.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { text, provedor } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -18,22 +40,16 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    if (!text || text.trim().length === 0) {
+    if (!text || typeof text !== "string" || text.trim().length === 0 || text.length > 20000) {
       return new Response(
-        JSON.stringify({ error: "Texto não fornecido" }),
+        JSON.stringify({ error: "Texto inválido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Mapear provedor para modelo do Lovable AI
-    let model = "google/gemini-2.5-flash"; // default
-    
-    if (provedor === "chatgpt") {
-      model = "openai/gpt-5-mini";
-    } else if (provedor === "deepseek") {
-      // DeepSeek não está disponível diretamente, usar Gemini como fallback
-      model = "google/gemini-2.5-flash";
-    }
+    let model = "google/gemini-2.5-flash";
+    if (provedor === "chatgpt") model = "openai/gpt-5-mini";
+    else if (provedor === "deepseek") model = "google/gemini-2.5-flash";
 
     const systemPrompt = `Você é um assistente especializado em reescrever textos de treinamentos corporativos.
 Sua função é melhorar a clareza, legibilidade e compreensão do texto fornecido.
@@ -76,7 +92,6 @@ Regras:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       return new Response(
@@ -87,14 +102,12 @@ Regras:
 
     const data = await response.json();
     const rewrittenText = data.choices?.[0]?.message?.content;
-
     if (!rewrittenText) {
       return new Response(
         JSON.stringify({ error: "Não foi possível reescrever o texto" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
     return new Response(
       JSON.stringify({ rewrittenText }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -20,7 +20,9 @@ interface Questao {
   tipo: QuestionType
   pergunta: string
   opcoes: string[]
-  resposta_correta: string
+  /** Mapping from displayed option index to the ORIGINAL letter key (a/b/c/…).
+   *  We never expose `resposta_correta` on the client. Grading happens server-side. */
+  originalKeys: string[]
   ordem: number
   valor_minimo?: number
   valor_maximo?: number
@@ -101,33 +103,32 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tem
   const loadData = async () => {
     setIsLoading(true)
     const [questoesRes, tentativasRes] = await Promise.all([
-      supabase.from("questoes_treinamento").select("*").eq("treinamento_id", treinamentoId).order("ordem"),
-      user ? supabase.from("tentativas_avaliacao").select("*").eq("treinamento_id", treinamentoId).eq("usuario_id", user.id).eq("aprovado", true).limit(1) : null
+      supabase.rpc("obter_questoes_avaliacao", { p_treinamento_id: treinamentoId }),
+      user ? supabase.from("tentativas_avaliacao").select("id").eq("treinamento_id", treinamentoId).eq("usuario_id", user.id).eq("aprovado", true).limit(1) : null
     ])
 
     if (questoesRes.data) {
-      const mappedQuestions = questoesRes.data.map(q => {
-        const letterKeys = "abcdefghij".split("")
-        const originalOpcoes: string[] = (q as any).opcoes?.length ? (q as any).opcoes : [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d].filter(Boolean)
-        
-        // Shuffle options and track the correct answer
-        const optionPairs = originalOpcoes.map((opt, i) => ({ opt, originalKey: letterKeys[i] }))
-        const shuffledPairs = shuffleArray(optionPairs)
-        const newCorrectKey = letterKeys[shuffledPairs.findIndex(p => p.originalKey === q.resposta_correta)]
-        
-        return {
-          id: q.id,
-          tipo: ((q as any).tipo || "quiz") as QuestionType,
-          pergunta: q.pergunta,
-          opcoes: shuffledPairs.map(p => p.opt),
-          resposta_correta: newCorrectKey || q.resposta_correta,
-          ordem: q.ordem,
-          valor_minimo: (q as any).valor_minimo,
-          valor_maximo: (q as any).valor_maximo,
-          passo: (q as any).passo,
-        }
-      })
-      // Shuffle question order
+      const letterKeys = "abcdefghij".split("")
+      const mappedQuestions: Questao[] = (questoesRes.data as any[])
+        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+        .map((q) => {
+          const originalOpcoes: string[] = Array.isArray(q.opcoes) && q.opcoes.length
+            ? q.opcoes
+            : [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d].filter(Boolean)
+          const pairs = originalOpcoes.map((opt, i) => ({ opt, originalKey: letterKeys[i] }))
+          const shuffled = shuffleArray(pairs)
+          return {
+            id: q.id,
+            tipo: (q.tipo || "quiz") as QuestionType,
+            pergunta: q.pergunta,
+            opcoes: shuffled.map((p) => p.opt),
+            originalKeys: shuffled.map((p) => p.originalKey),
+            ordem: q.ordem,
+            valor_minimo: q.valor_minimo,
+            valor_maximo: q.valor_maximo,
+            passo: q.passo,
+          }
+        })
       setQuestoes(shuffleArray(mappedQuestions))
     }
     if (tentativasRes?.data?.length) setJaAprovado(true)
@@ -140,13 +141,12 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tem
     if (tempoLimite > 0) setTimeLeft(tempoLimite * 60)
     // Re-shuffle questions and options when starting
     setQuestoes(prev => {
+      const letterKeys = "abcdefghij".split("")
       const reshuffled = shuffleArray(prev.map(q => {
         if (q.tipo === "quiz" || q.tipo === "verdadeiro-falso") {
-          const letterKeys = "abcdefghij".split("")
-          const optionPairs = q.opcoes.map((opt, i) => ({ opt, originalKey: letterKeys[i] }))
-          const shuffledPairs = shuffleArray(optionPairs)
-          const newCorrectKey = letterKeys[shuffledPairs.findIndex(p => p.originalKey === q.resposta_correta)]
-          return { ...q, opcoes: shuffledPairs.map(p => p.opt), resposta_correta: newCorrectKey || q.resposta_correta }
+          const pairs = q.opcoes.map((opt, i) => ({ opt, originalKey: q.originalKeys[i] }))
+          const shuffled = shuffleArray(pairs)
+          return { ...q, opcoes: shuffled.map(p => p.opt), originalKeys: shuffled.map(p => p.originalKey) }
         }
         return q
       }))
@@ -167,73 +167,67 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tem
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true)
     const letterKeys = "abcdefghij".split("")
-    const detalhes: Record<string, boolean> = {}
-    let acertos = 0
 
-    questoes.forEach(q => {
-      const resposta = respostas[q.id] || ""
-      let correta = false
-
-      switch (q.tipo) {
-        case "quiz":
-        case "verdadeiro-falso":
-          correta = resposta === q.resposta_correta
-          break
-        case "resposta-curta":
-          correta = resposta.trim().toLowerCase() === q.resposta_correta.trim().toLowerCase()
-          break
-        case "slider":
-        case "escala":
-          correta = resposta === q.resposta_correta
-          break
-        case "puzzle":
-          correta = resposta === q.resposta_correta
-          break
+    // Translate visible answers back to ORIGINAL keys for A/B/C/D style questions.
+    const respostasOriginal: Record<string, string> = {}
+    questoes.forEach((q) => {
+      const raw = respostas[q.id] ?? ""
+      if (q.tipo === "quiz" || q.tipo === "verdadeiro-falso") {
+        const displayedIndex = letterKeys.indexOf(raw)
+        respostasOriginal[q.id] = displayedIndex >= 0 ? (q.originalKeys[displayedIndex] ?? "") : ""
+      } else {
+        respostasOriginal[q.id] = raw
       }
-
-      detalhes[q.id] = correta
-      if (correta) acertos++
     })
 
-    const nota = questoes.length > 0 ? (acertos / questoes.length) * 10 : 0
-    const aprovado = nota >= notaMinima
-
     const duracaoSegundos = quizStartRef.current ? Math.floor((Date.now() - quizStartRef.current) / 1000) : 0
-    let numeroTentativa = 1
+
     try {
-      if (user) {
-        const { count } = await supabase
-          .from("tentativas_avaliacao")
-          .select("id", { count: "exact", head: true })
-          .eq("treinamento_id", treinamentoId)
-          .eq("usuario_id", user.id)
-        numeroTentativa = (count || 0) + 1
-        await supabase.from("tentativas_avaliacao").insert({
-          treinamento_id: treinamentoId,
-          usuario_id: user.id,
-          respostas: Object.entries(respostas).map(([questao_id, resposta]) => ({ questao_id, resposta })),
-          nota,
-          aprovado,
-          duracao_segundos: duracaoSegundos,
-          tempo_estudo_segundos: tempoEstudoSegundos,
-          numero_tentativa: numeroTentativa,
-        } as any)
+      const { data, error } = await supabase.rpc("corrigir_avaliacao", {
+        p_treinamento_id: treinamentoId,
+        p_respostas: respostasOriginal,
+        p_duracao_segundos: duracaoSegundos,
+        p_tempo_estudo_segundos: tempoEstudoSegundos,
+        p_nota_minima: notaMinima,
+      })
+
+      if (error || !data) {
+        console.error(error)
+        toast({ title: "Erro ao corrigir avaliação", description: error?.message ?? "Tente novamente.", variant: "destructive" })
+        setIsSubmitting(false)
+        return
       }
-    } catch (e) { console.error(e) }
 
-    setResultado({ nota, aprovado, detalhes })
-    onTentativaFinalizada?.({ nota, aprovado, duracaoSegundos, tempoEstudoSegundos, numeroTentativa })
+      const result = data as {
+        nota: number
+        aprovado: boolean
+        detalhes: Record<string, boolean>
+        numero_tentativa: number
+      }
 
-    if (aprovado) {
-      toast({ title: "Parabéns! Você foi aprovado! 🎉", description: `Nota: ${nota.toFixed(1)}` })
-      setJaAprovado(true)
-      onAprovado?.()
-    } else {
-      toast({ title: "Não aprovado", description: `Nota: ${nota.toFixed(1)} - Mínimo: ${notaMinima}`, variant: "destructive" })
+      setResultado({ nota: result.nota, aprovado: result.aprovado, detalhes: result.detalhes ?? {} })
+      onTentativaFinalizada?.({
+        nota: result.nota,
+        aprovado: result.aprovado,
+        duracaoSegundos,
+        tempoEstudoSegundos,
+        numeroTentativa: result.numero_tentativa,
+      })
+
+      if (result.aprovado) {
+        toast({ title: "Parabéns! Você foi aprovado! 🎉", description: `Nota: ${result.nota.toFixed(1)}` })
+        setJaAprovado(true)
+        onAprovado?.()
+      } else {
+        toast({ title: "Não aprovado", description: `Nota: ${result.nota.toFixed(1)} - Mínimo: ${notaMinima}`, variant: "destructive" })
+      }
+    } catch (e) {
+      console.error(e)
+      toast({ title: "Erro", description: "Falha ao enviar avaliação.", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setIsSubmitting(false)
-  }, [questoes, respostas, notaMinima, user, treinamentoId, onAprovado, onTentativaFinalizada, tempoEstudoSegundos, toast])
+  }, [questoes, respostas, notaMinima, treinamentoId, onAprovado, onTentativaFinalizada, tempoEstudoSegundos, toast])
 
   const handleRetry = () => {
     // Redirecionar de volta ao conteúdo para re-estudo
@@ -357,7 +351,7 @@ export function QuizViewer({ treinamentoId, notaMinima = 7, tempoLimite = 0, tem
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Sua resposta: <strong>{respostas[q.id] || "—"}</strong> | Correta: <strong>{q.resposta_correta}</strong>
+                  Sua resposta: <strong>{respostas[q.id] || "—"}</strong> — {correta ? "Correta" : "Incorreta"}
                 </p>
               </CardContent>
             </Card>

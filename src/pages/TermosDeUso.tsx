@@ -3,41 +3,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import { renderSafeMarkdown } from "@/lib/markdown"
 
 export default function TermosDeUso() {
   const { config, isLoading } = useLandingConfig()
 
-  const renderMarkdown = (text: string) => {
-    // Conversão simples de Markdown para HTML
-    let html = text
-      // Headers
-      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-6 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-8 mb-3">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
-      // Bold and Italic
-      .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      // Strikethrough
-      .replace(/~~(.*?)~~/g, '<del>$1</del>')
-      // Links
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary underline hover:no-underline">$1</a>')
-      // Code
-      .replace(/`(.*?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
-      // Horizontal Rule
-      .replace(/^---$/gim, '<hr class="my-6 border-border" />')
-      // Blockquote
-      .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-primary pl-4 py-2 my-4 italic text-muted-foreground">$1</blockquote>')
-      // Lists
-      .replace(/^\* (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-      // Line breaks
-      .replace(/\n\n/g, '</p><p class="my-4">')
-      .replace(/\n/g, '<br />')
-
-    return `<div class="prose dark:prose-invert max-w-none"><p class="my-4">${html}</p></div>`
-  }
+  const renderMarkdown = (text: string) => renderSafeMarkdown(text)
 
   if (isLoading) {
     return (

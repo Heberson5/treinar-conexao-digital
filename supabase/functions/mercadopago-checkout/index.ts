@@ -13,6 +13,23 @@ serve(async (req) => {
   }
 
   try {
+    // ---- Auth (require authenticated user) ----
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const supabaseUrlAuth = Deno.env.get('SUPABASE_URL')!
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const authedClient = createClient(supabaseUrlAuth, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const { data: userData, error: userErr } = await authedClient.auth.getUser()
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const accessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
     if (!accessToken) {
       console.error('MERCADOPAGO_ACCESS_TOKEN not configured')
@@ -26,8 +43,25 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Only admin/master users may create subscriptions/payments
+    const { data: roleData } = await supabase
+      .from('usuario_roles')
+      .select('role')
+      .eq('usuario_id', userData.user.id)
+      .in('role', ['admin', 'master'])
+      .limit(1)
+    const isPrivileged = !!(roleData && roleData.length > 0)
+
     const { action, data } = await req.json()
-    console.log(`Processing action: ${action}`, data)
+    if (!isPrivileged && action !== 'test-connection' /* keep test disabled below */) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    if (action === 'test-connection' && !isPrivileged) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    console.log(`Processing action: ${action}`)
 
     switch (action) {
       case 'test-connection': {
