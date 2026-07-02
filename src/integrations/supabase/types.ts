@@ -1478,6 +1478,16 @@ export type Database = {
         Args: { p_empresa_id: string }
         Returns: undefined
       }
+      corrigir_avaliacao: {
+        Args: {
+          p_duracao_segundos: number
+          p_nota_minima?: number
+          p_respostas: Json
+          p_tempo_estudo_segundos: number
+          p_treinamento_id: string
+        }
+        Returns: Json
+      }
       criar_contrato_plano: {
         Args: { p_empresa_id: string; p_plano_id: string }
         Returns: string
@@ -1500,6 +1510,28 @@ export type Database = {
           nome: string
           papel: Database["public"]["Enums"]["tipo_role"]
           trocar_senha_primeiro_login: boolean
+        }[]
+      }
+      mesma_empresa_que_usuario: {
+        Args: { p_usuario_alvo: string }
+        Returns: boolean
+      }
+      obter_questoes_avaliacao: {
+        Args: { p_treinamento_id: string }
+        Returns: {
+          id: string
+          opcao_a: string
+          opcao_b: string
+          opcao_c: string
+          opcao_d: string
+          opcoes: Json
+          ordem: number
+          passo: number
+          pergunta: string
+          tipo: string
+          treinamento_id: string
+          valor_maximo: number
+          valor_minimo: number
         }[]
       }
       pode_gerenciar_usuario_alvo: {
