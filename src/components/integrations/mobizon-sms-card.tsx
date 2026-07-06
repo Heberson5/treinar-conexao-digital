@@ -230,6 +230,7 @@ export function MobizonSmsCard() {
           telefone: testPhone,
           gatilho: "dois_fatores",
           mensagem: "SMS de teste da integração Mobizon.",
+          forcarEnvio: true,
         },
       })
       if (error || data?.error) throw new Error(data?.error || error?.message)
