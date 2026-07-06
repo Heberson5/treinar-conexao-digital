@@ -233,7 +233,10 @@ export function MobizonSmsCard() {
           forcarEnvio: true,
         },
       })
-      if (error || data?.error) throw new Error(data?.error || error?.message)
+      const providerMsg = (data?.response && (data.response.message || data.response.raw)) || ""
+      if (error || data?.error || data?.success === false) {
+        throw new Error(providerMsg || data?.error || error?.message || "Falha ao enviar")
+      }
       toast({
         title: data?.simulated ? "Teste simulado" : "SMS enviado",
         description: data?.simulated ? "Sem chave Mobizon, o envio foi registrado em modo teste." : "Mensagem enviada pela Mobizon.",
