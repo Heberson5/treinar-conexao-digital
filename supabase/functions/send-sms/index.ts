@@ -111,7 +111,8 @@ Deno.serve(async (req) => {
     }
 
     const effectiveApiKey = (config as any)?.api_key || mobizonApiKey;
-    const shouldSimulate = !effectiveApiKey || !config?.ativo || config?.modo_teste || !trigger?.ativo;
+    const forcarEnvio = !!body.forcarEnvio;
+    const shouldSimulate = !effectiveApiKey || (!forcarEnvio && (!config?.ativo || config?.modo_teste || !trigger?.ativo));
 
     if (shouldSimulate) {
       const { data: log } = await adminClient
@@ -136,7 +137,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient: telefone, text: mensagem });
+    const recipient = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient, text: mensagem });
+    if ((config as any)?.remetente) params.set("from", String((config as any).remetente));
 
     const providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
     const providerText = await providerResponse.text();

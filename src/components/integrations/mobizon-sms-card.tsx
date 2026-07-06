@@ -186,6 +186,7 @@ export function MobizonSmsCard() {
         if (error) throw error
         setConfig((prev) => ({ ...prev, id: data.id }))
       }
+      setConfig((prev) => ({ ...prev, api_key_configurada: configPayload.api_key_configurada }))
 
       for (const trigger of triggers) {
         const payload = {
@@ -229,6 +230,7 @@ export function MobizonSmsCard() {
           telefone: testPhone,
           gatilho: "dois_fatores",
           mensagem: "SMS de teste da integração Mobizon.",
+          forcarEnvio: true,
         },
       })
       if (error || data?.error) throw new Error(data?.error || error?.message)
