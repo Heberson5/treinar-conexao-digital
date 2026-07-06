@@ -137,7 +137,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient: telefone, text: mensagem });
+    const recipient = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient, text: mensagem });
+    if ((config as any)?.remetente) params.set("from", String((config as any).remetente));
 
     const providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
     const providerText = await providerResponse.text();
