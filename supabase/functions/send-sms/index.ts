@@ -139,18 +139,23 @@ Deno.serve(async (req) => {
 
     const recipient = telefone.startsWith("55") ? telefone : `55${telefone}`;
     const params = new URLSearchParams({ apiKey: effectiveApiKey, recipient, text: mensagem });
-    if ((config as any)?.remetente) params.set("from", String((config as any).remetente));
+    const remetente = (config as any)?.remetente ? String((config as any).remetente).trim() : "";
+    if (remetente) params.set("from", remetente);
 
-    const providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
-    const providerText = await providerResponse.text();
+    let providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
+    let providerText = await providerResponse.text();
     let providerJson: Record<string, unknown> = {};
-    try {
-      providerJson = JSON.parse(providerText);
-    } catch {
-      providerJson = { raw: providerText };
+    try { providerJson = JSON.parse(providerText); } catch { providerJson = { raw: providerText }; }
+
+    // Retry sem "from" se Mobizon rejeitou o Sender ID
+    if ((providerJson as any)?.code !== 0 && remetente) {
+      params.delete("from");
+      providerResponse = await fetch(`${mobizonApiUrl}?${params.toString()}`, { method: "GET" });
+      providerText = await providerResponse.text();
+      try { providerJson = JSON.parse(providerText); } catch { providerJson = { raw: providerText }; }
     }
 
-    const sent = providerResponse.ok;
+    const sent = providerResponse.ok && (providerJson as any)?.code === 0;
     const { data: log } = await adminClient
       .from("sms_envios")
       .insert({
