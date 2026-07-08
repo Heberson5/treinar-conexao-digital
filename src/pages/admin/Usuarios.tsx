@@ -440,73 +440,36 @@ export default function Usuarios() {
     setIsSaving(true)
 
     try {
-      // Criar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: emailNormalizado,
-        password: novaSenha,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
+      // Criar usuário via Edge Function admin (evita substituir a sessão atual)
+      const { data: fnData, error: fnError } = await supabase.functions.invoke(
+        "admin-create-user",
+        {
+          body: {
+            email: emailNormalizado,
+            password: novaSenha,
             nome: novoNome.trim(),
+            empresa_id: novaEmpresa || null,
+            departamento_id: novoDepartamento || null,
+            cargo: novoCargo || null,
+            papel: novoPapel,
+            trocar_senha_primeiro_login: trocarSenhaPrimeiroLogin,
+            dias_para_trocar_senha: diasParaTrocarSenha,
           },
-        },
-      })
-
-      if (authError) {
-        toast({
-          title: "Erro ao criar usuário",
-          description: authError.message,
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (!authData.user) {
-        toast({
-          title: "Erro ao criar usuário",
-          description: "Não foi possível criar o usuário.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Atualizar perfil com dados adicionais
-      const diasTroca = diasParaTrocarSenha && diasParaTrocarSenha !== "none" ? parseInt(diasParaTrocarSenha) : null
-      const dataProximaTroca = diasTroca
-        ? new Date(Date.now() + diasTroca * 24 * 60 * 60 * 1000).toISOString()
-        : null
-
-      const { error: updateError } = await supabase
-        .from("perfis")
-        .update({
-          empresa_id: novaEmpresa || null,
-          departamento_id: novoDepartamento || null,
-          cargo: novoCargo || null,
-          trocar_senha_primeiro_login: trocarSenhaPrimeiroLogin,
-          dias_para_trocar_senha: diasTroca,
-          data_proxima_troca_senha: dataProximaTroca,
-        })
-        .eq("id", authData.user.id)
-
-      if (updateError) {
-        console.error("Erro ao atualizar perfil:", updateError)
-      }
-
-      // Atualizar role se diferente de usuario
-      if (novoPapel !== "usuario") {
-        const { error: roleError } = await supabase
-          .from("usuario_roles")
-          .update({ role: novoPapel })
-          .eq("usuario_id", authData.user.id)
-
-        if (roleError) {
-          console.error("Erro ao atualizar role:", roleError)
         }
+      )
+
+      if (fnError || (fnData && (fnData as any).error)) {
+        toast({
+          title: "Erro ao criar usuário",
+          description: (fnData as any)?.error || fnError?.message || "Não foi possível criar o usuário.",
+          variant: "destructive",
+        })
+        return
       }
 
       toast({
         title: "Usuário criado",
-        description: "O usuário foi criado com sucesso. Um e-mail de confirmação foi enviado.",
+        description: "O usuário foi criado com sucesso.",
       })
 
       resetForm()
