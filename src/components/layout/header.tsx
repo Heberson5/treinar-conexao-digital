@@ -150,7 +150,6 @@ export function Header({ onLogout }: HeaderProps) {
     const { error } = await supabase.from("perfis").update({
       nome: profileData.nome,
       telefone: profileData.telefone || null,
-      cargo: profileData.cargo || null,
     }).eq("id", user.id)
 
     if (error) {
