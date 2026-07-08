@@ -347,7 +347,14 @@ export function Header({ onLogout }: HeaderProps) {
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>
-                <Input value={profileData.cargo} onChange={(e) => setProfileData({...profileData, cargo: e.target.value})} />
+                <Input
+                  value={profileData.cargo}
+                  disabled
+                  className="opacity-60"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cargo e departamento só podem ser alterados pelo administrador ou master.
+                </p>
               </div>
             </div>
 
