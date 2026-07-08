@@ -180,22 +180,22 @@ export function Header({ onLogout }: HeaderProps) {
   }
 
   return (
-    <header className="h-16 border-b bg-card text-card-foreground flex items-center justify-between px-6 shadow-sm">
-      <div className="flex items-center gap-4">
+    <header className="h-16 border-b bg-card text-card-foreground flex items-center justify-between gap-2 px-2 sm:px-6 shadow-sm">
+      <div className="flex items-center gap-2 min-w-0 flex-shrink">
         <SidebarTrigger />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1 sm:gap-3 min-w-0">
         {/* Filtro de Empresa (apenas para Master) */}
         {isMaster && (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+          <div className="hidden md:flex items-center gap-2 min-w-0">
+            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
             <Select
               value={empresaSelecionada || "todas"}
               onValueChange={(value) => setEmpresaSelecionada(value === "todas" ? null : value)}
               disabled={isLoading}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[160px] lg:w-[200px]">
                 <SelectValue placeholder="Selecione a empresa" />
               </SelectTrigger>
               <SelectContent>
